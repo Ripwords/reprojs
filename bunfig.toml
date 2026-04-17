@@ -1,5 +1,5 @@
 [install]
-# Keep dev tooling deterministic in CI
+# Allow lockfile updates during local dev. CI pipelines should pass --frozen-lockfile.
 frozenLockfile = false
 
 [test]
