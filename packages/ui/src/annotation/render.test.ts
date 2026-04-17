@@ -127,7 +127,7 @@ describe("render", () => {
     expect(px[1]).toBeGreaterThan(200)
   })
 
-  test("applies transform so shapes shift with pan", () => {
+  test("applies transform so bg + shapes shift together with pan", () => {
     const ctx = makeCtx()
     const arrow: Shape = {
       kind: "arrow",
@@ -145,11 +145,13 @@ describe("render", () => {
       [arrow],
       { scale: 1, panX: 50, panY: 0 },
     )
-    // bg is drawn at identity so screen (20,50) is white (no arrow)
+    // The bg (100x100 white) is drawn under the same viewport as shapes.
+    // panX=50 → bg's left edge sits at screen x=50. Screen (20, 50) is outside
+    // the bg and stays cleared/transparent (alpha=0).
     const early = ctx.getImageData(20, 50, 1, 1).data
-    // arrow world (0..40) shifted by panX=50 → screen (50..90); pixel (70,50) has arrow
+    expect(early[3]).toBe(0)
+    // Arrow world (0..40) → screen (50..90); pixel (70, 50) is on the arrow.
     const later = ctx.getImageData(70, 50, 1, 1).data
-    expect(early[0]).toBe(255)
     expect(later[0]).toBeGreaterThan(200)
   })
 })

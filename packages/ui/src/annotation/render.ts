@@ -8,18 +8,29 @@ export function render(
   t: Transform,
 ): void {
   const { canvas } = ctx
-  ctx.save()
 
-  // Draw background at identity (fills entire visible area)
+  // Clear the entire backing buffer in identity space.
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  // Detect the caller's DPR. On-screen canvas.tsx sets canvas.width =
+  // clientWidth * DPR and canvas.style.width = clientWidth + "px", so the
+  // ratio recovers DPR. The offscreen flatten canvas has no style.width, so
+  // dpr resolves to 1.
+  const styleW =
+    canvas.style && typeof canvas.style.width === "string"
+      ? Number.parseFloat(canvas.style.width) || canvas.width
+      : canvas.width
+  const dpr = canvas.width / styleW
+
+  // Background AND shapes share the exact same world-to-backing transform.
+  // If the two ever diverge (e.g. bg at identity and shapes at viewport)
+  // they drift visually — the user clicks on pixel (X, Y) of the bg, the
+  // shape stores world coords that only make sense under the viewport
+  // transform, and on flatten the shape lands somewhere else entirely.
+  ctx.setTransform(dpr * t.scale, 0, 0, dpr * t.scale, dpr * t.panX, dpr * t.panY)
   ctx.drawImage(bg, 0, 0)
-
-  // Apply viewport transform for shapes
-  ctx.setTransform(t.scale, 0, 0, t.scale, t.panX, t.panY)
   for (const s of shapes) drawShape(ctx, s)
-
-  ctx.restore()
 }
 
 function drawShape(ctx: CanvasRenderingContext2D, s: Shape): void {

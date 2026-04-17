@@ -21,10 +21,13 @@ declare global {
 function initFeedbackTool(tries = 0): void {
   if (window.FeedbackTool) {
     window.FeedbackTool.init({
-      projectKey: "ft_pk_XVHuSvDrtbIn1YnyrUYEm56Y",
+      projectKey: "ft_pk_5HAbpZ7lvyhbTPAJZBEm7jH5",
       endpoint: "http://localhost:3000",
     })
-    window.FeedbackTool.identify({ email: "demo@example.com", name: "Demo User" })
+    window.FeedbackTool.identify({
+      email: "demo@example.com",
+      name: "Demo User",
+    })
   } else if (tries < 50) {
     setTimeout(() => initFeedbackTool(tries + 1), 50)
   } else {
