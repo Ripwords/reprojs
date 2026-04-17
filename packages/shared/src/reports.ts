@@ -13,7 +13,7 @@ export const ReportContext = z.object({
   viewport: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }),
   timestamp: z.string(),
   reporter: ReporterIdentity.optional(),
-  metadata: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 export type ReportContext = z.infer<typeof ReportContext>
 
@@ -22,7 +22,7 @@ export const ReportIntakeInput = z.object({
   title: z.string().min(1).max(120),
   description: z.string().max(10_000).optional(),
   context: ReportContext,
-  metadata: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 export type ReportIntakeInput = z.infer<typeof ReportIntakeInput>
 

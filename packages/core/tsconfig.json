@@ -10,7 +10,8 @@
     "declaration": true,
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "types": ["bun-types"]
   },
   "include": ["src/**/*"]
 }
