@@ -10,15 +10,23 @@ export const projects = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     createdBy: text("created_by").notNull(),
+    publicKey: text("public_key"),
+    allowedOrigins: text("allowed_origins")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    publicKeyRegeneratedAt: timestamp("public_key_regenerated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
-    // Slug is unique only among live projects; soft-deleted slugs can be reused.
     slugActiveUnique: uniqueIndex("projects_slug_active_unique")
       .on(table.slug)
       .where(sql`${table.deletedAt} IS NULL`),
+    publicKeyUnique: uniqueIndex("projects_public_key_idx").on(table.publicKey),
   }),
 )
 

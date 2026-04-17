@@ -8,6 +8,13 @@
       "when": 1776411952090,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776422849548,
+      "tag": "0001_nifty_jazinda",
+      "breakpoints": true
     }
   ]
 }
