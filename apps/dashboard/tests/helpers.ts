@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import { db } from "../server/db"
+import { projects } from "../server/db/schema"
 
 const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
 
@@ -72,4 +73,37 @@ export async function apiFetch<T = unknown>(
     body = text as unknown as T
   }
   return { status: res.status, body }
+}
+
+export async function truncateReports() {
+  await db.execute(sql`TRUNCATE report_attachments, reports RESTART IDENTITY CASCADE`)
+}
+
+export async function seedProject(opts: {
+  name: string
+  publicKey: string
+  allowedOrigins?: string[]
+  createdBy: string
+}): Promise<string> {
+  const [p] = await db
+    .insert(projects)
+    .values({
+      name: opts.name,
+      slug: opts.name.toLowerCase().replace(/\s+/g, "-"),
+      createdBy: opts.createdBy,
+      publicKey: opts.publicKey,
+      allowedOrigins: opts.allowedOrigins ?? [],
+    })
+    .returning()
+  return p.id
+}
+
+export function makePngBlob(): Blob {
+  // Minimal valid 1x1 PNG (signature + IHDR + IDAT + IEND)
+  const bytes = new Uint8Array([
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0,
+    0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1, 13, 10,
+    45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+  ])
+  return new Blob([bytes], { type: "image/png" })
 }
