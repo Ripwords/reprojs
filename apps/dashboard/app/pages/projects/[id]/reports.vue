@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ReportSummaryDTO } from "@feedback-tool/shared"
-import { safeHref } from "~/composables/use-safe-href"
+import ReportDrawer from "~/components/report-drawer/drawer.vue"
 
 const route = useRoute()
 const { data } = await useApi<{ items: ReportSummaryDTO[]; total: number }>(
@@ -68,43 +68,11 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
       </tbody>
     </table>
 
-    <div v-if="selected" class="fixed inset-0 bg-black/40 z-50" @click="close">
-      <aside
-        class="absolute right-0 top-0 h-full w-[640px] max-w-full bg-white shadow-2xl overflow-y-auto"
-        @click.stop
-      >
-        <header class="p-4 border-b flex items-center justify-between">
-          <h2 class="font-semibold">{{ selected.title }}</h2>
-          <button type="button" class="text-neutral-500" @click="close">Close</button>
-        </header>
-        <div class="p-4 space-y-4">
-          <img
-            v-if="selected.thumbnailUrl"
-            :src="selected.thumbnailUrl"
-            alt="Report screenshot"
-            class="w-full border rounded"
-          />
-          <div class="text-sm space-y-1">
-            <div>
-              <span class="text-neutral-500">Reporter:</span>
-              {{ selected.reporterEmail ?? "anonymous" }}
-            </div>
-            <div>
-              <span class="text-neutral-500">Page:</span>
-              <a
-                :href="safeHref(selected.pageUrl)"
-                target="_blank"
-                rel="noopener"
-                class="underline"
-                >{{ selected.pageUrl }}</a
-              >
-            </div>
-            <div>
-              <span class="text-neutral-500">Received:</span> {{ fmtTime(selected.receivedAt) }}
-            </div>
-          </div>
-        </div>
-      </aside>
-    </div>
+    <ReportDrawer
+      v-if="selected"
+      :project-id="route.params.id as string"
+      :report="selected"
+      @close="close"
+    />
   </div>
 </template>
