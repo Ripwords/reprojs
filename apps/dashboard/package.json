@@ -1,0 +1,28 @@
+{
+  "name": "dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --host",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@feedback-tool/shared": "workspace:*",
+    "@tailwindcss/vite": "^4.2.1",
+    "better-auth": "^1.5.6",
+    "drizzle-orm": "^0.45.2",
+    "nodemailer": "^6.9.15",
+    "nuxt": "^4.4.2",
+    "tailwindcss": "^4.2.1",
+    "vue": "^3.5.30",
+    "vue-router": "^5.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@better-auth/cli": "^1.4.21",
+    "@types/nodemailer": "^6.4.15",
+    "drizzle-kit": "^0.31.0"
+  }
+}
