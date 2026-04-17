@@ -4,11 +4,18 @@ import { db } from "../server/db"
 const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
 
 export async function truncateDomain() {
-  await db.execute(sql`TRUNCATE project_members, projects, "account", "session", "verification", "user" RESTART IDENTITY CASCADE`)
-  await db.execute(sql`UPDATE app_settings SET signup_gated = false, install_name = 'Feedback Tool' WHERE id = 1`)
+  await db.execute(
+    sql`TRUNCATE project_members, projects, "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
+  )
+  await db.execute(
+    sql`UPDATE app_settings SET signup_gated = false, install_name = 'Feedback Tool' WHERE id = 1`,
+  )
 }
 
-export async function createUser(email: string, role: "admin" | "member" = "member"): Promise<string> {
+export async function createUser(
+  email: string,
+  role: "admin" | "member" = "member",
+): Promise<string> {
   const signUpRes = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -40,15 +47,22 @@ export async function signIn(email: string): Promise<string> {
   return match ? match[1] : cookie
 }
 
-export async function apiFetch<T = unknown>(path: string, opts: RequestInit = {}): Promise<{ status: number; body: T }> {
+export async function apiFetch<T = unknown>(
+  path: string,
+  opts: RequestInit = {},
+): Promise<{ status: number; body: T }> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(opts.headers as Record<string, string> ?? {}),
+    ...(opts.headers as Record<string, string>),
   }
   const res = await fetch(`${BASE_URL}${path}`, {
     ...opts,
     headers,
-    body: opts.body ? (typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body)) : undefined,
+    body: opts.body
+      ? typeof opts.body === "string"
+        ? opts.body
+        : JSON.stringify(opts.body)
+      : undefined,
   })
   const text = await res.text()
   let body: T

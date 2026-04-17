@@ -20,7 +20,7 @@ async function checkServer(retries = 30, delayMs = 1000): Promise<void> {
   }
   throw new Error(
     `Nuxt dev server not reachable at ${BASE_URL} after ${retries} retries. ` +
-    `Start it with: bun run dev`,
+      `Start it with: bun run dev`,
   )
 }
 

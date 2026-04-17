@@ -4,8 +4,6 @@ setDefaultTimeout(30000)
 import type { ProjectDTO } from "@feedback-tool/shared"
 import { apiFetch, createUser, signIn, truncateDomain } from "../helpers"
 
-const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
-
 describe("projects API", () => {
   afterEach(async () => {
     await truncateDomain()
