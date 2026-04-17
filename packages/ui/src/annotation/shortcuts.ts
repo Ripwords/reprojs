@@ -34,13 +34,29 @@ function serializeEvent(e: KeyboardEvent): string {
   return parts.join("+")
 }
 
-function isInsideInput(e: KeyboardEvent): boolean {
-  const t = e.target as HTMLElement | null
-  if (!t) return false
-  const tag = t.tagName
+function isInputElement(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false
+  const el = node as HTMLElement
+  const tag = el.tagName
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true
-  if ((t as HTMLElement).isContentEditable) return true
+  if (el.isContentEditable) return true
   return false
+}
+
+function isInsideInput(e: KeyboardEvent): boolean {
+  // Check composedPath() so we detect input elements nested inside a Shadow
+  // DOM — without it, e.target retargets to the shadow host on window listeners
+  // and every letter pressed inside the wizard's <textarea> would trigger a
+  // tool shortcut like H or T. Fall back to e.target if composedPath is empty
+  // (e.g. synthetic test events).
+  const getPath = (e as unknown as { composedPath?: () => EventTarget[] }).composedPath
+  if (typeof getPath === "function") {
+    const path = getPath.call(e)
+    for (const node of path) {
+      if (isInputElement(node)) return true
+    }
+  }
+  return isInputElement(e.target)
 }
 
 export function matchShortcut(e: KeyboardEvent, map: Record<string, Action>): Action | null {

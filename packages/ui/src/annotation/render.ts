@@ -109,6 +109,22 @@ function drawPen(ctx: CanvasRenderingContext2D, s: Extract<Shape, { kind: "pen" 
 }
 
 function drawText(ctx: CanvasRenderingContext2D, s: Extract<Shape, { kind: "text" }>): void {
+  // Empty content = draft-rect being dragged OR a cancelled text box.
+  // Render a dashed outline so the user can see what they're framing.
+  if (s.content.length === 0) {
+    ctx.save()
+    ctx.strokeStyle = s.color
+    ctx.lineWidth = 1
+    ctx.setLineDash([6, 4])
+    const x = Math.min(s.x, s.x + s.w)
+    const y = Math.min(s.y, s.y + s.h)
+    const w = Math.abs(s.w)
+    const h = Math.abs(s.h)
+    ctx.strokeRect(x, y, w, h)
+    ctx.restore()
+    return
+  }
+
   ctx.save()
   ctx.fillStyle = s.color
   ctx.font = `${s.fontSize}px system-ui, -apple-system, sans-serif`
