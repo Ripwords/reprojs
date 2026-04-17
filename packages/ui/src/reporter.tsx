@@ -1,5 +1,9 @@
+// packages/ui/src/reporter.tsx
 import { h } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useState } from "preact/hooks"
+import { reset } from "./annotation/store"
+import { StepAnnotate } from "./wizard/step-annotate"
+import { StepDescribe } from "./wizard/step-describe"
 
 export interface ReporterSubmitResult {
   ok: boolean
@@ -17,99 +21,95 @@ interface ReporterProps {
 }
 
 export function Reporter({ onClose, onCapture, onSubmit }: ReporterProps) {
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [screenshot, setScreenshot] = useState<Blob | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const titleRef = useRef<HTMLInputElement>(null)
+  const [bg, setBg] = useState<HTMLImageElement | null>(null)
+  const [annotatedBlob, setAnnotatedBlob] = useState<Blob | null>(null)
+  const [step, setStep] = useState<"annotate" | "describe">("annotate")
+  const [rawScreenshot, setRawScreenshot] = useState<Blob | null>(null)
+  const [captureFailed, setCaptureFailed] = useState(false)
 
   useEffect(() => {
-    titleRef.current?.focus()
+    let revoked = false
+    let url: string | null = null
     ;(async () => {
       const blob = await onCapture()
-      setScreenshot(blob)
-      if (blob) setPreviewUrl(URL.createObjectURL(blob))
+      if (!blob) {
+        setCaptureFailed(true)
+        return
+      }
+      setRawScreenshot(blob)
+      url = URL.createObjectURL(blob)
+      const img = new Image()
+      img.addEventListener("load", () => {
+        if (!revoked) setBg(img)
+      })
+      img.src = url
     })()
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      revoked = true
+      if (url) URL.revokeObjectURL(url)
+      reset()
     }
   }, [])
 
-  async function handleSubmit(e: Event) {
-    e.preventDefault()
-    if (!title.trim()) return
-    setSubmitting(true)
-    setError(null)
-    const res = await onSubmit({
-      title: title.trim(),
-      description: description.trim(),
-      screenshot,
-    })
-    setSubmitting(false)
-    if (res.ok) {
-      setSuccess(true)
-      setTimeout(onClose, 1500)
-    } else {
-      setError(res.message ?? "Something went wrong, please try again.")
+  useEffect(() => {
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = ""
     }
+  }, [])
+
+  function handleCancel() {
+    onClose()
   }
 
-  function handleBackdrop(e: MouseEvent) {
-    if (e.target === e.currentTarget) onClose()
+  function handleNext(blob: Blob) {
+    setAnnotatedBlob(blob)
+    setStep("describe")
   }
 
-  return (
-    <div class="ft-overlay" onClick={handleBackdrop}>
-      <form class="ft-modal" onSubmit={handleSubmit} aria-labelledby="ft-title">
-        <h2 id="ft-title">Report a bug</h2>
-        <label class="ft-field">
-          <span>Title</span>
-          <input
-            ref={titleRef}
-            value={title}
-            onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
-            required
-            maxLength={120}
-            disabled={submitting || success}
-          />
-        </label>
-        <label class="ft-field">
-          <span>What happened?</span>
-          <textarea
-            value={description}
-            onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value)}
-            maxLength={10000}
-            disabled={submitting || success}
-          />
-        </label>
-        <div class="ft-field">
-          <span>Screenshot</span>
-          {previewUrl ? (
-            <img class="ft-preview" src={previewUrl} alt="screenshot preview" />
-          ) : (
-            <div class="ft-preview empty">
-              {screenshot === null ? "Capturing…" : "Screenshot unavailable"}
-            </div>
-          )}
-        </div>
-        {error && <div class="ft-msg err">{error}</div>}
-        {success && <div class="ft-msg ok">Thanks! Report sent.</div>}
-        <div class="ft-actions">
-          <button type="button" class="ft-btn" onClick={onClose} disabled={submitting}>
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="ft-btn primary"
-            disabled={submitting || success || !title.trim()}
-          >
-            {submitting ? "Sending…" : "Send report"}
-          </button>
-        </div>
-      </form>
-    </div>
-  )
+  function handleSkip() {
+    setAnnotatedBlob(rawScreenshot)
+    setStep("describe")
+  }
+
+  function handleBack() {
+    setStep("annotate")
+  }
+
+  async function handleSubmit(payload: { title: string; description: string }) {
+    const result = await onSubmit({ ...payload, screenshot: annotatedBlob })
+    if (result.ok) {
+      setTimeout(onClose, 1500)
+    }
+    return result
+  }
+
+  if (captureFailed) {
+    return h(StepDescribe, {
+      annotatedBlob: null,
+      onBack: handleCancel,
+      onCancel: handleCancel,
+      onSubmit: async ({ title, description }) => handleSubmit({ title, description }),
+    })
+  }
+
+  if (!bg) {
+    return h("div", { class: "ft-wizard-loading" }, "Capturing…")
+  }
+
+  if (step === "annotate") {
+    return h(StepAnnotate, {
+      bg,
+      onSkip: handleSkip,
+      onNext: handleNext,
+      onCancel: handleCancel,
+    })
+  }
+
+  return h(StepDescribe, {
+    annotatedBlob,
+    onBack: handleBack,
+    onCancel: handleCancel,
+    onSubmit: async ({ title, description }) => handleSubmit({ title, description }),
+  })
 }

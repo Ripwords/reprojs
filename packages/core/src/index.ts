@@ -1,6 +1,6 @@
 // packages/core/src/index.ts
 import type { ReporterIdentity } from "@feedback-tool/shared"
-import { mount, open as uiOpen, close as uiClose, unmount } from "@feedback-tool/ui"
+import { close as uiClose, mount, open as uiOpen, unmount } from "@feedback-tool/ui"
 import { resolveConfig, type InitOptions, type ResolvedConfig } from "./config"
 import { gatherContext } from "./context"
 import { capture } from "./screenshot"
@@ -17,9 +17,8 @@ export function init(options: InitOptions): void {
   mount({
     config: { position: cfg.position, launcher: cfg.launcher },
     capture,
-    onSubmit: async ({ title, description }) => {
+    onSubmit: async ({ title, description, screenshot }) => {
       if (!_config) return { ok: false, message: "Not initialized" }
-      const screenshot = await capture()
       const context = gatherContext(_reporter, _config.metadata)
       const result = await postReport(_config, {
         title,

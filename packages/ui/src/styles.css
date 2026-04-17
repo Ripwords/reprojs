@@ -146,3 +146,190 @@
 .ft-msg.ok {
   color: #070;
 }
+
+/* === Wizard === */
+.ft-wizard {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483641;
+  background: #fff;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.ft-wizard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 48px;
+  background: #111;
+  color: #fff;
+  border-bottom: 1px solid #000;
+}
+.ft-wizard-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ft-wizard-header .ft-close,
+.ft-wizard-header .ft-back {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.ft-wizard-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+.ft-wizard-annotate {
+  background: #f4f4f4;
+}
+.ft-wizard-describe {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 16px;
+  padding: 24px;
+  overflow: auto;
+}
+@media (max-width: 900px) {
+  .ft-wizard-describe {
+    grid-template-columns: 1fr;
+  }
+}
+.ft-preview-wrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.ft-preview-full {
+  max-width: 100%;
+  max-height: 80vh;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+.ft-preview-placeholder {
+  padding: 24px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  color: #888;
+}
+.ft-form {
+  display: flex;
+  flex-direction: column;
+}
+.ft-wizard-footer {
+  background: #f8f8f8;
+  border-top: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ft-wizard-next {
+  display: flex;
+  gap: 8px;
+}
+.ft-wizard-loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  z-index: 2147483641;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+/* === Tool picker === */
+.ft-tool-picker {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ft-tool-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.ft-tool {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #111;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ft-tool:hover {
+  background: #f0f0f0;
+}
+.ft-tool.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.ft-tool[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ft-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.ft-swatch.active {
+  border-color: #111;
+  transform: scale(1.1);
+}
+.ft-stroke {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0 6px;
+  height: 34px;
+}
+.ft-stroke-dot {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  color: #888;
+}
+.ft-stroke-dot.active {
+  color: #111;
+}
+
+/* === Canvas container === */
+.ft-canvas-container canvas {
+  cursor: crosshair;
+  touch-action: none;
+}
+.ft-text-input {
+  box-sizing: border-box;
+}

@@ -13,12 +13,19 @@ export interface MountOptions {
     launcher: boolean
   }
   capture: () => Promise<Blob | null>
-  onSubmit: (payload: { title: string; description: string }) => Promise<ReporterSubmitResult>
+  onSubmit: (payload: {
+    title: string
+    description: string
+    screenshot: Blob | null
+  }) => Promise<ReporterSubmitResult>
 }
 
 let _setOpenExternal: ((v: boolean) => void) | null = null
 let _capture: () => Promise<Blob | null> = async () => null
-let _onSubmit: MountOptions["onSubmit"] = async () => ({ ok: false, message: "not mounted" })
+let _onSubmit: MountOptions["onSubmit"] = async () => ({
+  ok: false,
+  message: "not mounted",
+})
 let _position: MountOptions["config"]["position"] = "bottom-right"
 let _launcher = true
 let _root: ShadowRoot | null = null
@@ -35,9 +42,7 @@ function App() {
       ? h(Reporter, {
           onClose: () => setOpen(false),
           onCapture: _capture,
-          onSubmit: async ({ title, description }) => {
-            return _onSubmit({ title, description })
-          },
+          onSubmit: _onSubmit,
         })
       : null,
   )
