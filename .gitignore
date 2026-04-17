@@ -35,3 +35,6 @@ coverage/
 
 # Husky install marker
 .husky/_
+
+# Attachment storage (LocalDiskAdapter)
+apps/dashboard/.data/
