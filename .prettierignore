@@ -4,3 +4,7 @@ README.md
 index.ts
 tsconfig.json
 docs/
+
+# Generated files — formatting style is owned by the tool that writes them
+apps/dashboard/server/db/schema/auth-schema.ts
+apps/dashboard/server/db/migrations/
