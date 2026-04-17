@@ -1,4 +1,4 @@
-import type { ReportContext } from "@feedback-tool/shared"
+import type { LogsAttachment, ReportContext } from "@feedback-tool/shared"
 import type { ResolvedConfig } from "./config"
 
 export interface IntakeInput {
@@ -7,6 +7,7 @@ export interface IntakeInput {
   context: ReportContext
   metadata?: Record<string, string | number | boolean>
   screenshot: Blob | null
+  logs?: LogsAttachment | null
 }
 
 export interface IntakeResult {
@@ -41,6 +42,13 @@ export async function postReport(
     ),
   )
   if (input.screenshot) body.set("screenshot", input.screenshot, "screenshot.png")
+  if (input.logs) {
+    body.set(
+      "logs",
+      new Blob([JSON.stringify(input.logs)], { type: "application/json" }),
+      "logs.json",
+    )
+  }
 
   try {
     const res = await fetch(`${config.endpoint}/api/intake/reports`, {

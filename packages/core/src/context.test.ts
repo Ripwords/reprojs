@@ -34,4 +34,25 @@ describe("gatherContext", () => {
     const ctx = gatherContext(null, { plan: "pro", seats: 5 })
     expect(ctx.metadata).toEqual({ plan: "pro", seats: 5 })
   })
+
+  test("includes systemInfo and cookies when extras provided", () => {
+    const ctx = gatherContext(null, undefined, {
+      systemInfo: {
+        userAgent: "x",
+        platform: "y",
+        language: "en",
+        timezone: "UTC",
+        timezoneOffset: 0,
+        viewport: { w: 1, h: 1 },
+        screen: { w: 1, h: 1 },
+        dpr: 1,
+        online: true,
+        pageUrl: "http://x/",
+        timestamp: "2026-01-01T00:00:00Z",
+      },
+      cookies: [{ name: "a", value: "1" }],
+    })
+    expect(ctx.systemInfo?.userAgent).toBe("x")
+    expect(ctx.cookies).toEqual([{ name: "a", value: "1" }])
+  })
 })

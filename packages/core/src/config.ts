@@ -1,9 +1,12 @@
+import type { CollectorConfig } from "@feedback-tool/ui"
+
 export interface InitOptions {
   projectKey: string
   endpoint: string
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left"
   launcher?: boolean
   metadata?: Record<string, string | number | boolean>
+  collectors?: CollectorConfig
 }
 
 export interface ResolvedConfig {
