@@ -21,5 +21,6 @@ export default defineConfig([
     outDir: "dist",
     minify: true,
     globalName: "FeedbackTool",
+    noExternal: [/@feedback-tool\//, /preact/, /modern-screenshot/, /zod/],
   },
 ])

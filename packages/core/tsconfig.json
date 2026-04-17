@@ -10,7 +10,8 @@
     "declaration": true,
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "types": ["bun-types"]
   },
   "include": ["src/**/*"]

@@ -40,12 +40,14 @@
       "version": "0.0.0",
       "dependencies": {
         "@feedback-tool/shared": "workspace:*",
+        "@feedback-tool/ui": "workspace:*",
         "modern-screenshot": "^4.6.0",
         "zod": "^4.3.6",
       },
       "devDependencies": {
         "bun-types": "^1.3.12",
         "happy-dom": "^15.0.0",
+        "preact": "^10.23.0",
         "tsdown": "^0.9.0",
         "typescript": "^5.8",
       },
