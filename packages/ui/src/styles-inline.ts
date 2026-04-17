@@ -1,0 +1,339 @@
+// Auto-generated from styles.css by build-css.ts. Do not edit by hand.
+// Run `bun run packages/ui/build-css.ts` after editing styles.css.
+
+export default String.raw`:host,
+* {
+  box-sizing: border-box;
+}
+.ft-launcher {
+  position: fixed;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 2147483640;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.ft-launcher:hover {
+  background: #000;
+}
+.ft-launcher.pos-bottom-right {
+  right: 24px;
+  bottom: 24px;
+}
+.ft-launcher.pos-bottom-left {
+  left: 24px;
+  bottom: 24px;
+}
+.ft-launcher.pos-top-right {
+  right: 24px;
+  top: 24px;
+}
+.ft-launcher.pos-top-left {
+  left: 24px;
+  top: 24px;
+}
+
+.ft-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483641;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.ft-modal {
+  background: #fff;
+  color: #111;
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+}
+.ft-modal h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ft-field {
+  display: block;
+  margin-bottom: 12px;
+}
+.ft-field > span {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.ft-field input,
+.ft-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+}
+.ft-field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.ft-preview {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background: #f7f7f7;
+}
+.ft-preview.empty {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+}
+.ft-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.ft-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  font: inherit;
+}
+.ft-btn.primary {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.ft-btn.primary:hover {
+  background: #000;
+}
+.ft-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ft-msg {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.ft-msg.err {
+  color: #c00;
+}
+.ft-msg.ok {
+  color: #070;
+}
+
+/* === Wizard === */
+.ft-wizard {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483641;
+  background: #fff;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.ft-wizard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 48px;
+  background: #111;
+  color: #fff;
+  border-bottom: 1px solid #000;
+}
+.ft-wizard-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ft-wizard-header .ft-close,
+.ft-wizard-header .ft-back {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.ft-wizard-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+.ft-wizard-annotate {
+  background: #f4f4f4;
+}
+.ft-wizard-describe {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 16px;
+  padding: 24px;
+  overflow: auto;
+}
+@media (max-width: 900px) {
+  .ft-wizard-describe {
+    grid-template-columns: 1fr;
+  }
+}
+.ft-preview-wrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.ft-preview-full {
+  max-width: 100%;
+  max-height: 80vh;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+.ft-preview-placeholder {
+  padding: 24px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  color: #888;
+}
+.ft-form {
+  display: flex;
+  flex-direction: column;
+}
+.ft-wizard-footer {
+  background: #f8f8f8;
+  border-top: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ft-wizard-next {
+  display: flex;
+  gap: 8px;
+}
+.ft-wizard-loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  z-index: 2147483641;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+/* === Tool picker === */
+.ft-tool-picker {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ft-tool-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.ft-tool {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #111;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ft-tool:hover {
+  background: #f0f0f0;
+}
+.ft-tool.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.ft-tool[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ft-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.ft-swatch.active {
+  border-color: #111;
+  transform: scale(1.1);
+}
+.ft-stroke {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0 6px;
+  height: 34px;
+}
+.ft-stroke-dot {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  color: #888;
+}
+.ft-stroke-dot.active {
+  color: #111;
+}
+
+/* === Canvas container === */
+.ft-canvas-container canvas {
+  cursor: crosshair;
+  touch-action: none;
+}
+.ft-text-input {
+  box-sizing: border-box;
+}
+`

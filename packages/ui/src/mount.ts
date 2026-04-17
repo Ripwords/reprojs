@@ -4,8 +4,7 @@ import { useState } from "preact/hooks"
 import { Launcher } from "./launcher"
 import { Reporter, type ReporterSubmitResult } from "./reporter"
 import { createShadowHost, injectStyles, unmountShadowHost } from "./shadow"
-// @ts-ignore — tsdown bundles this as a string via { ".css": "text" } loader
-import cssText from "./styles.css" with { type: "text" }
+import cssText from "./styles-inline"
 
 export interface MountOptions {
   config: {
