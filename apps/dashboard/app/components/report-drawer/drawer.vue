@@ -13,20 +13,15 @@ type TabName = "overview" | "console" | "network" | "cookies"
 const activeTab = ref<TabName>("overview")
 const logs = ref<LogsAttachment | null>(null)
 const logsLoaded = ref(false)
-const logsError = ref<string | null>(null)
 
 async function ensureLogs() {
   if (logsLoaded.value) return
   logsLoaded.value = true
-  try {
-    const res = await $fetch<LogsAttachment>(
-      `/api/projects/${props.projectId}/reports/${props.report.id}/attachment?kind=logs`,
-      { credentials: "include" },
-    ).catch(() => null)
-    logs.value = res ?? null
-  } catch (e: unknown) {
-    logsError.value = e instanceof Error ? e.message : String(e)
-  }
+  const res = await $fetch<LogsAttachment>(
+    `/api/projects/${props.projectId}/reports/${props.report.id}/attachment?kind=logs`,
+    { credentials: "include" },
+  ).catch(() => null)
+  logs.value = res ?? null
 }
 
 watch(activeTab, (t) => {
