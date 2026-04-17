@@ -1,0 +1,61 @@
+# Feedback Tool Threat Model
+
+## Scope
+This document captures the security invariants the feedback-tool platform relies on, the
+known tradeoffs, and the attacker capabilities we defend against.
+
+## Identity model
+- **Public project keys are not secrets.** They are embedded in every host page's
+  `<script>` tag. Abuse mitigation is the per-key rate limit (60/min) and key
+  rotation from the project settings page — not concealment. Treat any leaked
+  key as "rotate it."
+- **Origin header enforcement is browser-only.** A leaked key + curl can POST
+  from any origin header. We accept this; the compensating controls are the
+  rate limit and admin monitoring of insert volume.
+
+## Intake invariants
+- `contentType` on `report_attachments` is **server-set per `kind`**, never
+  passed through from client Blob MIME types. Regression-tested.
+- Intake endpoint is the only public endpoint with CORS. All other endpoints
+  are session-scoped and same-origin.
+- 5 MB total payload cap enforced at the multipart reader.
+
+## Collector data
+- Host-app strings logged via `console.*` or `feedback.log()` are trusted inputs.
+  We apply default regex scrubbers (JWT, GitHub PAT, Slack, AWS, Bearer) as
+  defense-in-depth, but this is best-effort — not a guarantee.
+- Network URL query strings get `api_key` / `token` / `access_token` / etc.
+  redacted by default.
+- Request + response bodies are **not captured** by default. Opt-in.
+- Cookies matching common sensitive names (`session`, `auth`, `jwt`, etc.) are
+  redacted with `__Secure-` / `__Host-` prefix stripping.
+
+## Dashboard rendering
+- Any URL rendered as `href` goes through `safeHref()`, which only allows
+  `http:` / `https:` / `mailto:`. A `javascript:` URI in a reported pageUrl
+  resolves to `#`.
+- Report `title` and `description` are rendered via Vue text interpolation
+  (`{{ }}`), which HTML-escapes. `v-html` is never used on user-supplied data.
+
+## PII posture
+- Reporter email (if provided via `feedback.identify()`) is stored as part of
+  the report context.
+- Project deletion cascades to reports + attachments at the DB level.
+- Attachment blobs on disk are not deleted by the cascade — orphaned files
+  are an acceptable v1 state on single-tenant self-host. A cleanup job is a
+  future follow-up.
+- There is no self-service "delete my data" UI for end-users. GDPR / erasure
+  requests are handled by the install's admin deleting the report rows.
+
+## `beforeSend` contract
+- Runs synchronously, once, immediately before the intake POST.
+- Wrapped in try/catch: if the hook throws, we log to `console.warn` and send
+  the original report unmodified (fail-open).
+- Returning `null` aborts the submit entirely (silent cancel, no retry).
+- Async work inside the hook must be resolved before return.
+
+## Known deferrals
+- Signed reports / HMAC on intake payload — not in v1.
+- Per-end-user PII deletion UI — future compliance sub-project.
+- Server-side replay integrity checks (E) — tracked in sub-project E design.
+- Attachment retention policy — admin-configurable via a future sub-project.
