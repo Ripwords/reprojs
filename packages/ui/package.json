@@ -12,6 +12,9 @@
       "import": "./src/index.ts"
     }
   },
+  "scripts": {
+    "demo": "bun run demo/serve.ts"
+  },
   "dependencies": {
     "@feedback-tool/shared": "workspace:*",
     "preact": "^10.23.0"

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Feedback Tool — Demo Playground</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 0;
+        background: #fafafa;
+        color: #111;
+      }
+      header {
+        padding: 40px;
+        background: #111;
+        color: #fff;
+      }
+      header h1 {
+        margin: 0 0 8px;
+      }
+      header p {
+        margin: 0;
+        opacity: 0.7;
+      }
+      main {
+        padding: 32px;
+        max-width: 960px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+      }
+      .card p {
+        margin: 0 0 12px;
+        font-size: 14px;
+        color: #555;
+      }
+      .broken-btn {
+        background: #d32f2f;
+        color: #fff;
+        border: 0;
+        padding: 10px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      form.card label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+      form.card input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Demo page</h1>
+      <p>
+        A deliberately rough page for testing the Feedback Tool SDK. Click the bubble in the corner
+        to report a bug.
+      </p>
+    </header>
+    <main>
+      <section class="card">
+        <h3>Click this broken button</h3>
+        <p>It doesn't do what you'd expect.</p>
+        <button class="broken-btn" onclick="throw new Error('intentional demo error')">
+          Save changes
+        </button>
+      </section>
+
+      <section class="card">
+        <h3>Follow a dead link</h3>
+        <p>This should go somewhere but it 404s.</p>
+        <p><a href="/does-not-exist">Learn more →</a></p>
+      </section>
+
+      <form class="card">
+        <h3>Fill out a form</h3>
+        <label>Email<input type="email" placeholder="you@example.com" /></label>
+        <label>Name<input type="text" placeholder="Your name" /></label>
+        <button type="submit" class="broken-btn">Submit</button>
+      </form>
+
+      <section class="card">
+        <h3>Check the console</h3>
+        <p>Open DevTools — this page logs a noisy warning every 2 seconds.</p>
+      </section>
+    </main>
+
+    <script>
+      setInterval(() => console.warn("[demo] intentionally noisy log"), 2000)
+    </script>
+
+    <!-- Load the SDK (served by Bun at /sdk.iife.js) -->
+    <script src="/sdk.iife.js"></script>
+    <script>
+      const PROJECT_KEY = window.FT_DEMO_KEY || "ft_pk_REPLACE_ME_REPLACE_ME_REP"
+      const ENDPOINT = "http://localhost:3000"
+
+      if (/^ft_pk_[A-Za-z0-9]{24}$/.test(PROJECT_KEY)) {
+        FeedbackTool.init({ projectKey: PROJECT_KEY, endpoint: ENDPOINT })
+        FeedbackTool.identify({ email: "demo-user@example.com", name: "Demo User" })
+      } else {
+        console.error(
+          "[demo] set PROJECT_KEY in index.html or window.FT_DEMO_KEY before FeedbackTool.init",
+        )
+      }
+    </script>
+  </body>
+</html>
