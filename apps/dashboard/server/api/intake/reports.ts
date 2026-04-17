@@ -89,7 +89,7 @@ export default defineEventHandler(async (event) => {
 
   if (screenshotPart?.data && screenshotPart.data.length > 0) {
     const storage = await getStorage()
-    const key = `attachments/${report.id}/screenshot.png`
+    const key = `${report.id}/screenshot.png`
     await storage.put(key, new Uint8Array(screenshotPart.data), "image/png")
     await db.insert(reportAttachments).values({
       reportId: report.id,
