@@ -1,0 +1,148 @@
+:host,
+* {
+  box-sizing: border-box;
+}
+.ft-launcher {
+  position: fixed;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 2147483640;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.ft-launcher:hover {
+  background: #000;
+}
+.ft-launcher.pos-bottom-right {
+  right: 24px;
+  bottom: 24px;
+}
+.ft-launcher.pos-bottom-left {
+  left: 24px;
+  bottom: 24px;
+}
+.ft-launcher.pos-top-right {
+  right: 24px;
+  top: 24px;
+}
+.ft-launcher.pos-top-left {
+  left: 24px;
+  top: 24px;
+}
+
+.ft-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483641;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.ft-modal {
+  background: #fff;
+  color: #111;
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+}
+.ft-modal h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ft-field {
+  display: block;
+  margin-bottom: 12px;
+}
+.ft-field > span {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.ft-field input,
+.ft-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+}
+.ft-field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.ft-preview {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background: #f7f7f7;
+}
+.ft-preview.empty {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+}
+.ft-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.ft-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  font: inherit;
+}
+.ft-btn.primary {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.ft-btn.primary:hover {
+  background: #000;
+}
+.ft-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ft-msg {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.ft-msg.err {
+  color: #c00;
+}
+.ft-msg.ok {
+  color: #070;
+}
