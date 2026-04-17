@@ -35,6 +35,14 @@
         "playwright-core": "^1.47.0",
       },
     },
+    "apps/demo": {
+      "name": "demo",
+      "dependencies": {
+        "nuxt": "^4.4.2",
+        "vue": "^3.5.32",
+        "vue-router": "^5.0.4",
+      },
+    },
     "packages/core": {
       "name": "@feedback-tool/sdk",
       "version": "0.0.0",
@@ -944,6 +952,8 @@
     "define-lazy-prop": ["define-lazy-prop@3.0.0", "", {}, "sha512-N+MeXYoqr3pOgn8xfyRPREN7gHakLYjhsHhWGT3fWAiL4IkAt0iDw14QiiEm2bE30c5XX5q0FtAA3CK5f9/BUg=="],
 
     "defu": ["defu@6.1.7", "", {}, "sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ=="],
+
+    "demo": ["demo@workspace:apps/demo"],
 
     "denque": ["denque@2.1.0", "", {}, "sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw=="],
 
