@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery, getRouterParam } from "h3"
 import { and, count, desc, eq } from "drizzle-orm"
-import type { ReportContext, ReportSummaryDTO } from "@feedback-tool/shared"
+import type { ReportContext } from "@feedback-tool/shared"
 import { db } from "../../../../db"
 import { reports, reportAttachments } from "../../../../db/schema"
 import { requireProjectRole } from "../../../../lib/permissions"
@@ -23,6 +23,7 @@ export default defineEventHandler(async (event) => {
     .select({
       id: reports.id,
       title: reports.title,
+      description: reports.description,
       context: reports.context,
       createdAt: reports.createdAt,
       attachmentId: reportAttachments.id,
@@ -37,11 +38,13 @@ export default defineEventHandler(async (event) => {
     .limit(limit)
     .offset(offset)
 
-  const items: ReportSummaryDTO[] = rows.map((r) => {
+  const items = rows.map((r) => {
     const ctx = r.context as ReportContext
     return {
       id: r.id,
       title: r.title,
+      description: r.description ?? null,
+      context: ctx,
       reporterEmail: ctx.reporter?.email ?? null,
       pageUrl: ctx.pageUrl,
       receivedAt: r.createdAt.toISOString(),
