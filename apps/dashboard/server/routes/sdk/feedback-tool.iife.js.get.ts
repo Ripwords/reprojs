@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises"
+import { readFile, stat } from "node:fs/promises"
 import { join } from "node:path"
 import { createError, defineEventHandler, setHeader, setResponseStatus } from "h3"
 
@@ -9,25 +9,29 @@ const SDK_PATH =
   process.env.SDK_PATH ??
   join(process.cwd(), "..", "..", "packages", "core", "dist", "feedback-tool.iife.js")
 
-let cached: Uint8Array | null = null
+// Keyed on file mtime so a rebuild (new sdk:build output) invalidates the cache
+// automatically — no dashboard restart required.
+let cached: { mtimeMs: number; bytes: Uint8Array } | null = null
 
 export default defineEventHandler(async (event) => {
   setHeader(event, "Content-Type", "application/javascript; charset=utf-8")
-  setHeader(event, "Cache-Control", "public, max-age=300")
+  // Short cache so browsers pick up a rebuilt SDK within a minute during dev.
+  setHeader(event, "Cache-Control", "public, max-age=60")
   setHeader(event, "Access-Control-Allow-Origin", "*")
 
-  if (!cached) {
-    try {
+  try {
+    const stats = await stat(SDK_PATH)
+    if (!cached || cached.mtimeMs !== stats.mtimeMs) {
       const buf = await readFile(SDK_PATH)
-      cached = new Uint8Array(buf)
-    } catch (err) {
-      setResponseStatus(event, 503)
-      throw createError({
-        statusCode: 503,
-        statusMessage: "SDK bundle not found. Run `bun run sdk:build` at the repo root.",
-        data: { path: SDK_PATH, err: err instanceof Error ? err.message : String(err) },
-      })
+      cached = { mtimeMs: stats.mtimeMs, bytes: new Uint8Array(buf) }
     }
+    return cached.bytes
+  } catch (err) {
+    setResponseStatus(event, 503)
+    throw createError({
+      statusCode: 503,
+      statusMessage: "SDK bundle not found. Run `bun run sdk:build` at the repo root.",
+      data: { path: SDK_PATH, err: err instanceof Error ? err.message : String(err) },
+    })
   }
-  return cached
 })
