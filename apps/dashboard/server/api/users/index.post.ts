@@ -42,11 +42,14 @@ export default defineEventHandler(async (event) => {
     name: invited.name ?? invited.email,
     url: acceptUrl,
   })
-  await sendMail({
-    to: invited.email,
-    subject: "You have been invited",
-    html,
-  })
+  // Fire-and-forget: Ethereal/SMTP I/O can take 5-15s, which would otherwise
+  // block the HTTP response and cause better-auth's client session heartbeat
+  // to race and incorrectly drop the admin's session.
+  void sendMail({ to: invited.email, subject: "You have been invited", html }).catch(
+    (err: unknown) => {
+      console.error(`[invite] email delivery failed for ${invited.email}:`, err)
+    },
+  )
 
   return {
     id: invited.id,

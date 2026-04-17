@@ -1,3 +1,4 @@
+name: feedback_tool
 services:
   postgres:
     image: postgres:17
