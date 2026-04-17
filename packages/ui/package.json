@@ -21,6 +21,7 @@
     "preact": "^10.23.0"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^0.1.98",
     "happy-dom": "^20.9.0"
   }
 }
