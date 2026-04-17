@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getHeader, getRequestIP, readMultipartFormData } from "h3"
 import { eq } from "drizzle-orm"
-import { ReportIntakeInput } from "@feedback-tool/shared"
+import { LogsAttachment, ReportIntakeInput } from "@feedback-tool/shared"
 import { db } from "../../db"
 import { projects, reports, reportAttachments } from "../../db/schema"
 import { applyIntakeCors, isOriginAllowed } from "../../lib/intake-cors"
@@ -74,6 +74,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
   }
 
+  const logsPart = parts.find((p) => p.name === "logs")
+  let parsedLogs: ReturnType<typeof LogsAttachment.parse> | null = null
+  if (logsPart?.data && logsPart.data.length > 0) {
+    try {
+      parsedLogs = LogsAttachment.parse(JSON.parse(logsPart.data.toString("utf8")))
+    } catch {
+      throw createError({ statusCode: 400, statusMessage: "Invalid logs payload" })
+    }
+  }
+
   const screenshotPart = parts.find((p) => p.name === "screenshot")
   const [report] = await db
     .insert(reports)
@@ -97,6 +107,19 @@ export default defineEventHandler(async (event) => {
       storageKey: key,
       contentType: "image/png",
       sizeBytes: screenshotPart.data.length,
+    })
+  }
+
+  if (parsedLogs && logsPart?.data) {
+    const storage = await getStorage()
+    const key = `${report.id}/logs.json`
+    await storage.put(key, new Uint8Array(logsPart.data), "application/json")
+    await db.insert(reportAttachments).values({
+      reportId: report.id,
+      kind: "logs",
+      storageKey: key,
+      contentType: "application/json",
+      sizeBytes: logsPart.data.length,
     })
   }
 
