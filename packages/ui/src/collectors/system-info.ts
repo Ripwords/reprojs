@@ -1,21 +1,4 @@
-// TEMP until Task 11 adds the shared export; will be replaced with:
-//   import type { SystemInfo } from "@feedback-tool/shared"
-interface SystemInfo {
-  userAgent: string
-  platform: string
-  language: string
-  timezone: string
-  timezoneOffset: number
-  viewport: { w: number; h: number }
-  screen: { w: number; h: number }
-  dpr: number
-  online: boolean
-  connection?: { effectiveType?: string; rtt?: number; downlink?: number }
-  pageUrl: string
-  referrer?: string
-  documentReferrer?: string
-  timestamp: string
-}
+import type { SystemInfo } from "@feedback-tool/shared"
 
 interface NetworkInformationLike {
   effectiveType?: string

@@ -7,6 +7,84 @@ export const ReporterIdentity = z.object({
 })
 export type ReporterIdentity = z.infer<typeof ReporterIdentity>
 
+export const SystemInfo = z.object({
+  userAgent: z.string(),
+  platform: z.string(),
+  language: z.string(),
+  timezone: z.string(),
+  timezoneOffset: z.number(),
+  viewport: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }),
+  screen: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }),
+  dpr: z.number().positive(),
+  online: z.boolean(),
+  connection: z
+    .object({
+      effectiveType: z.string().optional(),
+      rtt: z.number().optional(),
+      downlink: z.number().optional(),
+    })
+    .optional(),
+  pageUrl: z.string().url(),
+  referrer: z.string().optional(),
+  documentReferrer: z.string().optional(),
+  timestamp: z.string(),
+})
+export type SystemInfo = z.infer<typeof SystemInfo>
+
+export const CookieEntry = z.object({
+  name: z.string(),
+  value: z.string(),
+})
+export type CookieEntry = z.infer<typeof CookieEntry>
+
+export const ConsoleEntry = z.object({
+  level: z.enum(["log", "info", "warn", "error", "debug"]),
+  ts: z.number().int(),
+  args: z.array(z.string()),
+  stack: z.string().optional(),
+})
+export type ConsoleEntry = z.infer<typeof ConsoleEntry>
+
+export const NetworkEntry = z.object({
+  id: z.string(),
+  ts: z.number().int(),
+  method: z.string(),
+  url: z.string(),
+  status: z.number().int().nullable(),
+  durationMs: z.number().nonnegative().nullable(),
+  size: z.number().int().nullable(),
+  initiator: z.enum(["fetch", "xhr"]),
+  requestHeaders: z.record(z.string(), z.string()).optional(),
+  responseHeaders: z.record(z.string(), z.string()).optional(),
+  requestBody: z.string().optional(),
+  responseBody: z.string().optional(),
+  error: z.string().optional(),
+})
+export type NetworkEntry = z.infer<typeof NetworkEntry>
+
+export const Breadcrumb = z.object({
+  ts: z.number().int(),
+  event: z.string().max(200),
+  level: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+})
+export type Breadcrumb = z.infer<typeof Breadcrumb>
+
+export const LogsAttachment = z.object({
+  version: z.literal(1),
+  console: z.array(ConsoleEntry),
+  network: z.array(NetworkEntry),
+  breadcrumbs: z.array(Breadcrumb),
+  config: z.object({
+    consoleMax: z.number(),
+    networkMax: z.number(),
+    breadcrumbsMax: z.number(),
+    capturesBodies: z.boolean(),
+    capturesAllHeaders: z.boolean(),
+  }),
+})
+export type LogsAttachment = z.infer<typeof LogsAttachment>
+
 export const ReportContext = z.object({
   pageUrl: z.string().url(),
   userAgent: z.string().max(1000),
@@ -14,6 +92,8 @@ export const ReportContext = z.object({
   timestamp: z.string(),
   reporter: ReporterIdentity.optional(),
   metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  systemInfo: SystemInfo.optional(),
+  cookies: z.array(CookieEntry).optional(),
 })
 export type ReportContext = z.infer<typeof ReportContext>
 

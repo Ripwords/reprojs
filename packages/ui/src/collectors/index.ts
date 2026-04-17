@@ -1,4 +1,5 @@
 // packages/ui/src/collectors/index.ts
+import type { LogsAttachment, ReportContext } from "@feedback-tool/shared"
 import { type BreadcrumbLevel, createBreadcrumbsCollector } from "./breadcrumbs"
 import { createConsoleCollector } from "./console"
 import { createCookiesCollector } from "./cookies"
@@ -6,35 +7,14 @@ import { createNetworkCollector } from "./network"
 import { DEFAULT_STRING_REDACTORS } from "./serialize"
 import { snapshotSystemInfo } from "./system-info"
 
+export type { LogsAttachment }
+
 export interface PendingReport {
   title: string
   description: string
-  context: {
-    pageUrl: string
-    userAgent: string
-    viewport: { w: number; h: number }
-    timestamp: string
-    reporter?: { userId?: string; email?: string; name?: string }
-    metadata?: Record<string, string | number | boolean>
-    systemInfo?: unknown
-    cookies?: unknown
-  }
+  context: ReportContext
   logs: LogsAttachment | null
   screenshot: Blob | null
-}
-
-export interface LogsAttachment {
-  version: 1
-  console: unknown[]
-  network: unknown[]
-  breadcrumbs: unknown[]
-  config: {
-    consoleMax: number
-    networkMax: number
-    breadcrumbsMax: number
-    capturesBodies: boolean
-    capturesAllHeaders: boolean
-  }
 }
 
 export interface CollectorConfig {
