@@ -1,3 +1,3 @@
-// Re-exports go here as packages/shared grows.
-// Populated in Task 14 with Zod schemas for Projects, Users, Settings.
-export {}
+export * from "./projects"
+export * from "./users"
+export * from "./settings"
