@@ -24,5 +24,7 @@ export default defineEventHandler(async (event) => {
     createdAt: updated.createdAt.toISOString(),
     updatedAt: updated.updatedAt.toISOString(),
     effectiveRole: "owner" as const,
+    publicKey: updated.publicKey,
+    allowedOrigins: updated.allowedOrigins,
   }
 })

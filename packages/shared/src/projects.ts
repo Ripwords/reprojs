@@ -11,6 +11,8 @@ export const ProjectDTO = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   effectiveRole: ProjectRole,
+  publicKey: z.string().nullable(),
+  allowedOrigins: z.array(z.string()),
 })
 export type ProjectDTO = z.infer<typeof ProjectDTO>
 
@@ -27,6 +29,7 @@ export const UpdateProjectInput = z.object({
     .max(64)
     .regex(/^[a-z0-9](-?[a-z0-9])*$/, "Slug must be lowercase alphanumeric with dashes")
     .optional(),
+  allowedOrigins: z.array(z.string().url()).max(20).optional(),
 })
 export type UpdateProjectInput = z.infer<typeof UpdateProjectInput>
 

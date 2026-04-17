@@ -15,6 +15,7 @@ const { data: project } = await useApi<ProjectDTO>(`/api/projects/${route.params
         </div>
       </div>
       <div class="flex gap-3 text-sm">
+        <NuxtLink :to="`/projects/${project?.id}/reports`" class="underline">Reports</NuxtLink>
         <NuxtLink :to="`/projects/${project?.id}/members`" class="underline">Members</NuxtLink>
         <NuxtLink
           v-if="project?.effectiveRole === 'owner'"
@@ -25,7 +26,10 @@ const { data: project } = await useApi<ProjectDTO>(`/api/projects/${route.params
       </div>
     </div>
     <div class="border rounded-lg p-6 bg-white text-neutral-500 text-sm">
-      Tickets will appear here once the SDK intake lands (sub-project B).
+      Bug reports sent from your SDK embed will appear in
+      <NuxtLink :to="`/projects/${project?.id}/reports`" class="underline">Reports</NuxtLink>. See
+      <NuxtLink :to="`/projects/${project?.id}/settings`" class="underline">Settings</NuxtLink>
+      for your project's embed key.
     </div>
   </div>
 </template>

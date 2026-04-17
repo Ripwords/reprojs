@@ -21,5 +21,7 @@ export default defineEventHandler(async (event) => {
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     effectiveRole,
+    publicKey: p.publicKey,
+    allowedOrigins: p.allowedOrigins,
   }
 })
