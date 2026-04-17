@@ -1,0 +1,7 @@
+[install]
+# Keep dev tooling deterministic in CI
+frozenLockfile = false
+
+[test]
+# Run tests serially by default so DB-backed integration tests don't stomp on each other
+coverage = false

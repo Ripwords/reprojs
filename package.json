@@ -1,0 +1,28 @@
+{
+  "name": "feedback-tool",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "bun --filter dashboard dev",
+    "dev:docker": "docker compose -f apps/dashboard/docker/docker-compose.dev.yml up -d",
+    "dev:stop": "docker compose -f apps/dashboard/docker/docker-compose.dev.yml down",
+    "build": "bun --filter dashboard build",
+    "auth:gen": "cd apps/dashboard && bunx @better-auth/cli generate --config ./server/lib/auth.ts --output ./server/db/schema/auth-schema.ts -y",
+    "db:gen": "bun run auth:gen && cd apps/dashboard && bunx drizzle-kit generate",
+    "db:push": "bun run auth:gen && cd apps/dashboard && bunx drizzle-kit push",
+    "db:migrate": "cd apps/dashboard && bunx drizzle-kit migrate",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt --write .",
+    "fmt:check": "oxfmt --check .",
+    "check": "oxfmt --check . && oxlint",
+    "test": "bun test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "oxfmt": "^0.44.0",
+    "oxlint": "^1.59.0"
+  }
+}
