@@ -6,13 +6,16 @@
     "dev": "nuxt dev --host",
     "build": "nuxt build",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test": "bun test tests/",
+    "test:e2e": "concurrently --kill-others-on-fail --success first -n server,tests \"nuxt dev\" \"wait-on http://localhost:3000/api/me --timeout 60000 && bun test tests/\""
   },
   "dependencies": {
     "@feedback-tool/shared": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",
     "better-auth": "^1.5.6",
     "drizzle-orm": "^0.45.2",
+    "h3": "^1.15.11",
     "nodemailer": "^6.9.15",
     "nuxt": "^4.4.2",
     "pg": "^8.20.0",
@@ -23,8 +26,10 @@
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.21",
+    "@nuxt/test-utils": "^3.14.0",
     "@types/nodemailer": "^6.4.15",
     "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.0"
+    "drizzle-kit": "^0.31.0",
+    "playwright-core": "^1.47.0"
   }
 }
