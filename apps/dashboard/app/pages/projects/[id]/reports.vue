@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ReportSummaryDTO } from "@feedback-tool/shared"
+import { safeHref } from "~/composables/use-safe-href"
 
 const route = useRoute()
 const { data } = await useApi<{ items: ReportSummaryDTO[]; total: number }>(
@@ -90,9 +91,13 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
             </div>
             <div>
               <span class="text-neutral-500">Page:</span>
-              <a :href="selected.pageUrl" target="_blank" class="underline">{{
-                selected.pageUrl
-              }}</a>
+              <a
+                :href="safeHref(selected.pageUrl)"
+                target="_blank"
+                rel="noopener"
+                class="underline"
+                >{{ selected.pageUrl }}</a
+              >
             </div>
             <div>
               <span class="text-neutral-500">Received:</span> {{ fmtTime(selected.receivedAt) }}
