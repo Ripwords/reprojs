@@ -1,8 +1,11 @@
 {
   "name": "feedback-tool",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "bun --filter dashboard dev",
     "dev:docker": "docker compose -f apps/dashboard/docker/docker-compose.dev.yml up -d",

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "import", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn",
+    "style": "off"
+  },
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "warn"
+  },
+  "ignorePatterns": [
+    "**/.nuxt/**",
+    "**/.output/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/db/migrations/**",
+    "**/auth-schema.ts"
+  ]
+}

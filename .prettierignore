@@ -1,0 +1,6 @@
+# Ignore root scaffold files not owned by this project
+CLAUDE.md
+README.md
+index.ts
+tsconfig.json
+docs/
