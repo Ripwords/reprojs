@@ -1,8 +1,7 @@
 import { readFile } from "node:fs/promises"
-import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
+import { join } from "node:path"
 
-const TEMPLATE_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "emails")
+const TEMPLATE_DIR = join(process.cwd(), "server", "emails")
 
 const cache = new Map<string, string>()
 
