@@ -1,4 +1,5 @@
 import { eq, isNull } from "drizzle-orm"
+import { defineNitroPlugin } from "nitropack/runtime"
 import { db } from "../db"
 import { projects } from "../db/schema"
 import { generatePublicKey } from "../lib/project-key"
