@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { diffTags, resolveAssigneeFilter } from "../../server/lib/inbox-query"
+import { buildSortClause, diffTags, resolveAssigneeFilter } from "../../server/lib/inbox-query"
 
 describe("diffTags", () => {
   test("returns added-only when tags are appended", () => {
@@ -49,5 +49,25 @@ describe("resolveAssigneeFilter", () => {
     expect(resolveAssigneeFilter(["me", "me"], "user-1")).toEqual([
       { type: "user", userId: "user-1" },
     ])
+  })
+})
+
+describe("buildSortClause", () => {
+  test("newest → created_at DESC", () => {
+    expect(buildSortClause("newest")).toBe('"created_at" DESC')
+  })
+  test("oldest → created_at ASC", () => {
+    expect(buildSortClause("oldest")).toBe('"created_at" ASC')
+  })
+  test("updated → updated_at DESC", () => {
+    expect(buildSortClause("updated")).toBe('"updated_at" DESC')
+  })
+  test("priority → urgent > high > normal > low, tiebreak newest", () => {
+    expect(buildSortClause("priority")).toBe(
+      `CASE "priority" WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END ASC, "created_at" DESC`,
+    )
+  })
+  test("unknown key defaults to newest", () => {
+    expect(buildSortClause("garbage")).toBe('"created_at" DESC')
   })
 })

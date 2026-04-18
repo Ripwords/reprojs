@@ -35,3 +35,18 @@ export function resolveAssigneeFilter(
   }
   return out
 }
+
+export type SortKey = "newest" | "oldest" | "priority" | "updated"
+
+export function buildSortClause(sort: string): string {
+  switch (sort) {
+    case "oldest":
+      return `"created_at" ASC`
+    case "updated":
+      return `"updated_at" DESC`
+    case "priority":
+      return `CASE "priority" WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END ASC, "created_at" DESC`
+    default:
+      return `"created_at" DESC`
+  }
+}
