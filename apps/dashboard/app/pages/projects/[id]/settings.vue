@@ -8,7 +8,6 @@ const runtime = useRuntimeConfig()
 const dashboardUrl = runtime.public.betterAuthUrl
 const { data: project, refresh } = await useApi<ProjectDTO>(`/api/projects/${route.params.id}`)
 const name = ref(project.value?.name ?? "")
-const slug = ref(project.value?.slug ?? "")
 const originsText = ref((project.value?.allowedOrigins ?? []).join("\n"))
 const rotating = ref(false)
 const saving = ref(false)
@@ -26,7 +25,7 @@ async function save() {
       method: "PATCH",
       baseURL: dashboardUrl,
       credentials: "include",
-      body: { name: name.value, slug: slug.value, allowedOrigins },
+      body: { name: name.value, allowedOrigins },
     })
     await refresh()
   } catch (e: unknown) {
@@ -78,10 +77,6 @@ async function softDelete() {
         <label class="block">
           <span class="text-sm">Name</span>
           <input v-model="name" class="w-full border rounded px-3 py-2" />
-        </label>
-        <label class="block">
-          <span class="text-sm">Slug</span>
-          <input v-model="slug" class="w-full border rounded px-3 py-2" />
         </label>
         <label class="block">
           <span class="text-sm">

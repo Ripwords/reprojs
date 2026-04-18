@@ -16,7 +16,6 @@ export default defineEventHandler(async (event) => {
   return {
     id: p.id,
     name: p.name,
-    slug: p.slug,
     createdBy: p.createdBy,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),

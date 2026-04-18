@@ -28,7 +28,6 @@ describe("projects API", () => {
     })
     expect(createStatus).toBe(200)
     expect((created as ProjectDTO).name).toBe("My Project")
-    expect((created as ProjectDTO).slug).toBe("my-project")
     expect((created as ProjectDTO).effectiveRole).toBe("owner")
 
     const { body: list } = await apiFetch<ProjectDTO[]>("/api/projects", {

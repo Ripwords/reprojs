@@ -34,7 +34,7 @@ async function create() {
         class="block border rounded-lg p-4 bg-white hover:bg-neutral-50"
       >
         <div class="font-semibold">{{ p.name }}</div>
-        <div class="text-xs text-neutral-500">/{{ p.slug }} · {{ p.effectiveRole }}</div>
+        <div class="text-xs text-neutral-500">{{ p.effectiveRole }}</div>
       </NuxtLink>
       <div v-if="data?.length === 0" class="text-neutral-500 col-span-full">No projects yet.</div>
     </div>
