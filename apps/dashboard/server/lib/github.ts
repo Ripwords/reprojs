@@ -64,7 +64,26 @@ export function verifyInstallState(state: string): InstallStateClaims | null {
   } catch {
     return null
   }
-  const claims = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as InstallStateClaims
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8"))
+  } catch {
+    return null
+  }
+  // Shape check: HMAC only proves the payload was signed by us, not that it has
+  // the expected fields. A future bug that signs a different shape would
+  // otherwise silently yield `claims.projectId === undefined`, which would
+  // query `WHERE project_id = NULL` (always false) rather than erroring.
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    typeof (parsed as { projectId?: unknown }).projectId !== "string" ||
+    typeof (parsed as { userId?: unknown }).userId !== "string" ||
+    typeof (parsed as { exp?: unknown }).exp !== "number"
+  ) {
+    return null
+  }
+  const claims = parsed as InstallStateClaims
   if (claims.exp * 1000 < Date.now()) return null
   return claims
 }
