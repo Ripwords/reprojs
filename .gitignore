@@ -32,7 +32,7 @@ Thumbs.db
 
 # Test outputs
 coverage/
-
+*.pem
 # Husky install marker
 .husky/_
 

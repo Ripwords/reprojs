@@ -4,6 +4,7 @@ import { Octokit } from "@octokit/rest"
 import type {
   CloseIssueInput,
   CreateIssueInput,
+  FindIssueByMarkerInput,
   GitHubInstallationClient,
   GitHubIssueRef,
   InstallationClientOptions,
@@ -21,6 +22,9 @@ export function createInstallationClient(
       appId: opts.appId,
       privateKey: opts.privateKey,
       installationId: opts.installationId,
+    },
+    request: {
+      headers: { "X-GitHub-Api-Version": "2026-03-10" },
     },
   })
 
@@ -82,13 +86,35 @@ export function createInstallationClient(
     },
 
     async listInstallationRepositories(): Promise<InstallationRepository[]> {
-      const res = await octokit.apps.listReposAccessibleToInstallation({ per_page: 100 })
-      return res.data.repositories.map((r) => ({
+      const repos = await octokit.paginate(octokit.apps.listReposAccessibleToInstallation, {
+        per_page: 100,
+      })
+      return repos.map((r) => ({
         id: r.id,
         owner: r.owner.login,
         name: r.name,
         fullName: r.full_name,
       }))
+    },
+
+    async findIssueByMarker(input: FindIssueByMarkerInput): Promise<GitHubIssueRef | null> {
+      // Use Search API — indexed across issue bodies. Trailing quoting guards
+      // against markers with special characters being parsed as qualifiers.
+      const q = `repo:${input.owner}/${input.repo} in:body "${input.marker}"`
+      try {
+        const res = await octokit.search.issuesAndPullRequests({
+          q,
+          per_page: 5,
+          advanced_search: "true",
+        })
+        const hit = res.data.items.find((i) => !i.pull_request && i.body?.includes(input.marker))
+        if (!hit) return null
+        return { number: hit.number, nodeId: hit.node_id, url: hit.html_url }
+      } catch {
+        // Search index may be cold or the endpoint unavailable. Return null and
+        // let the caller CREATE — worst case is a rare duplicate on retry.
+        return null
+      }
     },
   }
 }

@@ -1,7 +1,15 @@
 // apps/dashboard/server/lib/github.ts
 import { createHmac, timingSafeEqual } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { isAbsolute, resolve } from "node:path"
 import { createInstallationClient } from "@feedback-tool/integrations-github"
 import type { GitHubInstallationClient } from "@feedback-tool/integrations-github"
+
+function resolvePrivateKey(raw: string): string {
+  if (raw.includes("-----BEGIN")) return raw.replace(/\\n/g, "\n")
+  const path = isAbsolute(raw) ? raw : resolve(process.cwd(), raw)
+  return readFileSync(path, "utf8")
+}
 
 // Test-only override hook: allows integration tests to inject a mock client
 // without reaching the Octokit network path. Production callers ignore it.
@@ -16,11 +24,11 @@ export function __setClientOverride(
 export function getGithubClient(installationId: number): GitHubInstallationClient {
   if (overrideFactory) return overrideFactory(installationId)
   const appId = process.env.GITHUB_APP_ID
-  const privateKey = (process.env.GITHUB_APP_PRIVATE_KEY ?? "").replace(/\\n/g, "\n")
-  if (!appId || !privateKey) {
+  const raw = process.env.GITHUB_APP_PRIVATE_KEY ?? ""
+  if (!appId || !raw) {
     throw new Error("GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY must be set")
   }
-  return createInstallationClient({ appId, privateKey, installationId })
+  return createInstallationClient({ appId, privateKey: resolvePrivateKey(raw), installationId })
 }
 
 export function getWebhookSecret(): string {

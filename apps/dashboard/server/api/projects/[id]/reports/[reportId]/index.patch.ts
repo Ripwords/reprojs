@@ -87,8 +87,11 @@ export default defineEventHandler(async (event) => {
     const events = buildReportEvents(reportId, actorId, change)
     if (events.length > 0) await tx.insert(reportEvents).values(events)
 
-    // Enqueue a GitHub sync job if this report is linked AND fields actually changed.
-    if (events.length > 0 && current.githubIssueNumber != null) {
+    // Enqueue a GitHub sync job whenever fields actually changed and the project
+    // has a connected integration. enqueueSync no-ops when the integration isn't
+    // connected. Unlinked reports trigger a create; linked reports trigger an
+    // update (labels/state).
+    if (events.length > 0) {
       await enqueueSync(reportId, id)
     }
 

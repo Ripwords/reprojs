@@ -13,10 +13,26 @@ const { data, refresh } = useApi<GithubConfigDTO>(
 )
 
 const repos = ref<Array<{ id: number; owner: string; name: string; fullName: string }>>([])
+const reposError = ref<string | null>(null)
 const selectedRepo = ref({ owner: "", name: "" })
 const labelsText = ref("")
 const assigneesText = ref("")
 const saving = ref(false)
+
+async function loadRepos() {
+  reposError.value = null
+  try {
+    const res = await $fetch<{
+      repos: Array<{ id: number; owner: string; name: string; fullName: string }>
+    }>(`/api/projects/${props.projectId}/integrations/github/repositories`, {
+      credentials: "include",
+    })
+    repos.value = res.repos
+  } catch (err) {
+    repos.value = []
+    reposError.value = err instanceof Error ? err.message : "Failed to load repositories"
+  }
+}
 
 watch(
   data,
@@ -25,6 +41,9 @@ watch(
     selectedRepo.value = { owner: v.repoOwner, name: v.repoName }
     labelsText.value = v.defaultLabels.join(", ")
     assigneesText.value = v.defaultAssignees.join(", ")
+    if (v.installed && v.status === "connected") {
+      loadRepos()
+    }
   },
   { immediate: true },
 )
@@ -97,7 +116,14 @@ async function disconnect() {
       </div>
       <div v-else class="text-sm text-orange-700">
         Pick a repo to start syncing:
-        <RepoPicker v-model="selectedRepo" :repos="repos" class="mt-2" />
+        <RepoPicker v-model="selectedRepo" :repos="repos" class="mt-2" @refresh="loadRepos" />
+        <p v-if="reposError" class="mt-1 text-xs text-red-700">
+          {{ reposError }} —
+          <button type="button" class="underline" @click="loadRepos">retry</button>
+        </p>
+        <p v-else-if="repos.length === 0" class="mt-1 text-xs text-neutral-500">
+          Loading repositories…
+        </p>
       </div>
 
       <label class="block text-sm">

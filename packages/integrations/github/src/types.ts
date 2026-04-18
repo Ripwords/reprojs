@@ -41,6 +41,12 @@ export interface InstallationRepository {
   fullName: string
 }
 
+export interface FindIssueByMarkerInput {
+  owner: string
+  repo: string
+  marker: string
+}
+
 export interface GitHubInstallationClient {
   createIssue(input: CreateIssueInput): Promise<GitHubIssueRef>
   getIssue(input: IssueStateInput): Promise<{ state: "open" | "closed"; labels: string[] }>
@@ -48,4 +54,5 @@ export interface GitHubInstallationClient {
   reopenIssue(input: IssueStateInput): Promise<void>
   updateIssueLabels(input: UpdateLabelsInput): Promise<void>
   listInstallationRepositories(): Promise<InstallationRepository[]>
+  findIssueByMarker(input: FindIssueByMarkerInput): Promise<GitHubIssueRef | null>
 }

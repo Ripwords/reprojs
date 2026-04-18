@@ -71,6 +71,7 @@ export function makeMock(overrides: Partial<GitHubInstallationClient> = {}): {
     listInstallationRepositories: async () => [
       { id: 1, owner: "acme", name: "frontend", fullName: "acme/frontend" },
     ],
+    findIssueByMarker: async () => null,
   }
   return { client: { ...defaults, ...overrides }, calls }
 }

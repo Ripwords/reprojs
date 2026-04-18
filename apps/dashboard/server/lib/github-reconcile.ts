@@ -1,9 +1,10 @@
 // apps/dashboard/server/lib/github-reconcile.ts
-import { and, eq } from "drizzle-orm"
-import { type ReportContext } from "@feedback-tool/shared"
-import { buildIssueBody, labelsFor } from "./github-helpers"
+import { eq } from "drizzle-orm"
+import { type LogsAttachment, type ReportContext } from "@feedback-tool/shared"
+import { buildIssueBody, labelsFor, reportMarker } from "./github-helpers"
 import { getAttachmentUrlSecret, getDashboardBaseUrl, getGithubClient } from "./github"
 import { buildSignedAttachmentUrl } from "./signed-attachment-url"
+import { getStorage } from "./storage"
 import { db } from "../db"
 import { githubIntegrations, reportAttachments, reports, reportSyncJobs } from "../db/schema"
 
@@ -39,13 +40,21 @@ export async function reconcileReport(reportId: string): Promise<void> {
     { defaultLabels: gi.defaultLabels },
   )
 
-  const [screenshotRow] = await db
-    .select({ id: reportAttachments.id })
+  const attachmentRows = await db
+    .select({
+      id: reportAttachments.id,
+      kind: reportAttachments.kind,
+      storageKey: reportAttachments.storageKey,
+    })
     .from(reportAttachments)
-    .where(and(eq(reportAttachments.reportId, report.id), eq(reportAttachments.kind, "screenshot")))
-    .limit(1)
+    .where(eq(reportAttachments.reportId, report.id))
 
-  const screenshotUrl = screenshotRow
+  const hasScreenshot = attachmentRows.some(
+    (a) => a.kind === "screenshot" || a.kind === "annotated-screenshot",
+  )
+  const logsRow = attachmentRows.find((a) => a.kind === "logs")
+
+  const screenshotUrl = hasScreenshot
     ? buildSignedAttachmentUrl({
         baseUrl: getDashboardBaseUrl(),
         projectId: report.projectId,
@@ -55,6 +64,17 @@ export async function reconcileReport(reportId: string): Promise<void> {
         ttlSeconds: 60 * 60 * 24 * 7, // 7 days
       })
     : null
+
+  let logs: LogsAttachment | null = null
+  if (logsRow) {
+    try {
+      const storage = await getStorage()
+      const { bytes } = await storage.get(logsRow.storageKey)
+      logs = JSON.parse(new TextDecoder().decode(bytes)) as LogsAttachment
+    } catch {
+      logs = null
+    }
+  }
 
   const ctx = report.context as ReportContext
   const bodyInput = {
@@ -66,19 +86,34 @@ export async function reconcileReport(reportId: string): Promise<void> {
     createdAt: report.createdAt,
     screenshotUrl,
     dashboardUrl: `${getDashboardBaseUrl()}/projects/${report.projectId}/reports/${report.id}`,
+    systemInfo: ctx.systemInfo,
+    metadata: ctx.metadata,
+    console: logs?.console,
+    network: logs?.network,
+    breadcrumbs: logs?.breadcrumbs,
+    cookies: ctx.cookies,
   }
   const body = buildIssueBody(bodyInput)
 
   if (report.githubIssueNumber == null) {
-    // Create a new issue.
-    const ref = await client.createIssue({
+    // Idempotency guard: a previous attempt may have created the issue on
+    // GitHub but crashed before persisting the linkage back to our DB. Search
+    // for an issue containing our marker before creating a fresh one.
+    const existing = await client.findIssueByMarker({
       owner: gi.repoOwner,
       repo: gi.repoName,
-      title: report.title,
-      body,
-      labels: desiredLabels,
-      assignees: gi.defaultAssignees,
+      marker: reportMarker(report.id),
     })
+    const ref =
+      existing ??
+      (await client.createIssue({
+        owner: gi.repoOwner,
+        repo: gi.repoName,
+        title: report.title,
+        body,
+        labels: desiredLabels,
+        assignees: gi.defaultAssignees,
+      }))
     await db
       .update(reports)
       .set({

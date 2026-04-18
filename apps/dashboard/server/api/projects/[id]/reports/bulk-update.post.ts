@@ -62,9 +62,7 @@ export default defineEventHandler(async (event) => {
       await tx.update(reports).set(patch).where(eq(reports.id, current.id))
       updated.push(current.id)
       allEvents.push(...buildReportEvents(current.id, actorId, change))
-      if (current.githubIssueNumber != null) {
-        await enqueueSync(current.id, id)
-      }
+      await enqueueSync(current.id, id)
     }
 
     if (allEvents.length > 0) await tx.insert(reportEvents).values(allEvents)
