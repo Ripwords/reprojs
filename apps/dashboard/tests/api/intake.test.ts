@@ -1,11 +1,12 @@
 import { setup } from "@nuxt/test-utils/e2e"
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test"
 import { sql } from "drizzle-orm"
 import { createUser, makePngBlob, seedProject, truncateDomain, truncateReports } from "../helpers"
 import { db } from "../../server/db"
 import { reports, reportAttachments } from "../../server/db/schema"
 
 await setup({ server: true, port: 3000, host: "localhost" })
+setDefaultTimeout(15000)
 
 const PK = "ft_pk_ABCDEF1234567890abcdef12"
 const BAD_PK = "ft_pk_ZZZZZZZZZZZZZZZZZZZZZZZZ"

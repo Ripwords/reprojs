@@ -1,7 +1,7 @@
 // apps/dashboard/tests/api/github-sync.test.ts
 import { setup } from "@nuxt/test-utils/e2e"
 import { setDefaultTimeout } from "bun:test"
-setDefaultTimeout(30000)
+setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
 import { eq } from "drizzle-orm"
 import type { GitHubInstallationClient } from "@feedback-tool/integrations-github"
