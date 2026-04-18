@@ -75,8 +75,23 @@ export default defineEventHandler(async (event) => {
   const storage = await getStorage()
   const { bytes, contentType } = await storage.get(row.storageKey)
 
-  setHeader(event, "Content-Type", contentType || row.contentType)
+  // Allowlist the content type: never serve what was stored if it's not one of
+  // the kinds the intake endpoint legitimately writes. This blocks stored-XSS
+  // via a spoofed text/html content type regardless of what lands on disk.
+  const SAFE_CONTENT_TYPES: Record<string, string> = {
+    screenshot: "image/png",
+    "annotated-screenshot": "image/png",
+    replay: "application/json",
+    logs: "application/json",
+  }
+  const safeType = SAFE_CONTENT_TYPES[kind] ?? "application/octet-stream"
+
+  setHeader(event, "Content-Type", safeType)
+  setHeader(event, "X-Content-Type-Options", "nosniff")
+  setHeader(event, "Content-Security-Policy", "default-src 'none'; img-src 'self' data:; sandbox")
   setHeader(event, "Cache-Control", "private, max-age=3600")
   setResponseStatus(event, 200)
+  // Mark `contentType` intentionally unused — we allowlist the served type.
+  void contentType
   return Buffer.from(bytes)
 })

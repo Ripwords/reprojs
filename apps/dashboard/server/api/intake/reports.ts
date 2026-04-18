@@ -9,6 +9,10 @@ import { getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
 import { getStorage } from "../../lib/storage"
 
 const MAX_BYTES = Number(process.env.INTAKE_MAX_BYTES ?? 5 * 1024 * 1024)
+// Only trust X-Forwarded-For when the deployment is behind a reverse proxy the
+// operator controls. Default OFF so a public deployment can't be trivially
+// rate-limit bypassed by spoofing the header.
+const TRUST_XFF = process.env.TRUST_XFF === "true"
 
 export default defineEventHandler(async (event) => {
   applyIntakeCors(event)
@@ -23,7 +27,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const origin = getHeader(event, "origin") ?? ""
-  const ip = getRequestIP(event, { xForwardedFor: true }) ?? "unknown"
+  const ip = getRequestIP(event, { xForwardedFor: TRUST_XFF }) ?? "unknown"
 
   let parts: Awaited<ReturnType<typeof readMultipartFormData>>
   try {
@@ -60,6 +64,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "Invalid project key" })
   }
 
+  // Origin allowlist MUST be checked before the rate limiter takes, otherwise
+  // an attacker with just a leaked project key can burn the legitimate SDK's
+  // quota from any origin (including origins not on the allowlist).
+  if (!isOriginAllowed(origin, project.allowedOrigins)) {
+    throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
+  }
+
   const keyTake = getKeyLimiter().take(`key:${project.id}`)
   if (!keyTake.allowed) {
     event.node.res.setHeader("Retry-After", Math.ceil(keyTake.retryAfterMs / 1000).toString())
@@ -69,10 +80,6 @@ export default defineEventHandler(async (event) => {
   if (!ipTake.allowed) {
     event.node.res.setHeader("Retry-After", Math.ceil(ipTake.retryAfterMs / 1000).toString())
     throw createError({ statusCode: 429, statusMessage: "Too many reports from this IP" })
-  }
-
-  if (!isOriginAllowed(origin, project.allowedOrigins)) {
-    throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
   }
 
   const logsPart = parts.find((p) => p.name === "logs")
