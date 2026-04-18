@@ -25,6 +25,8 @@ function buildReportJSON(projectKey: string, title = "D test") {
       viewport: { w: 1000, h: 800 },
       timestamp: new Date().toISOString(),
     },
+    // Pass the S2 min-dwell gate.
+    _dwellMs: 2000,
   })
 }
 

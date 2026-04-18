@@ -35,6 +35,7 @@ async function submitReport(title: string) {
             timestamp: new Date().toISOString(),
             reporter: { email: "u@example.com" },
           },
+          _dwellMs: 2000,
         }),
       ],
       { type: "application/json" },

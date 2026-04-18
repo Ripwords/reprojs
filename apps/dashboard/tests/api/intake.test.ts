@@ -42,7 +42,9 @@ function buildReportJSON(
       timestamp: new Date().toISOString(),
       ...(reporter ? { reporter } : {}),
     },
-    ...(extra._dwellMs !== undefined ? { _dwellMs: extra._dwellMs } : {}),
+    // Default dwell to 2s so tests pass the S2 min-dwell gate. Tests that
+    // specifically exercise the gate override with a low value (e.g. 300).
+    _dwellMs: extra._dwellMs ?? 2000,
     ...(extra._hp !== undefined ? { _hp: extra._hp } : {}),
   })
 }

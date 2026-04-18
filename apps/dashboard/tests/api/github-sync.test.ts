@@ -607,6 +607,7 @@ describe("manual sync + unlink + enqueue hooks", () => {
               viewport: { w: 1, h: 1 },
               timestamp: new Date().toISOString(),
             },
+            _dwellMs: 2000,
           }),
         ],
         { type: "application/json" },
