@@ -1,21 +1,32 @@
-import { relations } from "drizzle-orm"
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core"
+import { relations, sql } from "drizzle-orm"
+import { pgTable, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core"
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-    .$onUpdate(() => new Date())
-    .notNull(),
-  role: text("role").default("member"),
-  status: text("status").default("active"),
-  inviteToken: text("invite_token"),
-  inviteTokenExpiresAt: timestamp("invite_token_expires_at", { withTimezone: true, mode: "date" }),
-})
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").default(false).notNull(),
+    image: text("image"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .$onUpdate(() => new Date())
+      .notNull(),
+    role: text("role").default("member"),
+    status: text("status").default("active"),
+    inviteToken: text("invite_token"),
+    inviteTokenExpiresAt: timestamp("invite_token_expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+  },
+  (table) => [
+    uniqueIndex("user_invite_token_idx")
+      .on(table.inviteToken)
+      .where(sql`${table.inviteToken} is not null`),
+  ],
+)
 
 export const session = pgTable(
   "session",

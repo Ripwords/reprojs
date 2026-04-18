@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "user_invite_token_idx" ON "user" USING btree ("invite_token") WHERE "user"."invite_token" is not null;
