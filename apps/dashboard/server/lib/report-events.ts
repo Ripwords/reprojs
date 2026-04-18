@@ -14,16 +14,21 @@ export interface BeforeAfter {
  * exactly one event per changed scalar field and one event per added/removed
  * tag. No events when a field's from === to.
  *
+ * `projectId` is stored denormalized on every event so audit/timeline queries
+ * can scope by project without joining through `reports`. Callers already have
+ * it in scope from the route param.
+ *
  * Pure — returns the list. Callers handle the INSERT inside their transaction.
  */
 export function buildReportEvents(
   reportId: string,
+  projectId: string,
   actorId: string,
   change: BeforeAfter,
 ): NewReportEvent[] {
   const events: NewReportEvent[] = []
   const push = (kind: ReportEventKind, payload: Record<string, unknown>) => {
-    events.push({ reportId, actorId, kind, payload })
+    events.push({ reportId, projectId, actorId, kind, payload })
   }
 
   if (change.status && change.status.from !== change.status.to) {

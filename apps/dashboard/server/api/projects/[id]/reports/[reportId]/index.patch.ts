@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
     if (!current) throw createError({ statusCode: 404, statusMessage: "Report not found" })
 
     const patch: Partial<typeof reports.$inferInsert> = {}
-    const change: Parameters<typeof buildReportEvents>[2] = {}
+    const change: Parameters<typeof buildReportEvents>[3] = {}
     if (body.status !== undefined && body.status !== current.status) {
       patch.status = body.status
       change.status = { from: current.status, to: body.status }
@@ -84,7 +84,7 @@ export default defineEventHandler(async (event) => {
       .set(patch)
       .where(and(eq(reports.id, reportId), eq(reports.projectId, id)))
 
-    const events = buildReportEvents(reportId, actorId, change)
+    const events = buildReportEvents(reportId, id, actorId, change)
     if (events.length > 0) await tx.insert(reportEvents).values(events)
 
     // Enqueue a GitHub sync job whenever fields actually changed and the project

@@ -82,6 +82,9 @@ export default defineEventHandler(async (event): Promise<ProjectOverviewDTO> => 
       .from(reports)
       .where(and(eq(reports.projectId, projectId), isNotNull(reports.githubIssueNumber))),
 
+    // Filter on reportEvents.projectId directly (hits the composite index on
+    // (project_id, created_at DESC)). We still join to reports to pull the
+    // report title for display.
     db
       .select({
         id: reportEvents.id,
@@ -97,7 +100,7 @@ export default defineEventHandler(async (event): Promise<ProjectOverviewDTO> => 
       .from(reportEvents)
       .innerJoin(reports, eq(reports.id, reportEvents.reportId))
       .leftJoin(user, eq(user.id, reportEvents.actorId))
-      .where(eq(reports.projectId, projectId))
+      .where(eq(reportEvents.projectId, projectId))
       .orderBy(desc(reportEvents.createdAt))
       .limit(10),
   ])

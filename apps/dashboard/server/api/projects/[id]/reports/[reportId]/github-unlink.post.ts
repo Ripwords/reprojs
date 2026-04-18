@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
 
     await tx.insert(reportEvents).values({
       reportId,
+      projectId,
       actorId: session.userId,
       kind: "github_unlinked",
       payload: {

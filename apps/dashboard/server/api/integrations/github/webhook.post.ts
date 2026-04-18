@@ -113,6 +113,7 @@ export default defineEventHandler(async (event) => {
             .where(eq(reports.id, linked.r.id))
           await tx.insert(reportEvents).values({
             reportId: linked.r.id,
+            projectId: linked.r.projectId,
             actorId: null,
             kind: "status_changed",
             payload: { from: linked.r.status, to: desired, source: "github" },

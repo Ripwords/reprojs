@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { projects } from "./projects"
 import { reports } from "./reports"
 
 export const reportEvents = pgTable(
@@ -11,6 +12,9 @@ export const reportEvents = pgTable(
     reportId: uuid("report_id")
       .notNull()
       .references(() => reports.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     actorId: text("actor_id"),
     kind: text("kind", {
       enum: [
@@ -30,6 +34,10 @@ export const reportEvents = pgTable(
   (table) => ({
     reportCreatedIdx: index("report_events_report_created_idx").on(
       table.reportId,
+      sql`${table.createdAt} DESC`,
+    ),
+    projectCreatedAtIdx: index("report_events_project_created_at_idx").on(
+      table.projectId,
       sql`${table.createdAt} DESC`,
     ),
   }),

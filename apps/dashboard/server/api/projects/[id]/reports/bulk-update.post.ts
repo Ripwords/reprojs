@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
     const updatedIds: string[] = []
     const allEvents: (typeof reportEvents.$inferInsert)[] = []
     for (const current of currents) {
-      const change: Parameters<typeof buildReportEvents>[2] = {}
+      const change: Parameters<typeof buildReportEvents>[3] = {}
       if (body.status !== undefined && body.status !== current.status) {
         change.status = { from: current.status, to: body.status }
       }
@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
       if (Object.keys(change).length === 0) continue
 
       updatedIds.push(current.id)
-      allEvents.push(...buildReportEvents(current.id, actorId, change))
+      allEvents.push(...buildReportEvents(current.id, id, actorId, change))
       toEnqueue.push(current.id)
     }
 
