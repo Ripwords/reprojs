@@ -39,6 +39,41 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 }
 
+// Produce a short, safe descriptor for non-string fetch bodies. Never read the
+// contents — FormData may contain file blobs, URLSearchParams may carry auth,
+// and ReadableStream can only be consumed once. A descriptor is enough to tell
+// the user "a POST happened with body of shape X".
+function describeBody(body: unknown): string {
+  if (typeof FormData !== "undefined" && body instanceof FormData) {
+    const keys: string[] = []
+    body.forEach((_v, k) => {
+      if (!keys.includes(k)) keys.push(k)
+    })
+    return `[FormData: ${keys.length} field${keys.length === 1 ? "" : "s"}${keys.length ? ` — ${keys.join(", ")}` : ""}]`
+  }
+  if (typeof Blob !== "undefined" && body instanceof Blob) {
+    return `[Blob: ${body.type || "application/octet-stream"}, ${body.size} bytes]`
+  }
+  if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) {
+    const keys: string[] = []
+    body.forEach((_v, k) => {
+      if (!keys.includes(k)) keys.push(k)
+    })
+    return `[URLSearchParams: ${keys.length} param${keys.length === 1 ? "" : "s"}]`
+  }
+  if (typeof ArrayBuffer !== "undefined" && body instanceof ArrayBuffer) {
+    return `[ArrayBuffer: ${body.byteLength} bytes]`
+  }
+  if (ArrayBuffer.isView(body)) {
+    const v = body as unknown as { byteLength: number; constructor: { name: string } }
+    return `[${v.constructor.name}: ${v.byteLength} bytes]`
+  }
+  if (typeof ReadableStream !== "undefined" && body instanceof ReadableStream) {
+    return "[ReadableStream]"
+  }
+  return "[non-string body]"
+}
+
 function headersToObject(h: Headers | Record<string, string> | undefined): Record<string, string> {
   if (!h) return {}
   if (h instanceof Headers) {
@@ -72,17 +107,31 @@ export function createNetworkCollector(_initial: NetworkConfig): NetworkCollecto
       const ts = Date.now()
       const id = uid()
 
+      // Always produce a descriptor for non-string bodies (FormData/Blob/etc.)
+      // so the Network tab shows something useful even when requestBody capture
+      // is off. For string bodies, capture the body itself only when opted in.
       let requestBody: string | undefined
-      let requestHeaders: Record<string, string> | undefined
-      if (cfg.requestBody && typeof init?.body === "string") {
-        requestBody = redactBody(init.body, { maxBytes: maxBody }) ?? undefined
+      const body = init?.body
+      if (cfg.requestBody && typeof body === "string") {
+        requestBody = redactBody(body, { maxBytes: maxBody }) ?? undefined
+      } else if (body !== undefined && body !== null && typeof body !== "string") {
+        requestBody = describeBody(body)
       }
-      if (init?.headers) {
-        const raw = headersToObject(init.headers as Headers | Record<string, string>)
-        requestHeaders = redactHeaders(raw, "request", {
-          allowed: cfg.allowedHeaders,
-          all: cfg.allHeaders,
-        })
+
+      // Prefer init.headers, but fall back to input.headers when input is a
+      // Request object (e.g., callers that pre-build a Request). Many real
+      // fetches set only the default Content-Type via FormData — surface that
+      // via the response side since the browser decides the final value.
+      let requestHeaders: Record<string, string> | undefined
+      const headerSrc = init?.headers ?? (input instanceof Request ? input.headers : undefined)
+      if (headerSrc) {
+        const raw = headersToObject(headerSrc as Headers | Record<string, string>)
+        if (Object.keys(raw).length > 0) {
+          requestHeaders = redactHeaders(raw, "request", {
+            allowed: cfg.allowedHeaders,
+            all: cfg.allHeaders,
+          })
+        }
       }
 
       try {
@@ -92,13 +141,22 @@ export function createNetworkCollector(_initial: NetworkConfig): NetworkCollecto
           allowed: cfg.allowedHeaders,
           all: cfg.allHeaders,
         })
-        let responseBody: string | undefined
+
+        // Size from Content-Length is free; fall back to body-read length only
+        // when responseBody capture is opted in. This means the Size column
+        // always has a number when the server returned Content-Length.
         let size: number | null = null
+        const cl = res.headers.get("content-length")
+        if (cl !== null) {
+          const parsed = Number.parseInt(cl, 10)
+          if (Number.isFinite(parsed) && parsed >= 0) size = parsed
+        }
+        let responseBody: string | undefined
         if (cfg.responseBody) {
           try {
             const clone = res.clone()
             const text = await clone.text()
-            size = text.length
+            if (size === null) size = text.length
             responseBody = redactBody(text, { maxBytes: maxBody }) ?? undefined
           } catch {
             responseBody = undefined

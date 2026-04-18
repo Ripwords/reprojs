@@ -97,4 +97,65 @@ describe("network collector — fetch", () => {
     c.stop()
     expect(globalThis.fetch).toBe(originalFetch)
   })
+
+  test("describes FormData bodies even without opting into requestBody", async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () => new Response("")
+    const c = createNetworkCollector({})
+    created.push(c)
+    c.start({})
+    const fd = new FormData()
+    fd.set("report", "{}")
+    fd.set("screenshot", new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }))
+    await fetch("http://example.com/x", { method: "POST", body: fd })
+    const entry = c.snapshot()[0]
+    expect(entry?.requestBody).toContain("FormData")
+    expect(entry?.requestBody).toContain("report")
+    expect(entry?.requestBody).toContain("screenshot")
+    globalThis.fetch = originalFetch
+  })
+
+  test("describes Blob bodies with type and size", async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () => new Response("")
+    const c = createNetworkCollector({})
+    created.push(c)
+    c.start({})
+    const blob = new Blob(["hello"], { type: "text/plain" })
+    await fetch("http://example.com/x", { method: "POST", body: blob })
+    const entry = c.snapshot()[0]
+    expect(entry?.requestBody).toContain("Blob")
+    expect(entry?.requestBody).toContain("text/plain")
+    expect(entry?.requestBody).toContain("5 bytes")
+    globalThis.fetch = originalFetch
+  })
+
+  test("populates size from Content-Length without opting into responseBody", async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () =>
+      new Response("a".repeat(250), { headers: { "content-length": "250" } })
+    const c = createNetworkCollector({})
+    created.push(c)
+    c.start({})
+    await fetch("http://example.com/x")
+    const entry = c.snapshot()[0]
+    expect(entry?.size).toBe(250)
+    expect(entry?.responseBody).toBeUndefined()
+    globalThis.fetch = originalFetch
+  })
+
+  test("reads headers from a Request object when init doesn't pass headers", async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () => new Response("")
+    const c = createNetworkCollector({})
+    created.push(c)
+    c.start({ allHeaders: true })
+    const req = new Request("http://example.com/x", {
+      headers: { "x-trace-id": "abc", authorization: "Bearer xxx" },
+    })
+    await fetch(req)
+    const entry = c.snapshot()[0]
+    expect(entry?.requestHeaders?.["x-trace-id"]).toBe("abc")
+    globalThis.fetch = originalFetch
+  })
 })
