@@ -1,0 +1,75 @@
+// apps/dashboard/server/lib/github.ts
+import { createHmac, timingSafeEqual } from "node:crypto"
+import { createInstallationClient } from "@feedback-tool/integrations-github"
+import type { GitHubInstallationClient } from "@feedback-tool/integrations-github"
+
+// Test-only override hook: allows integration tests to inject a mock client
+// without reaching the Octokit network path. Production callers ignore it.
+let overrideFactory: ((installationId: number) => GitHubInstallationClient) | null = null
+
+export function __setClientOverride(
+  factory: ((installationId: number) => GitHubInstallationClient) | null,
+): void {
+  overrideFactory = factory
+}
+
+export function getGithubClient(installationId: number): GitHubInstallationClient {
+  if (overrideFactory) return overrideFactory(installationId)
+  const appId = process.env.GITHUB_APP_ID
+  const privateKey = (process.env.GITHUB_APP_PRIVATE_KEY ?? "").replace(/\\n/g, "\n")
+  if (!appId || !privateKey) {
+    throw new Error("GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY must be set")
+  }
+  return createInstallationClient({ appId, privateKey, installationId })
+}
+
+export function getWebhookSecret(): string {
+  const s = process.env.GITHUB_APP_WEBHOOK_SECRET
+  if (!s) throw new Error("GITHUB_APP_WEBHOOK_SECRET must be set")
+  return s
+}
+
+export function getAttachmentUrlSecret(): string {
+  const s = process.env.ATTACHMENT_URL_SECRET
+  if (!s) throw new Error("ATTACHMENT_URL_SECRET must be set")
+  return s
+}
+
+export function getDashboardBaseUrl(): string {
+  return process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
+}
+
+export function getAppSlug(): string {
+  return process.env.GITHUB_APP_SLUG ?? "feedback-tool"
+}
+
+// === Install-state signing (used by G-18 install-redirect + install-callback) ===
+
+interface InstallStateClaims {
+  projectId: string
+  userId: string
+  exp: number // UNIX seconds
+}
+
+export function signInstallState(claims: InstallStateClaims): string {
+  const body = Buffer.from(JSON.stringify(claims)).toString("base64url")
+  const secret = getWebhookSecret() // reuse webhook secret for state HMAC
+  const hmac = createHmac("sha256", secret).update(body).digest("base64url")
+  return `${body}.${hmac}`
+}
+
+export function verifyInstallState(state: string): InstallStateClaims | null {
+  const [body, sig] = state.split(".")
+  if (!body || !sig) return null
+  const secret = getWebhookSecret()
+  const expected = createHmac("sha256", secret).update(body).digest("base64url")
+  if (expected.length !== sig.length) return null
+  try {
+    if (!timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) return null
+  } catch {
+    return null
+  }
+  const claims = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as InstallStateClaims
+  if (claims.exp * 1000 < Date.now()) return null
+  return claims
+}
