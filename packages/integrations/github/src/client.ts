@@ -26,6 +26,25 @@ export function createInstallationClient(
     request: {
       headers: { "X-GitHub-Api-Version": "2026-03-10" },
     },
+    // Suppress the known false-positive Octokit warning that treats GitHub's
+    // `deprecation` response header as endpoint-level removal. In the
+    // 2026-03-10 API version the only deprecation affecting our issue-creation
+    // path is the singular `assignee` field — we already send `assignees` as
+    // an array, so the request is compliant. @octokit/request prints a generic
+    // "endpoint scheduled to be removed" warning on every matching call which
+    // floods logs. Pass-through all other warnings.
+    // https://docs.github.com/en/rest/about-the-rest-api/breaking-changes?apiVersion=2026-03-10
+    log: {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => {
+        if (/is deprecated\. It is scheduled to be removed on/.test(msg)) return
+        console.warn(msg)
+      },
+      error: (msg: string) => {
+        console.error(msg)
+      },
+    },
   })
 
   return {
