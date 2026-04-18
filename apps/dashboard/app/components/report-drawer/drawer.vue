@@ -103,9 +103,10 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
       <CookiesTab v-else-if="activeTab === 'cookies'" :project-id="projectId" :report="current" />
       <ReplayTab
         v-else-if="activeTab === 'replay'"
+        :key="current.id"
         :project-id="projectId"
         :report-id="current.id"
-        :has-replay="true"
+        :has-replay="current.hasReplay"
       />
     </aside>
   </div>

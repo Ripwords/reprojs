@@ -14,7 +14,7 @@ export type EventType = (typeof EventType)[keyof typeof EventType]
 
 export const IncrementalSource = {
   Mutation: 0,
-  MouseMove: 1,
+  // MouseMove: 1 — reserved by rrweb schema; not emitted by our minimal observer subset.
   MouseInteraction: 2,
   Scroll: 3,
   ViewportResize: 4,

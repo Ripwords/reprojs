@@ -68,6 +68,13 @@ function serializeElement(el: Element, ctx: SerializeContext): ElementNode {
   }
   const tagName = el.tagName.toLowerCase()
   if (tagName === "input" || tagName === "textarea" || tagName === "select") {
+    // Prefer the live DOM value over the HTML attribute (which reflects only
+    // `defaultValue`). Ensures pre-typed content captures correctly in the
+    // initial full-snapshot while still being mask-checked below.
+    const liveValue = (el as HTMLInputElement).value
+    if (typeof liveValue === "string") {
+      attributes.value = liveValue
+    }
     if (ctx.mask.shouldMaskInput(el as HTMLInputElement)) {
       if (typeof attributes.value === "string") {
         attributes.value = ctx.mask.maskValue(attributes.value)

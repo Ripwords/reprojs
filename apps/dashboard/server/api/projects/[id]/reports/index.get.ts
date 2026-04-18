@@ -128,6 +128,19 @@ export default defineEventHandler(async (event) => {
   ])
   const total = countResult[0]?.total ?? 0
 
+  // Determine which of the returned reports have a replay attachment.
+  const reportIds = rows.map((r) => r.id)
+  const replaySet = new Set<string>()
+  if (reportIds.length > 0) {
+    const replayRows = await db
+      .select({ reportId: reportAttachments.reportId })
+      .from(reportAttachments)
+      .where(
+        and(inArray(reportAttachments.reportId, reportIds), eq(reportAttachments.kind, "replay")),
+      )
+    for (const rr of replayRows) replaySet.add(rr.reportId)
+  }
+
   const items: ReportSummaryDTO[] = rows.map((r) => {
     const ctx = r.context as ReportContext
     const assignee: ReportAssigneeDTO | null =
@@ -146,6 +159,7 @@ export default defineEventHandler(async (event) => {
       thumbnailUrl: r.attachmentId
         ? `/api/projects/${id}/reports/${r.id}/attachment?kind=screenshot`
         : null,
+      hasReplay: replaySet.has(r.id),
       status: r.status,
       priority: r.priority,
       tags: r.tags,

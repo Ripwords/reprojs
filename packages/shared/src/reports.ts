@@ -192,6 +192,7 @@ export const ReportSummaryDTO = z.object({
   reporterEmail: z.string().nullable(),
   pageUrl: z.string(),
   thumbnailUrl: z.string().nullable(),
+  hasReplay: z.boolean(),
   receivedAt: z.string(),
   updatedAt: z.string(),
   status: ReportStatus,

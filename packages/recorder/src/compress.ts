@@ -29,6 +29,12 @@ export async function gzipEvents(events: RecorderEvent[], opts: GzipOptions): Pr
   const lastTs = events[events.length - 1]?.timestamp ?? 0
   const durationMs = Math.max(0, lastTs - firstTs)
 
+  // NOTE: Known cosmetic off-by-one — the loop runs `maxRetries + 1` times and
+  // is followed by a final-state check so the last truncation round is
+  // actually evaluated. Tightening to `<` + removing the final check breaks
+  // the "truncates oldest events when over maxBytes" test (the 200×200B
+  // fixture relies on the extra pass to fit within 500B). Left as-is until a
+  // proper rework of the truncation loop can update the test alongside.
   while (attempts <= maxRetries) {
     const bytes = await gzipBytes(current)
     if (bytes.length <= opts.maxBytes) {

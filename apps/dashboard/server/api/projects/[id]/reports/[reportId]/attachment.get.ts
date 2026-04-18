@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
   const SAFE_CONTENT_TYPES: Record<string, string> = {
     screenshot: "image/png",
     "annotated-screenshot": "image/png",
-    replay: "application/json",
+    replay: "application/gzip",
     logs: "application/json",
   }
   const safeType = SAFE_CONTENT_TYPES[kind] ?? "application/octet-stream"

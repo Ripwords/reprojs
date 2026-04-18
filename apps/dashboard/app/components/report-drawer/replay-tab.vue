@@ -21,13 +21,22 @@ onMounted(async () => {
   status.value = "loading"
   try {
     const url = `/api/projects/${props.projectId}/reports/${props.reportId}/attachment?kind=replay`
-    const res = await fetch(url, { credentials: "include" })
-    if (res.status === 404) {
-      status.value = "missing"
-      return
+    let gzipped: ArrayBuffer
+    try {
+      gzipped = await $fetch<ArrayBuffer>(url, {
+        credentials: "include",
+        responseType: "arrayBuffer",
+      })
+    } catch (err) {
+      const s =
+        (err as { statusCode?: number; status?: number }).statusCode ??
+        (err as { status?: number }).status
+      if (s === 404) {
+        status.value = "missing"
+        return
+      }
+      throw err
     }
-    if (!res.ok) throw new Error(`attachment fetch failed: ${res.status}`)
-    const gzipped = await res.arrayBuffer()
     const ds = new DecompressionStream("gzip")
     const stream = new Blob([gzipped]).stream().pipeThrough(ds)
     const text = await new Response(stream).text()

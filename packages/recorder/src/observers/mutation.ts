@@ -67,7 +67,14 @@ export function createMutationObserver(opts: MutationObserverOptions): MutationO
         let value = r.target.nodeValue ?? ""
         const parent = r.target.parentElement
         if (parent && opts.mask.shouldBlock(parent)) value = ""
-        else if (parent && hasMaskedAncestor(parent)) value = opts.mask.maskValue(value)
+        else if (parent) {
+          const tag = parent.tagName
+          const shouldMask =
+            tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT"
+              ? opts.mask.shouldMaskInput(parent as HTMLInputElement)
+              : hasMaskedAncestor(parent)
+          if (shouldMask) value = opts.mask.maskValue(value)
+        }
         texts.push({ id, value })
       } else if (r.type === "attributes") {
         const id = opts.mirror.getId(r.target)
