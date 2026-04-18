@@ -134,15 +134,17 @@ describe("magic-link auth", () => {
     const token = await findLatestToken("bad@blocked.com")
     expect(token).not.toBeNull()
 
-    // The after-hook rejects with FORBIDDEN. better-auth's response surface
-    // collapses that to either a 302-with-error or a 4xx depending on the
-    // endpoint's redirect path — the load-bearing behaviour is that no session
-    // is established and no orphan user row is left behind.
+    // The after-hook rewrites the verify redirect to /auth/sign-in?error=
+    // (same 302 status as the success redirect — keeps response surface
+    // consistent and gives the UI a clear error to render).
     const res = await fetch(
       `${BASE_URL}/api/auth/magic-link/verify?token=${encodeURIComponent(token ?? "")}&callbackURL=/`,
       { redirect: "manual" },
     )
-    expect([302, 303, 403].includes(res.status)).toBe(true)
+    expect([302, 303].includes(res.status)).toBe(true)
+    const location = res.headers.get("location") ?? ""
+    expect(location).toContain("/auth/sign-in")
+    expect(location).toContain("error=domain_not_allowed")
 
     // Orphan-user defense: the after-hook deletes the just-created user row
     // so an attacker can't bypass the domain gate by racing the verify.

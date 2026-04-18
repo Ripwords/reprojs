@@ -8,6 +8,19 @@ const sent = ref(false)
 const submitting = ref(false)
 const error = ref<string | null>(null)
 
+// Surface gate rejections from the server-side auth pipeline. The magic-link
+// verify + OAuth callback redirect here with `?error=<reason>` when the
+// workspace domain allowlist or invite gate blocks a sign-in.
+const gateErrorMessages: Record<string, string> = {
+  domain_not_allowed: "Your email domain isn't allowed on this workspace.",
+  not_invited: "Sign-up is invite-only. Ask an admin to invite you first.",
+}
+const gateError = computed(() => {
+  const code = route.query.error
+  if (typeof code !== "string") return null
+  return gateErrorMessages[code] ?? "Sign-in was rejected."
+})
+
 async function submit() {
   error.value = null
   submitting.value = true
@@ -37,6 +50,9 @@ async function oauth(provider: "github" | "google") {
 <template>
   <div class="space-y-4">
     <h1 class="text-xl font-semibold">Sign in</h1>
+    <p v-if="gateError" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3">
+      {{ gateError }}
+    </p>
     <div v-if="sent" class="space-y-2 text-sm">
       <p class="text-green-700">Check your email.</p>
       <p class="text-neutral-600">

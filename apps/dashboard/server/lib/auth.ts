@@ -1,5 +1,5 @@
 import { and, count, eq } from "drizzle-orm"
-import { APIError, betterAuth } from "better-auth"
+import { betterAuth } from "better-auth"
 import { createAuthMiddleware } from "better-auth/api"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { magicLink } from "better-auth/plugins/magic-link"
@@ -29,26 +29,35 @@ const AUTH_RATE_LIMIT_ENABLED =
 
 const strictAuthRule = { window: AUTH_RATE_WINDOW_SEC, max: AUTH_RATE_PER_IP_PER_15MIN }
 
+type GateRejection = "domain_not_allowed" | "not_invited"
+
 /**
  * Enforce the workspace-level domain allowlist + invite gate against a newly
  * signed-in user. Called from the `after` hook on any path that creates a user
- * row and a session (OAuth callback + magic-link verify). If either gate
- * rejects, delete the just-created user row so the attacker doesn't end up
- * with an orphan account that bypassed the allowlist.
+ * row and a session (OAuth callback + magic-link verify). On rejection,
+ * deletes the just-created user row so the attacker doesn't end up with an
+ * orphan account that bypassed the allowlist.
  *
- * Returns void on success; throws `FORBIDDEN` on rejection. The throw
- * propagates back to better-auth's pipeline and surfaces as a 403.
+ * Returns `{ ok: true }` on pass or `{ ok: false, reason }` on rejection. The
+ * caller is responsible for surfacing the rejection — for OAuth callback +
+ * magic-link verify we redirect to the sign-in page with a `?error=` param
+ * rather than throwing a 403, because those endpoints' own error paths use
+ * 302 redirects and mixing a 403 throw into better-auth's toResponse produced
+ * an inconsistent status/body shape.
  */
-async function enforceDomainAndInviteGate(newUser: { id: string; email: string }): Promise<void> {
+async function enforceDomainAndInviteGate(newUser: {
+  id: string
+  email: string
+}): Promise<{ ok: true } | { ok: false; reason: GateRejection }> {
   const emailLower = newUser.email.toLowerCase()
   const [settings] = await db.select().from(appSettings).limit(1)
-  if (!settings) return
+  if (!settings) return { ok: true }
 
   if (settings.allowedEmailDomains.length > 0) {
     const domain = emailLower.split("@")[1] ?? ""
     if (!settings.allowedEmailDomains.includes(domain)) {
       await db.delete(user).where(eq(user.id, newUser.id))
-      throw new APIError("FORBIDDEN", { message: "Email domain not allowed" })
+      return { ok: false, reason: "domain_not_allowed" }
     }
   }
 
@@ -59,9 +68,10 @@ async function enforceDomainAndInviteGate(newUser: { id: string; email: string }
       .where(and(eq(user.email, emailLower), eq(user.status, "invited")))
     if (!invited) {
       await db.delete(user).where(eq(user.id, newUser.id))
-      throw new APIError("FORBIDDEN", { message: "Sign-up is invite-only" })
+      return { ok: false, reason: "not_invited" }
     }
   }
+  return { ok: true }
 }
 
 /**
@@ -193,7 +203,21 @@ export const auth = betterAuth({
       const newUser = newSession?.user
       if (!newUser?.id || !newUser.email) return
 
-      await enforceDomainAndInviteGate({ id: newUser.id, email: newUser.email })
+      const gate = await enforceDomainAndInviteGate({ id: newUser.id, email: newUser.email })
+      if (!gate.ok) {
+        // Rewrite the success redirect to the sign-in page with an error code.
+        // Both verify's success and error paths are 302s, so using `ctx.redirect`
+        // keeps status parity and avoids better-auth's toResponse mixing a 403
+        // status onto an existing 302 Location header. The session cookie that
+        // `setSessionCookie` planted earlier is left in place because its
+        // session row was cascade-deleted with the user — `/get-session`
+        // returns null for the stale cookie until the browser replaces it.
+        const errorUrl = new URL(
+          `/auth/sign-in?error=${gate.reason}`,
+          ctx.context.baseURL,
+        ).toString()
+        throw ctx.redirect(errorUrl)
+      }
       await promoteInvitedOrFirstUser(newUser.id)
     }),
   },
