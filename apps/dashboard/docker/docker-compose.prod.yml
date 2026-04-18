@@ -1,0 +1,84 @@
+# Production compose template. Copy, customize, and deploy.
+#
+# Differences from dev:
+#   - No default credentials — set POSTGRES_PASSWORD via env or Docker secrets
+#   - Postgres port NOT exposed externally (internal network only)
+#   - Dedicated migrator service runs drizzle-kit migrate before the app starts
+#   - All services restart: unless-stopped
+#
+# Usage:
+#   export POSTGRES_PASSWORD=$(openssl rand -hex 32)
+#   docker compose -f apps/dashboard/docker/docker-compose.prod.yml up -d
+#
+# The migrator runs to completion and exits 0. The app (when you wire it in
+# below) should depend on it with `condition: service_completed_successfully`
+# so it never starts against an un-migrated schema.
+#
+# Local dev uses `db:push` against the dev compose — there is no migrator
+# service in docker-compose.dev.yml by design.
+
+name: feedback_tool_prod
+services:
+  postgres:
+    image: postgres:17.2
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-feedback_tool}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-feedback_tool}
+    volumes:
+      - feedback_tool_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-feedback_tool} -d ${POSTGRES_DB:-feedback_tool}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Runs drizzle-kit migrate once, exits 0. Downstream services MUST depend on
+  # this with `condition: service_completed_successfully`.
+  migrator:
+    image: oven/bun:1.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /repo
+    volumes:
+      - ../../../:/repo:ro
+      # Named volumes shadow the host node_modules so Linux binaries don't
+      # collide with the host's dev machine. Rebuilt via bun install on first run.
+      - migrator_node_modules:/repo/node_modules
+      - migrator_dashboard_node_modules:/repo/apps/dashboard/node_modules
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-feedback_tool}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-feedback_tool}
+    command: >
+      sh -c "bun install --frozen-lockfile && bun run db:migrate"
+    restart: "no"
+
+  # Dashboard service — UNCOMMENT and customize when you're ready to containerize
+  # the app. Requires a Dockerfile at apps/dashboard/Dockerfile.
+  #
+  # dashboard:
+  #   build:
+  #     context: ../../..
+  #     dockerfile: apps/dashboard/Dockerfile
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     migrator:
+  #       condition: service_completed_successfully
+  #   environment:
+  #     DATABASE_URL: postgres://${POSTGRES_USER:-feedback_tool}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-feedback_tool}
+  #     NODE_ENV: production
+  #     # ... BETTER_AUTH_SECRET, ATTACHMENT_URL_SECRET, GITHUB_APP_*, etc.
+  #   ports:
+  #     - "3000:3000"
+  #   restart: unless-stopped
+
+volumes:
+  feedback_tool_prod_data:
+  migrator_node_modules:
+  migrator_dashboard_node_modules:
