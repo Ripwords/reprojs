@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ProjectDTO } from "@feedback-tool/shared"
+import GithubPanel from "~/components/integrations/github/github-panel.vue"
+
 const route = useRoute()
+const projectId = computed(() => route.params.id as string)
 const runtime = useRuntimeConfig()
 const dashboardUrl = runtime.public.betterAuthUrl
 const { data: project, refresh } = await useApi<ProjectDTO>(`/api/projects/${route.params.id}`)
@@ -128,6 +131,10 @@ async function softDelete() {
     endpoint: &quot;{{ dashboardUrl }}&quot;
   })
 &lt;/script&gt;</code></pre>
+    </section>
+
+    <section class="border-t pt-6">
+      <GithubPanel :project-id="projectId" />
     </section>
 
     <section class="border-t pt-4">
