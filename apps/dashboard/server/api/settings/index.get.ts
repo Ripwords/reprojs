@@ -11,7 +11,7 @@ export default defineEventHandler(async (event): Promise<AppSettingsDTO> => {
 
   return {
     signupGated: settings.signupGated,
-    installName: settings.installName,
+    allowedEmailDomains: settings.allowedEmailDomains,
     updatedAt: settings.updatedAt.toISOString(),
   }
 })

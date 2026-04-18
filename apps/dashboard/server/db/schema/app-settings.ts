@@ -6,7 +6,10 @@ export const appSettings = pgTable(
   {
     id: integer("id").primaryKey().default(1),
     signupGated: boolean("signup_gated").notNull().default(false),
-    installName: text("install_name").notNull().default("Feedback Tool"),
+    allowedEmailDomains: text("allowed_email_domains")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({

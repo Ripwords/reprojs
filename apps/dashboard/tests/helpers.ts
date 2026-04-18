@@ -9,7 +9,7 @@ export async function truncateDomain() {
     sql`TRUNCATE project_members, projects, "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
   )
   await db.execute(
-    sql`UPDATE app_settings SET signup_gated = false, install_name = 'Feedback Tool' WHERE id = 1`,
+    sql`UPDATE app_settings SET signup_gated = false, allowed_email_domains = '{}'::text[] WHERE id = 1`,
   )
 }
 
@@ -89,7 +89,6 @@ export async function seedProject(opts: {
     .insert(projects)
     .values({
       name: opts.name,
-      slug: opts.name.toLowerCase().replace(/\s+/g, "-"),
       createdBy: opts.createdBy,
       publicKey: opts.publicKey,
       allowedOrigins: opts.allowedOrigins ?? [],

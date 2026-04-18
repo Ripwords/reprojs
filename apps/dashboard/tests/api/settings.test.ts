@@ -25,7 +25,7 @@ describe("settings API", () => {
     })
     expect(status).toBe(200)
     expect((body as AppSettingsDTO).signupGated).toBe(false)
-    expect((body as AppSettingsDTO).installName).toBe("Feedback Tool")
+    expect((body as AppSettingsDTO).allowedEmailDomains).toEqual([])
   })
 
   test("admin can update settings", async () => {
@@ -35,10 +35,23 @@ describe("settings API", () => {
     const { status, body } = await apiFetch<AppSettingsDTO>("/api/settings", {
       method: "PATCH",
       headers: { cookie },
-      body: JSON.stringify({ signupGated: true, installName: "My App" }),
+      body: JSON.stringify({ signupGated: true, allowedEmailDomains: ["acme.com", "acme.co.uk"] }),
     })
     expect(status).toBe(200)
     expect((body as AppSettingsDTO).signupGated).toBe(true)
-    expect((body as AppSettingsDTO).installName).toBe("My App")
+    expect((body as AppSettingsDTO).allowedEmailDomains).toEqual(["acme.com", "acme.co.uk"])
+  })
+
+  test("rejects invalid domain format", async () => {
+    await createUser("admin@example.com", "admin")
+    const cookie = await signIn("admin@example.com")
+
+    const { status } = await apiFetch("/api/settings", {
+      method: "PATCH",
+      headers: { cookie },
+      body: JSON.stringify({ allowedEmailDomains: ["not a domain"] }),
+    })
+    expect(status).toBeGreaterThanOrEqual(400)
+    expect(status).toBeLessThan(500)
   })
 })

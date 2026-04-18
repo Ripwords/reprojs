@@ -59,7 +59,19 @@ export const auth = betterAuth({
       const email = ctx.body?.email as string | undefined
       if (!email) return
       const [settings] = await db.select().from(appSettings).limit(1)
-      if (!settings?.signupGated) return
+      if (!settings) return
+
+      // Email-domain gate: when the allowlist is non-empty, the signer-up's
+      // email domain must match one of the entries. Runs before the invite
+      // gate so domain-mismatched emails are rejected even when invited.
+      if (settings.allowedEmailDomains.length > 0) {
+        const domain = email.split("@")[1]?.toLowerCase() ?? ""
+        if (!settings.allowedEmailDomains.includes(domain)) {
+          throw new APIError("FORBIDDEN", { message: "Email domain not allowed" })
+        }
+      }
+
+      if (!settings.signupGated) return
       const [invited] = await db
         .select()
         .from(user)

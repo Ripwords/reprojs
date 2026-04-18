@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     signupGated: updated.signupGated,
-    installName: updated.installName,
+    allowedEmailDomains: updated.allowedEmailDomains,
     updatedAt: updated.updatedAt.toISOString(),
   }
 })
