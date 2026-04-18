@@ -10,9 +10,14 @@ function metaEvent(ts: number, size: number): RecorderEvent {
   }
 }
 
+// Most tests use fabricated small timestamps (100, 200, 300). With the default
+// real-wall-clock `Date.now()`, those would always be far outside the 30 s
+// window. Injecting a fixed `now` anchors the window around the test data.
+const NOW = 30_000
+
 describe("EventBuffer", () => {
   test("push then flush returns events chronologically and clears state", () => {
-    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000 })
+    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000, now: () => NOW })
     buf.push(metaEvent(100, 10))
     buf.push(metaEvent(200, 10))
     const out = buf.flush()
@@ -28,8 +33,7 @@ describe("EventBuffer", () => {
   })
 
   test("evicts oldest events when total bytes exceeds maxBytes", () => {
-    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 200 })
-    // Each event serializes to ~80 bytes once we pack in the href string of 50 chars.
+    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 200, now: () => NOW })
     buf.push(metaEvent(100, 50))
     buf.push(metaEvent(200, 50))
     buf.push(metaEvent(300, 50)) // third push triggers eviction of the oldest
@@ -39,7 +43,7 @@ describe("EventBuffer", () => {
   })
 
   test("push during iteration of flush snapshot does not mutate the snapshot", () => {
-    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000 })
+    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000, now: () => NOW })
     buf.push(metaEvent(100, 10))
     const snapshot = buf.flush()
     buf.push(metaEvent(200, 10))
@@ -48,14 +52,14 @@ describe("EventBuffer", () => {
   })
 
   test("peek returns copy without clearing", () => {
-    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000 })
+    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000, now: () => NOW })
     buf.push(metaEvent(100, 10))
     expect(buf.peek().length).toBe(1)
     expect(buf.peek().length).toBe(1)
   })
 
   test("truncateOldest removes N oldest events", () => {
-    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000 })
+    const buf = new EventBuffer({ windowMs: 30_000, maxBytes: 1_000_000, now: () => NOW })
     buf.push(metaEvent(100, 10))
     buf.push(metaEvent(200, 10))
     buf.push(metaEvent(300, 10))

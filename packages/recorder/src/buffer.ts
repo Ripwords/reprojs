@@ -21,16 +21,10 @@ interface Entry {
  *
  * Byte cost is estimated via JSON.stringify length at push time — accurate
  * enough for budgeting without paying the cost twice (we re-stringify at flush).
- *
- * When no `now` is injected, the buffer uses the newest seen event timestamp
- * as its clock reference — event timestamps and wall-clock time may disagree
- * (e.g. if the host app uses a monotonic source), and for eviction purposes
- * we only care about the relative age of events within the stream.
  */
 export class EventBuffer {
   private entries: Entry[] = []
   private totalBytes = 0
-  private newestTs = 0
   private readonly windowMs: number
   private readonly maxBytes: number
   private readonly now: () => number
@@ -38,12 +32,11 @@ export class EventBuffer {
   constructor(opts: BufferOptions) {
     this.windowMs = opts.windowMs
     this.maxBytes = opts.maxBytes
-    this.now = opts.now ?? (() => this.newestTs)
+    this.now = opts.now ?? Date.now
   }
 
   push(event: RecorderEvent): void {
     const bytes = estimateBytes(event)
-    if (event.timestamp > this.newestTs) this.newestTs = event.timestamp
     this.entries.push({ event, bytes })
     this.totalBytes += bytes
     this.evictOldTimestamps()
@@ -71,7 +64,6 @@ export class EventBuffer {
     const out = this.entries.map((e) => e.event)
     this.entries = []
     this.totalBytes = 0
-    this.newestTs = 0
     return out
   }
 
