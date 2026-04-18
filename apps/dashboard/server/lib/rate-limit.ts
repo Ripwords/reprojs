@@ -66,9 +66,6 @@ export function createInProcessRateLimiter(opts: RateLimiterOptions): RateLimite
   }
 }
 
-// Back-compat alias for existing imports / tests.
-export const createRateLimiter = createInProcessRateLimiter
-
 let _keyLimiter: RateLimiter | null = null
 let _ipLimiter: RateLimiter | null = null
 let _anonKeyLimiter: RateLimiter | null = null

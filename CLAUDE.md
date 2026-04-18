@@ -140,7 +140,7 @@ feedback-tool/
 │       │   ├── lib/
 │       │   │   ├── auth.ts     # better-auth config
 │       │   │   ├── github.ts   # GitHub App client
-│       │   │   └── storage.ts  # blob storage adapter
+│       │   │   └── storage/    # blob storage adapter (index.ts, local-disk.ts, s3.ts)
 │       │   └── plugins/
 │       ├── docker/
 │       │   └── docker-compose.dev.yml   # Postgres 17
@@ -150,9 +150,10 @@ feedback-tool/
 ├── packages/
 │   ├── core/                   # framework-agnostic SDK entry (init, public API)
 │   ├── ui/                     # widget UI (Preact + Shadow DOM)
-│   ├── annotator/              # annotation canvas (pen, arrow, text, etc.)
-│   ├── recorder/               # 30s rolling DOM replay buffer
-│   ├── collectors/             # console, network, cookies, system-info
+│   │   └── src/
+│   │       ├── annotation/     # annotation canvas (pen, arrow, text, etc.) — was packages/annotator
+│   │       └── collectors/     # console, network, cookies, system-info — was packages/collectors
+│   ├── recorder/               # 30s rolling DOM replay buffer (pending — sub-project E)
 │   ├── integrations/
 │   │   └── github/             # GitHub Issues adapter (runs server-side)
 │   └── shared/                 # shared types: Report, Attachment, API contracts
@@ -195,7 +196,7 @@ Mirrors the ai-trip stack:
 | Auth | **better-auth** (email + OAuth) via `@better-auth/cli` schema gen |
 | Validation | **Zod** at API boundaries |
 | Styling | Tailwind CSS v4 |
-| Blob storage | Pluggable adapter — local disk in dev, S3-compatible in prod (decision pending) |
+| Blob storage | Pluggable adapter — local-disk (default) + S3Adapter via @aws-sdk/client-s3 against any S3-compatible endpoint (AWS S3, Cloudflare R2, Backblaze B2, Hetzner, MinIO, etc.) |
 
 ### 5.3 Shared Tooling
 
@@ -316,13 +317,13 @@ Pulled from the global CLAUDE.md and the ai-trip reference project.
 
 ### Dashboard
 4. **Postgres driver in production** — **Resolved:** `pg` (node-postgres) via `drizzle-orm/node-postgres`. Nitro runs under Node.js, so Bun's native `bun:*` modules aren't available inside the dashboard server. Dev + prod both use `pg`.
-5. **Blob storage adapter** — local disk + S3 (minio for dev) vs. Vercel Blob vs. something else?
+5. **Blob storage adapter** — **Resolved:** local-disk + S3-compatible BYO are both shipped. No bundled S3 service — operators point `S3_ENDPOINT` at whatever they run (AWS S3, Cloudflare R2, Backblaze B2, Hetzner, MinIO, Garage, etc.). See `docs/superpowers/specs/2026-04-18-garage-s3-storage-design.md` for the pivot rationale.
 6. **Multi-tenancy** — single workspace per deployment (simpler) or multi-workspace from day one?
 
 ### Cross-cutting
 7. **Monorepo tool** — Bun workspaces alone, or add `turbo`/`nx` for task caching?
 8. **Release strategy** — single version across SDK packages, or independent semver per package (changesets)?
-9. **GitHub auth** — GitHub App (preferred), PAT, or OAuth device flow?
+9. **GitHub auth** — **Resolved:** GitHub App (via @octokit/auth-app) is shipped. See sub-project G (v0.6.0-github-sync).
 10. **Direct-to-GitHub mode** — support SDK → GitHub without the dashboard in between? (Requires threat-model review.)
 
 ---
