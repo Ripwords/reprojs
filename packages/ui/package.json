@@ -16,6 +16,7 @@
     "demo": "bun run demo/serve.ts"
   },
   "dependencies": {
+    "@feedback-tool/recorder": "*",
     "@feedback-tool/shared": "workspace:*",
     "@preact/signals": "^1.3.0",
     "preact": "^10.23.0"

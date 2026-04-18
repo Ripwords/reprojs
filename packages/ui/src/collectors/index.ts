@@ -4,6 +4,7 @@ import { type BreadcrumbLevel, createBreadcrumbsCollector } from "./breadcrumbs"
 import { createConsoleCollector } from "./console"
 import { createCookiesCollector } from "./cookies"
 import { createNetworkCollector } from "./network"
+import { createReplayCollector, type ReplayCollector, type ReplayConfig } from "./replay"
 import { DEFAULT_STRING_REDACTORS } from "./serialize"
 import { snapshotSystemInfo } from "./system-info"
 
@@ -36,6 +37,7 @@ export interface CollectorConfig {
   }
   cookies?: { maskNames?: string[]; allowNames?: string[]; enabled?: boolean }
   breadcrumbs?: { maxEntries?: number; maxDataBytes?: number; enabled?: boolean }
+  replay?: ReplayConfig
   stringRedactors?: RegExp[]
   beforeSend?: (report: PendingReport) => PendingReport | null
 }
@@ -46,6 +48,10 @@ export function registerAllCollectors(config: CollectorConfig): {
     cookies: ReturnType<ReturnType<typeof createCookiesCollector>["snapshot"]>
     logs: LogsAttachment
   }
+  flushReplay: () => ReturnType<ReplayCollector["flushGzipped"]>
+  pauseReplay: () => void
+  resumeReplay: () => void
+  markReplayDisabled: () => void
   stopAll: () => void
   breadcrumb: (
     event: string,
@@ -64,6 +70,9 @@ export function registerAllCollectors(config: CollectorConfig): {
   networkCollector.start({ ...config.network, stringRedactors })
   cookiesCollector.start({ ...config.cookies })
   breadcrumbsCollector.start({ ...config.breadcrumbs })
+
+  const replayCollector = createReplayCollector(config.replay ?? {})
+  replayCollector.start()
 
   return {
     snapshotAll() {
@@ -89,11 +98,16 @@ export function registerAllCollectors(config: CollectorConfig): {
         },
       }
     },
+    flushReplay: () => replayCollector.flushGzipped(),
+    pauseReplay: () => replayCollector.pause(),
+    resumeReplay: () => replayCollector.resume(),
+    markReplayDisabled: () => replayCollector.markDisabled(),
     stopAll() {
       consoleCollector.stop()
       networkCollector.stop()
       cookiesCollector.stop()
       breadcrumbsCollector.stop()
+      replayCollector.stop()
     },
     breadcrumb: breadcrumbsCollector.breadcrumb,
     applyBeforeSend(report) {
