@@ -3,7 +3,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test"
 import { sql } from "drizzle-orm"
 import { createUser, makePngBlob, seedProject, truncateDomain, truncateReports } from "../helpers"
 import { db } from "../../server/db"
-import { reports, reportAttachments } from "../../server/db/schema"
+import { projects, reports, reportAttachments } from "../../server/db/schema"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 setDefaultTimeout(15000)
@@ -155,5 +155,34 @@ describe("intake API", () => {
       .from(reports)
       .where(sql`project_id = ${projectId}`)
     expect(rows.length).toBe(0)
+  })
+
+  test("daily ceiling: rejects when cap already met", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+    await db
+      .update(projects)
+      .set({ dailyReportCap: 1 })
+      .where(sql`id = ${projectId}`)
+
+    const r1 = await fetch("http://localhost:3000/api/intake/reports", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: buildMultipart(buildReportJSON(PK), makePngBlob()),
+    })
+    expect(r1.status).toBe(201)
+
+    const r2 = await fetch("http://localhost:3000/api/intake/reports", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: buildMultipart(buildReportJSON(PK), makePngBlob()),
+    })
+    expect(r2.status).toBe(429)
+    expect(r2.headers.get("retry-after")).toBe("3600")
   })
 })

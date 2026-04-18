@@ -1,5 +1,5 @@
 import { createError, defineEventHandler, getHeader, getRequestIP, readMultipartFormData } from "h3"
-import { eq } from "drizzle-orm"
+import { and, count, eq, gte } from "drizzle-orm"
 import { randomUUID } from "node:crypto"
 import { LogsAttachment, ReportIntakeInput } from "@feedback-tool/shared"
 import { db } from "../../db"
@@ -93,6 +93,18 @@ export default defineEventHandler(async (event) => {
     // Fake UUID, no DB write, no enqueue.
     event.node.res.statusCode = 201
     return { id: randomUUID() }
+  }
+
+  // Daily ceiling — hard cap on reports per project per rolling 24h window.
+  // Cheap count backed by the existing (project_id, created_at) index.
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const [{ c: todayCount }] = await db
+    .select({ c: count() })
+    .from(reports)
+    .where(and(eq(reports.projectId, project.id), gte(reports.createdAt, dayAgo)))
+  if (todayCount >= project.dailyReportCap) {
+    event.node.res.setHeader("Retry-After", "3600")
+    throw createError({ statusCode: 429, statusMessage: "Daily report cap reached" })
   }
 
   const logsPart = parts.find((p) => p.name === "logs")
