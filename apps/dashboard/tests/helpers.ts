@@ -34,9 +34,20 @@ export async function createUser(
   // drizzle-orm's raw execute typing is `QueryResult<Record<string, unknown>>` under
   // node-postgres, which doesn't overlap with the runtime shape we depend on.
   // Go through `unknown` to narrow to the concrete row type we know we're getting.
-  const firstRow = Array.isArray(rows)
-    ? (rows[0] as { id: string })
-    : (rows as unknown as { rows: Array<{ id: string }> }).rows[0]
+  const container = Array.isArray(rows)
+    ? (rows as Array<{ id: string }>)
+    : (rows as unknown as { rows: Array<{ id: string }> }).rows
+  const firstRow = container[0]
+  if (!firstRow) {
+    // Most common cause: sign-up returned 4xx but in a shape we didn't throw on,
+    // OR a prior test's truncate raced with this one. Surface a clear error
+    // instead of the cryptic TypeError that "undefined.id" would produce.
+    throw new Error(
+      `createUser: sign-up succeeded but no user row found for ${email}. ` +
+        `sign-up status was ${signUpRes.status}. ` +
+        `Check better-auth response or DB truncate ordering.`,
+    )
+  }
   return firstRow.id
 }
 
