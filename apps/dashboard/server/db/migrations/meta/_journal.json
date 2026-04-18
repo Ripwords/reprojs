@@ -50,6 +50,13 @@
       "when": 1776503113334,
       "tag": "0006_futuristic_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776509601975,
+      "tag": "0007_overconfident_union_jack",
+      "breakpoints": true
     }
   ]
 }

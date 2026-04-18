@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm"
-import { pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
+import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 
 export const projects = pgTable(
   "projects",
@@ -14,6 +14,7 @@ export const projects = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    dailyReportCap: integer("daily_report_cap").notNull().default(1000),
     publicKeyRegeneratedAt: timestamp("public_key_regenerated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
