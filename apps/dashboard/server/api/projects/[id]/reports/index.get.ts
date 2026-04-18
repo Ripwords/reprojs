@@ -1,6 +1,6 @@
 // apps/dashboard/server/api/projects/[id]/reports/index.get.ts
 import { defineEventHandler, getQuery, getRouterParam } from "h3"
-import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import { and, arrayContains, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
 import {
   ReportPriority,
   ReportStatus,
@@ -45,12 +45,12 @@ export default defineEventHandler(async (event) => {
   if (statusTokens.length) whereParts.push(inArray(reports.status, statusTokens as ReportStatus[]))
   if (priorityTokens.length)
     whereParts.push(inArray(reports.priority, priorityTokens as ReportPriority[]))
-  if (tagTokens.length) whereParts.push(sql`${reports.tags} @> ${tagTokens}::text[]`)
+  if (tagTokens.length) whereParts.push(arrayContains(reports.tags, tagTokens))
   if (assigneeFilters.length) {
     const userIds = assigneeFilters.filter((f) => f.type === "user").map((f) => f.userId)
     const wantUnassigned = assigneeFilters.some((f) => f.type === "null")
     const parts: ReturnType<typeof eq>[] = []
-    if (userIds.length) parts.push(sql`${reports.assigneeId} = ANY(${userIds})`)
+    if (userIds.length) parts.push(inArray(reports.assigneeId, userIds))
     if (wantUnassigned) parts.push(isNull(reports.assigneeId))
     if (parts.length === 1) whereParts.push(parts[0]!)
     else if (parts.length > 1) whereParts.push(or(...parts)!)
