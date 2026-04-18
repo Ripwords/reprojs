@@ -11,6 +11,14 @@ export default defineNuxtConfig({
       include: ["better-auth/vue", "better-auth/client/plugins"],
     },
   },
+  nitro: {
+    experimental: {
+      tasks: true,
+    },
+    scheduledTasks: {
+      "*/1 * * * *": ["github:sync"],
+    },
+  },
   runtimeConfig: {
     betterAuthSecret: process.env.BETTER_AUTH_SECRET ?? "",
     databaseUrl: process.env.DATABASE_URL ?? "",
