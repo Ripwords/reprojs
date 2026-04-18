@@ -1,0 +1,141 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { S3Adapter } from "./s3"
+
+// validateS3Endpoint is not exported; we exercise it through the S3Adapter
+// constructor by setting S3_ENDPOINT and asserting that construction throws.
+
+const SAVED: Record<string, string | undefined> = {}
+const ENV_KEYS = [
+  "S3_ENDPOINT",
+  "S3_ACCESS_KEY_ID",
+  "S3_SECRET_ACCESS_KEY",
+  "S3_BUCKET",
+  "S3_REGION",
+  "S3_VIRTUAL_HOSTED",
+] as const
+
+beforeEach(() => {
+  for (const k of ENV_KEYS) SAVED[k] = process.env[k]
+  // Provide valid credentials so the only failure mode under test is the endpoint validator.
+  process.env.S3_ACCESS_KEY_ID = "test-access-key"
+  process.env.S3_SECRET_ACCESS_KEY = "test-secret-key"
+  process.env.S3_BUCKET = "test-bucket"
+  process.env.S3_REGION = "us-east-1"
+})
+
+afterEach(() => {
+  for (const k of ENV_KEYS) {
+    const prev = SAVED[k]
+    if (prev === undefined) delete process.env[k]
+    else process.env[k] = prev
+  }
+})
+
+function expectEndpointRejected(endpoint: string): void {
+  process.env.S3_ENDPOINT = endpoint
+  expect(() => new S3Adapter()).toThrow(/instance metadata|not a valid URL|protocol must be/)
+}
+
+function expectEndpointAccepted(endpoint: string): void {
+  process.env.S3_ENDPOINT = endpoint
+  expect(() => new S3Adapter()).not.toThrow()
+}
+
+describe("validateS3Endpoint SSRF blocklist", () => {
+  describe("AWS EC2 IMDS — IPv4", () => {
+    test("blocks 169.254.169.254", () => {
+      expectEndpointRejected("http://169.254.169.254/")
+    })
+
+    test("blocks 169.254.169.254 on https", () => {
+      expectEndpointRejected("https://169.254.169.254/latest/meta-data/")
+    })
+  })
+
+  describe("AWS EC2 IMDS — IPv6-mapped IPv4 bypass", () => {
+    test("blocks ::ffff:169.254.169.254 (dotted IPv4-mapped form)", () => {
+      expectEndpointRejected("http://[::ffff:169.254.169.254]/")
+    })
+
+    test("blocks ::ffff:a9fe:a9fe (hex IPv4-mapped form)", () => {
+      expectEndpointRejected("http://[::ffff:a9fe:a9fe]/")
+    })
+  })
+
+  describe("AWS Nitro IPv6 IMDS", () => {
+    test("blocks fd00:ec2::254", () => {
+      expectEndpointRejected("http://[fd00:ec2::254]/")
+    })
+  })
+
+  describe("AWS IMDS hostname aliases", () => {
+    test("blocks instance-data", () => {
+      expectEndpointRejected("http://instance-data/")
+    })
+
+    test("blocks instance-data.ec2.internal", () => {
+      expectEndpointRejected("http://instance-data.ec2.internal/")
+    })
+
+    test("blocks instance-data. (FQDN with trailing dot)", () => {
+      expectEndpointRejected("http://instance-data./")
+    })
+  })
+
+  describe("GCP metadata", () => {
+    test("blocks metadata.google.internal", () => {
+      expectEndpointRejected("http://metadata.google.internal/")
+    })
+
+    test("blocks bare metadata", () => {
+      expectEndpointRejected("http://metadata/")
+    })
+
+    test("blocks METADATA.GOOGLE.INTERNAL (case-insensitive)", () => {
+      expectEndpointRejected("http://METADATA.GOOGLE.INTERNAL/")
+    })
+  })
+
+  describe("link-local /16 range", () => {
+    test("blocks arbitrary 169.254.x.x (e.g. 169.254.42.1)", () => {
+      expectEndpointRejected("http://169.254.42.1/")
+    })
+
+    test("blocks 169.254.0.1", () => {
+      expectEndpointRejected("http://169.254.0.1/")
+    })
+
+    test("blocks 169.254.255.255", () => {
+      expectEndpointRejected("http://169.254.255.255/")
+    })
+  })
+
+  describe("protocol allowlist", () => {
+    test("rejects file://", () => {
+      expectEndpointRejected("file:///etc/passwd")
+    })
+
+    test("rejects ftp://", () => {
+      expectEndpointRejected("ftp://example.com/")
+    })
+
+    test("rejects garbage strings", () => {
+      expectEndpointRejected("not-a-url")
+    })
+  })
+
+  describe("valid endpoints are accepted", () => {
+    test("accepts AWS S3 public endpoint", () => {
+      expectEndpointAccepted("https://s3.us-east-1.amazonaws.com/")
+    })
+
+    test("accepts custom MinIO endpoint", () => {
+      expectEndpointAccepted("http://minio.internal.example.com:9000/")
+    })
+
+    test("accepts 170.254.169.254 (outside link-local /16)", () => {
+      // Sanity: the regex is anchored to 169.254. so adjacent ranges aren't caught.
+      expectEndpointAccepted("https://170.254.169.254/")
+    })
+  })
+})
