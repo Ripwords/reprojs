@@ -29,6 +29,8 @@ const METHODS: ConsoleLevel[] = ["log", "info", "warn", "error", "debug"]
 export function createConsoleCollector(_initial: ConsoleConfig): ConsoleCollector {
   let buffer: RingBuffer<ConsoleEntry> | null = null
   const originals: Partial<Record<ConsoleLevel, (...args: unknown[]) => void>> = {}
+  let errorListener: ((e: ErrorEvent) => void) | null = null
+  let rejectionListener: ((e: PromiseRejectionEvent) => void) | null = null
   let running = false
   return {
     start(config) {
@@ -59,6 +61,53 @@ export function createConsoleCollector(_initial: ConsoleConfig): ConsoleCollecto
           orig(...args)
         }
       }
+
+      // Uncaught exceptions and unhandled promise rejections don't flow through
+      // console.error — the browser reports them to DevTools via the `error`
+      // and `unhandledrejection` window events. Users see them as red errors
+      // in DevTools and expect them in the report, so capture them explicitly
+      // and push as level="error" entries.
+      if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+        errorListener = (e: ErrorEvent) => {
+          try {
+            const msg = e.message || "Uncaught error"
+            const where = e.filename ? `${e.filename}:${e.lineno ?? 0}:${e.colno ?? 0}` : ""
+            const detail = e.error instanceof Error ? serializeArg(e.error, maxArg, redactors) : ""
+            const args = [serializeArg(msg, maxArg, redactors)]
+            if (where) args.push(serializeArg(where, maxArg, redactors))
+            if (detail) args.push(detail)
+            buffer?.push({
+              level: "error",
+              ts: Date.now(),
+              args,
+              stack:
+                (e.error instanceof Error ? e.error.stack : undefined) ?? new Error("trace").stack,
+            })
+          } catch {
+            // Never let collector throw into host code
+          }
+        }
+        rejectionListener = (e: PromiseRejectionEvent) => {
+          try {
+            const reason = e.reason
+            const args = [
+              serializeArg("Unhandled promise rejection", maxArg, redactors),
+              serializeArg(reason, maxArg, redactors),
+            ]
+            buffer?.push({
+              level: "error",
+              ts: Date.now(),
+              args,
+              stack: reason instanceof Error ? reason.stack : new Error("trace").stack,
+            })
+          } catch {
+            // Never let collector throw into host code
+          }
+        }
+        window.addEventListener("error", errorListener)
+        window.addEventListener("unhandledrejection", rejectionListener)
+      }
+
       running = true
     },
     snapshot() {
@@ -71,6 +120,12 @@ export function createConsoleCollector(_initial: ConsoleConfig): ConsoleCollecto
         if (o) console[level] = o
       }
       for (const key of Object.keys(originals) as ConsoleLevel[]) delete originals[key]
+      if (typeof window !== "undefined" && typeof window.removeEventListener === "function") {
+        if (errorListener) window.removeEventListener("error", errorListener)
+        if (rejectionListener) window.removeEventListener("unhandledrejection", rejectionListener)
+      }
+      errorListener = null
+      rejectionListener = null
       buffer = null
       running = false
     },
