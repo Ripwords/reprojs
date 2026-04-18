@@ -22,7 +22,7 @@ export function labelsFor(report: LabelsForReport, integration: LabelsForIntegra
   for (const l of integration.defaultLabels) add(l)
   add(`priority:${report.priority}`)
   for (const t of report.tags) add(t)
-  return [...seen].sort()
+  return [...seen].toSorted()
 }
 
 export interface BuildIssueBodyInput {
