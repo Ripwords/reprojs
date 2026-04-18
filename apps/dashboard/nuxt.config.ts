@@ -40,6 +40,24 @@ export default defineNuxtConfig({
     scheduledTasks: {
       "*/1 * * * *": ["github:sync"],
     },
+    routeRules: {
+      // Baseline security headers for every dashboard response.
+      // - X-Frame-Options: DENY   → prevents the dashboard UI from being framed (clickjacking).
+      //                             Safe for the intake API because it returns JSON, not embeddable HTML.
+      // - X-Content-Type-Options  → disables MIME sniffing.
+      // - Referrer-Policy         → avoids leaking full URLs to third-party origins.
+      // HSTS is intentionally omitted here — it should be emitted by the terminating
+      // reverse proxy (Caddy / Nginx / Cloudflare) where HTTPS actually terminates.
+      // CSP is deferred — a correct policy requires a full inventory of every script/style
+      // source and a too-strict policy breaks the app; too-permissive is security theater.
+      "/**": {
+        headers: {
+          "X-Frame-Options": "DENY",
+          "X-Content-Type-Options": "nosniff",
+          "Referrer-Policy": "strict-origin-when-cross-origin",
+        },
+      },
+    },
   },
   runtimeConfig: {
     betterAuthSecret: process.env.BETTER_AUTH_SECRET ?? "",
