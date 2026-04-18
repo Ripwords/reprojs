@@ -1,5 +1,13 @@
 import type { CollectorConfig } from "@feedback-tool/ui"
 
+export interface ReplayInitConfig {
+  enabled?: boolean
+  masking?: "strict" | "moderate" | "minimal"
+  maskSelectors?: string[]
+  blockSelectors?: string[]
+  maxBytes?: number
+}
+
 export interface InitOptions {
   projectKey: string
   endpoint: string
@@ -7,6 +15,7 @@ export interface InitOptions {
   launcher?: boolean
   metadata?: Record<string, string | number | boolean>
   collectors?: CollectorConfig
+  replay?: ReplayInitConfig
 }
 
 export interface ResolvedConfig {
@@ -15,6 +24,7 @@ export interface ResolvedConfig {
   position: "bottom-right" | "bottom-left" | "top-right" | "top-left"
   launcher: boolean
   metadata: Record<string, string | number | boolean> | undefined
+  replay: ReplayInitConfig | undefined
 }
 
 const KEY_RE = /^ft_pk_[A-Za-z0-9]{24}$/
@@ -39,5 +49,6 @@ export function resolveConfig(opts: InitOptions): ResolvedConfig {
     position: opts.position ?? "bottom-right",
     launcher: opts.launcher ?? true,
     metadata: opts.metadata,
+    replay: opts.replay,
   }
 }

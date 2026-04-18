@@ -1,4 +1,4 @@
-import type { LogsAttachment, ReportContext } from "@feedback-tool/shared"
+import type { IntakeResponse, LogsAttachment, ReportContext } from "@feedback-tool/shared"
 import type { ResolvedConfig } from "./config"
 
 export interface IntakeInput {
@@ -8,6 +8,8 @@ export interface IntakeInput {
   metadata?: Record<string, string | number | boolean>
   screenshot: Blob | null
   logs?: LogsAttachment | null
+  /** Raw gzipped replay bytes (application/gzip); omitted when replay disabled or unavailable. */
+  replayBytes?: Uint8Array | null
   dwellMs?: number
   honeypot?: string
 }
@@ -15,6 +17,7 @@ export interface IntakeInput {
 export interface IntakeResult {
   ok: true
   id: string
+  replayDisabled: boolean
 }
 
 export interface IntakeError {
@@ -53,6 +56,13 @@ export async function postReport(
       "logs.json",
     )
   }
+  if (input.replayBytes && input.replayBytes.length > 0) {
+    // Copy into a fresh ArrayBuffer so the Blob part is typed as Uint8Array<ArrayBuffer>
+    // regardless of the source buffer (ArrayBuffer | SharedArrayBuffer).
+    const copy = new Uint8Array(input.replayBytes.byteLength)
+    copy.set(input.replayBytes)
+    body.set("replay", new Blob([copy], { type: "application/gzip" }), "replay.json.gz")
+  }
 
   try {
     const res = await fetch(`${config.endpoint}/api/intake/reports`, {
@@ -62,8 +72,8 @@ export async function postReport(
       signal: AbortSignal.timeout(30_000),
     })
     if (res.ok) {
-      const data = (await res.json()) as { id: string }
-      return { ok: true, id: data.id }
+      const data = (await res.json()) as IntakeResponse
+      return { ok: true, id: data.id, replayDisabled: Boolean(data.replayDisabled) }
     }
     let message = `HTTP ${res.status}`
     try {

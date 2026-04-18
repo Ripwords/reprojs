@@ -18,12 +18,21 @@ let _reporter: ReporterIdentity | null = null
 let _mounted = false
 let _collectors: ReturnType<typeof registerAllCollectors> | null = null
 
-export function init(options: InitOptions): void {
+export interface FeedbackHandle {
+  pauseReplay: () => void
+  resumeReplay: () => void
+}
+
+export function init(options: InitOptions): FeedbackHandle {
   const cfg = resolveConfig(options)
   _config = cfg
   if (_mounted) unmount()
   if (_collectors) _collectors.stopAll()
-  _collectors = registerAllCollectors(options.collectors ?? {})
+  _collectors = registerAllCollectors({
+    ...options.collectors,
+    replay: cfg.replay ?? options.collectors?.replay,
+  })
+  const collectors = _collectors
   mount({
     config: { position: cfg.position, launcher: cfg.launcher },
     capture,
@@ -43,6 +52,7 @@ export function init(options: InitOptions): void {
       }
       const final = _collectors.applyBeforeSend(pending)
       if (final === null) return { ok: false, message: "aborted by beforeSend" }
+      const replay = await _collectors.flushReplay()
       const result = await postReport(_config, {
         title: final.title,
         description: final.description,
@@ -50,13 +60,21 @@ export function init(options: InitOptions): void {
         metadata: _config.metadata,
         screenshot: final.screenshot,
         logs: final.logs,
+        replayBytes: replay.bytes,
         dwellMs,
         honeypot,
       })
+      if (result.ok && result.replayDisabled) {
+        _collectors.markReplayDisabled()
+      }
       return result.ok ? { ok: true } : { ok: false, message: result.message }
     },
   })
   _mounted = true
+  return {
+    pauseReplay: () => collectors.pauseReplay(),
+    resumeReplay: () => collectors.resumeReplay(),
+  }
 }
 
 export function open(): void {
@@ -78,6 +96,14 @@ export function log(
   level?: BreadcrumbLevel,
 ): void {
   _collectors?.breadcrumb(event, data, level)
+}
+
+export function pauseReplay(): void {
+  _collectors?.pauseReplay()
+}
+
+export function resumeReplay(): void {
+  _collectors?.resumeReplay()
 }
 
 export function _unmount(): void {
