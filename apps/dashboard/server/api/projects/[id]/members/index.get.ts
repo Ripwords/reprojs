@@ -1,6 +1,6 @@
-import { defineEventHandler, getRouterParam } from "h3"
-import { eq } from "drizzle-orm"
-import type { ProjectMemberDTO } from "@feedback-tool/shared"
+import { defineEventHandler, getQuery, getRouterParam } from "h3"
+import { and, eq, inArray } from "drizzle-orm"
+import { ProjectMemberRole, type ProjectMemberDTO } from "@feedback-tool/shared"
 import { db } from "../../../../db"
 import { projectMembers } from "../../../../db/schema"
 import { user } from "../../../../db/schema"
@@ -9,6 +9,13 @@ import { requireProjectRole } from "../../../../lib/permissions"
 export default defineEventHandler(async (event): Promise<ProjectMemberDTO[]> => {
   const id = getRouterParam(event, "id")!
   await requireProjectRole(event, id, "viewer")
+
+  const roleParam = getQuery(event).role
+  const roleTokens = (typeof roleParam === "string" ? roleParam : "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => ProjectMemberRole.safeParse(s).success)
+    .slice(0, 3) as Array<ProjectMemberDTO["role"]>
 
   const rows = await db
     .select({
@@ -20,7 +27,11 @@ export default defineEventHandler(async (event): Promise<ProjectMemberDTO[]> => 
     })
     .from(projectMembers)
     .innerJoin(user, eq(user.id, projectMembers.userId))
-    .where(eq(projectMembers.projectId, id))
+    .where(
+      roleTokens.length
+        ? and(eq(projectMembers.projectId, id), inArray(projectMembers.role, roleTokens))
+        : eq(projectMembers.projectId, id),
+    )
 
   return rows.map((r) => ({
     userId: r.userId,
