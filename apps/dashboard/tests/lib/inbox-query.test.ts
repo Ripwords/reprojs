@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { diffTags } from "../../server/lib/inbox-query"
+import { diffTags, resolveAssigneeFilter } from "../../server/lib/inbox-query"
 
 describe("diffTags", () => {
   test("returns added-only when tags are appended", () => {
@@ -19,5 +19,35 @@ describe("diffTags", () => {
   })
   test("empty → empty returns nothing", () => {
     expect(diffTags([], [])).toEqual({ added: [], removed: [] })
+  })
+})
+
+describe("resolveAssigneeFilter", () => {
+  test("'me' returns { type: 'user', userId: session }", () => {
+    expect(resolveAssigneeFilter(["me"], "user-1")).toEqual([{ type: "user", userId: "user-1" }])
+  })
+  test("'unassigned' returns { type: 'null' }", () => {
+    expect(resolveAssigneeFilter(["unassigned"], "user-1")).toEqual([{ type: "null" }])
+  })
+  test("plain user ids pass through", () => {
+    expect(resolveAssigneeFilter(["user-2", "user-3"], "user-1")).toEqual([
+      { type: "user", userId: "user-2" },
+      { type: "user", userId: "user-3" },
+    ])
+  })
+  test("mixed tokens preserve order", () => {
+    expect(resolveAssigneeFilter(["me", "unassigned", "user-2"], "user-1")).toEqual([
+      { type: "user", userId: "user-1" },
+      { type: "null" },
+      { type: "user", userId: "user-2" },
+    ])
+  })
+  test("empty array returns empty", () => {
+    expect(resolveAssigneeFilter([], "user-1")).toEqual([])
+  })
+  test("dedupes identical tokens", () => {
+    expect(resolveAssigneeFilter(["me", "me"], "user-1")).toEqual([
+      { type: "user", userId: "user-1" },
+    ])
   })
 })
