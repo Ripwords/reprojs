@@ -12,7 +12,10 @@ const PK = "ft_pk_ABCDEF1234567890abcdef12"
 const BAD_PK = "ft_pk_ZZZZZZZZZZZZZZZZZZZZZZZZ"
 const ORIGIN = "http://localhost:4000"
 
-function buildReportJSON(projectKey: string, extra: Partial<{ title: string }> = {}) {
+function buildReportJSON(
+  projectKey: string,
+  extra: Partial<{ title: string; _dwellMs: number; _hp: string }> = {},
+) {
   return JSON.stringify({
     projectKey,
     title: extra.title ?? "It broke",
@@ -24,6 +27,8 @@ function buildReportJSON(projectKey: string, extra: Partial<{ title: string }> =
       timestamp: new Date().toISOString(),
       reporter: { email: "user@example.com" },
     },
+    ...(extra._dwellMs !== undefined ? { _dwellMs: extra._dwellMs } : {}),
+    ...(extra._hp !== undefined ? { _hp: extra._hp } : {}),
   })
 }
 
@@ -111,5 +116,21 @@ describe("intake API", () => {
     expect(res.status).toBe(204)
     expect(res.headers.get("access-control-allow-origin")).toBe(ORIGIN)
     expect(res.headers.get("access-control-allow-methods")).toContain("POST")
+  })
+
+  test("rejects submissions with dwell < 1500ms", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+    const res = await fetch("http://localhost:3000/api/intake/reports", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: buildMultipart(buildReportJSON(PK, { _dwellMs: 300 }), makePngBlob()),
+    })
+    expect(res.status).toBe(400)
   })
 })

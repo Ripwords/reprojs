@@ -55,6 +55,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid report payload" })
   }
 
+  const MIN_DWELL_MS = Number(process.env.INTAKE_MIN_DWELL_MS ?? 1500)
+  if (parsed._dwellMs !== undefined && parsed._dwellMs < MIN_DWELL_MS) {
+    throw createError({ statusCode: 400, statusMessage: "Submission too fast" })
+  }
+
   const [project] = await db
     .select()
     .from(projects)
