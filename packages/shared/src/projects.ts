@@ -13,6 +13,7 @@ export const ProjectDTO = z.object({
   effectiveRole: ProjectRole,
   publicKey: z.string().nullable(),
   allowedOrigins: z.array(z.string()),
+  dailyReportCap: z.number().int().min(1).max(1_000_000),
 })
 export type ProjectDTO = z.infer<typeof ProjectDTO>
 
@@ -24,6 +25,7 @@ export type CreateProjectInput = z.infer<typeof CreateProjectInput>
 export const UpdateProjectInput = z.object({
   name: z.string().min(1).max(80).optional(),
   allowedOrigins: z.array(z.string().url()).max(20).optional(),
+  dailyReportCap: z.number().int().min(1).max(1_000_000).optional(),
 })
 export type UpdateProjectInput = z.infer<typeof UpdateProjectInput>
 

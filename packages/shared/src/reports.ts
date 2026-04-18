@@ -166,6 +166,10 @@ export const ReportIntakeInput = z.object({
   description: z.string().max(10_000).optional(),
   context: ReportContext,
   metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  // Anti-abuse: honeypot (hidden field that real users never fill) and
+  // dwell time in ms between widget open and submit.
+  _hp: z.string().max(200).optional(),
+  _dwellMs: z.number().int().min(0).max(86_400_000).optional(),
 })
 export type ReportIntakeInput = z.infer<typeof ReportIntakeInput>
 
