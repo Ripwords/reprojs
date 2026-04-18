@@ -1,24 +1,28 @@
 <script setup lang="ts">
 definePageMeta({ layout: "auth" })
 const route = useRoute()
-const status = ref<"verifying" | "ok" | "error">("verifying")
 
-onMounted(async () => {
-  const token = route.query.token as string
-  if (!token) {
-    status.value = "error"
-    return
-  }
-  try {
-    await $fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, {
+const rawToken = route.query.token
+const token = typeof rawToken === "string" && rawToken.length > 0 ? rawToken : null
+
+const { error } = await useAsyncData<unknown>(
+  `verify-email-${token ?? "missing"}`,
+  () =>
+    $fetch<unknown>(`/api/auth/verify-email?token=${encodeURIComponent(token ?? "")}`, {
       credentials: "include",
-    })
-    status.value = "ok"
-    setTimeout(() => navigateTo("/"), 1500)
-  } catch {
-    status.value = "error"
-  }
+    }),
+  { immediate: token !== null },
+)
+
+const status = computed<"verifying" | "ok" | "error">(() => {
+  if (token === null) return "error"
+  if (error.value) return "error"
+  return "ok"
 })
+
+if (import.meta.client && status.value === "ok") {
+  setTimeout(() => navigateTo("/"), 1500)
+}
 </script>
 
 <template>
