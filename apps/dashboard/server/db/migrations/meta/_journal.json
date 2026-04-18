@@ -15,6 +15,13 @@
       "when": 1776422849548,
       "tag": "0001_nifty_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776476582412,
+      "tag": "0002_aberrant_meteorite",
+      "breakpoints": true
     }
   ]
 }
