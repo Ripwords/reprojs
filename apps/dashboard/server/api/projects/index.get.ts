@@ -44,7 +44,6 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
-    slug: r.slug,
     createdBy: r.createdBy,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
