@@ -45,27 +45,35 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // Build the shared patch once: bulk-update applies the same field values to every row.
+    const sharedPatch: Partial<typeof reports.$inferInsert> = {}
+    if (body.status !== undefined) sharedPatch.status = body.status
+    if (body.assigneeId !== undefined) sharedPatch.assigneeId = body.assigneeId
+
+    // Filter to rows where at least one field actually changes, and collect per-row audit events.
     const updatedIds: string[] = []
-    const allEvents = []
+    const allEvents: (typeof reportEvents.$inferInsert)[] = []
     for (const current of currents) {
-      const patch: Partial<typeof reports.$inferInsert> = {}
       const change: Parameters<typeof buildReportEvents>[2] = {}
       if (body.status !== undefined && body.status !== current.status) {
-        patch.status = body.status
         change.status = { from: current.status, to: body.status }
       }
       if (body.assigneeId !== undefined && body.assigneeId !== current.assigneeId) {
-        patch.assigneeId = body.assigneeId
         change.assigneeId = { from: current.assigneeId, to: body.assigneeId }
       }
-      if (Object.keys(patch).length === 0) continue
+      if (Object.keys(change).length === 0) continue
 
-      patch.updatedAt = new Date()
-      // eslint-disable-next-line no-await-in-loop -- sequential tx writes; each row depends on its own patch computed above
-      await tx.update(reports).set(patch).where(eq(reports.id, current.id))
       updatedIds.push(current.id)
       allEvents.push(...buildReportEvents(current.id, actorId, change))
       toEnqueue.push(current.id)
+    }
+
+    if (updatedIds.length > 0) {
+      // Single batched UPDATE scoped to this project + the ids that actually need patching.
+      await tx
+        .update(reports)
+        .set({ ...sharedPatch, updatedAt: new Date() })
+        .where(and(eq(reports.projectId, id), inArray(reports.id, updatedIds)))
     }
 
     if (allEvents.length > 0) await tx.insert(reportEvents).values(allEvents)
