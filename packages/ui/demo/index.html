@@ -120,6 +120,17 @@
         <h3>Check the console</h3>
         <p>Open DevTools — this page logs a noisy warning every 2 seconds.</p>
       </section>
+
+      <section class="card">
+        <h3>Seed cookies</h3>
+        <p>
+          Writes a mix of safe and sensitive-named cookies so the Cookies tab shows redaction in
+          action. Sensitive names (<code>session</code>, <code>auth</code>, <code>jwt</code>, etc.)
+          should render as <em>&lt;redacted&gt;</em>; safe ones (<code>locale</code>,
+          <code>theme</code>) keep their values.
+        </p>
+        <button id="seed-cookies-btn" class="broken-btn">Seed cookies</button>
+      </section>
     </main>
 
     <script>
@@ -130,6 +141,30 @@
       // attributes, but without preventDefault the browser still navigates to
       // the current URL on submit — which wipes DevTools and every collector
       // buffer right as you'd want to inspect them.
+      // Seed a set of cookies so the Cookies tab has something to render and
+      // you can see the default denylist redaction (session/auth/jwt/...).
+      document.getElementById("seed-cookies-btn").addEventListener("click", () => {
+        const oneDay = 60 * 60 * 24
+        const cookies = [
+          // Sensitive — should render as <redacted>
+          ["session", "abc123sessionvalue"],
+          ["auth_token", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"],
+          ["jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"],
+          ["api_key", "sk_live_abc123"],
+          // Safe — should render as-is
+          ["locale", "en-US"],
+          ["theme", "light"],
+          ["recent_project", "demo"],
+        ]
+        for (const [name, value] of cookies) {
+          document.cookie = `${name}=${value}; path=/; max-age=${oneDay}; SameSite=Lax`
+        }
+        if (window.FeedbackTool && typeof window.FeedbackTool.log === "function") {
+          window.FeedbackTool.log("demo.cookies.seeded", { count: cookies.length })
+        }
+        console.log("[demo] seeded", cookies.length, "cookies →", document.cookie)
+      })
+
       document.getElementById("demo-form").addEventListener("submit", (e) => {
         e.preventDefault()
         const fd = new FormData(e.target)
@@ -155,7 +190,32 @@
       const ENDPOINT = "http://localhost:3000"
 
       if (/^ft_pk_[A-Za-z0-9]{24}$/.test(PROJECT_KEY)) {
-        FeedbackTool.init({ projectKey: PROJECT_KEY, endpoint: ENDPOINT })
+        FeedbackTool.init({
+          projectKey: PROJECT_KEY,
+          endpoint: ENDPOINT,
+          // Demo config: capture as much as possible so every tab has rich data.
+          // Real host apps should stick to the defaults (bodies off, allowlisted
+          // headers only) — turning everything on leaks PII and ballooons payload
+          // sizes. The string redactors still scrub JWT/PAT/AWS/Slack/Bearer from
+          // captured strings, and URL query params still redact common token keys
+          // unless redactQueryParams is explicitly set to false.
+          collectors: {
+            network: {
+              maxEntries: 100,
+              requestBody: true,
+              responseBody: true,
+              maxBodyBytes: 64 * 1024,
+              allHeaders: true,
+            },
+            console: {
+              maxEntries: 200,
+              maxArgBytes: 4096,
+            },
+            breadcrumbs: {
+              maxEntries: 100,
+            },
+          },
+        })
         FeedbackTool.identify({ email: "demo-user@example.com", name: "Demo User" })
       } else {
         console.error(

@@ -61,7 +61,7 @@ export function registerAllCollectors(config: CollectorConfig): {
   const breadcrumbsCollector = createBreadcrumbsCollector({})
 
   consoleCollector.start({ ...config.console, stringRedactors })
-  networkCollector.start({ ...config.network })
+  networkCollector.start({ ...config.network, stringRedactors })
   cookiesCollector.start({ ...config.cookies })
   breadcrumbsCollector.start({ ...config.breadcrumbs })
 

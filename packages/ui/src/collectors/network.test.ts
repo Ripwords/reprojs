@@ -115,6 +115,24 @@ describe("network collector — fetch", () => {
     globalThis.fetch = originalFetch
   })
 
+  test("with requestBody=true, FormData text parts are deep-inspected + scrubbed", async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () => new Response("")
+    const c = createNetworkCollector({})
+    created.push(c)
+    c.start({ requestBody: true, maxBodyBytes: 4096 })
+    const fd = new FormData()
+    fd.set("title", "hello")
+    fd.set("token", "Bearer abc.def.ghi")
+    fd.set("screenshot", new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }))
+    await fetch("http://example.com/x", { method: "POST", body: fd })
+    const entry = c.snapshot()[0]
+    expect(entry?.requestBody).toContain("title=hello")
+    expect(entry?.requestBody).toContain("token=REDACTED")
+    expect(entry?.requestBody).toContain("screenshot=<image/png 3B>")
+    globalThis.fetch = originalFetch
+  })
+
   test("describes Blob bodies with type and size", async () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = async () => new Response("")

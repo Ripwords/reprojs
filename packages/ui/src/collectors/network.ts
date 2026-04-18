@@ -1,6 +1,7 @@
 // packages/ui/src/collectors/network.ts
 import { RingBuffer } from "./ring-buffer"
 import { redactBody, redactHeaders, redactUrl } from "./redact"
+import { DEFAULT_STRING_REDACTORS, scrubString } from "./serialize"
 
 export interface NetworkEntry {
   id: string
@@ -27,6 +28,9 @@ export interface NetworkConfig {
   allHeaders?: boolean
   redactQueryParams?: boolean
   enabled?: boolean
+  // Forwarded from the top-level CollectorConfig so captured body contents get
+  // the same JWT/PAT/AWS/Slack/Bearer scrubbing as console args do.
+  stringRedactors?: RegExp[]
 }
 
 export interface NetworkCollector {
@@ -39,27 +43,51 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 }
 
-// Produce a short, safe descriptor for non-string fetch bodies. Never read the
-// contents — FormData may contain file blobs, URLSearchParams may carry auth,
-// and ReadableStream can only be consumed once. A descriptor is enough to tell
-// the user "a POST happened with body of shape X".
-function describeBody(body: unknown): string {
+// Produce a short, safe descriptor for non-string fetch bodies. Default mode
+// (deep=false) never reads contents — FormData may hold file blobs,
+// URLSearchParams may carry auth, and ReadableStream can only be consumed once.
+// A descriptor is enough to tell the user "a POST happened with body of shape X".
+//
+// Deep mode (deep=true) is used when the caller has opted into requestBody
+// capture: text parts of FormData/URLSearchParams are inlined through the
+// supplied scrubber so the request body is fully inspectable in the dashboard,
+// while Blob/File parts still get a safe descriptor (binary can't be stringified
+// meaningfully). Totals still respect maxBytes.
+function describeBody(
+  body: unknown,
+  deep: boolean,
+  scrub: (s: string) => string,
+  maxBytes: number,
+): string {
   if (typeof FormData !== "undefined" && body instanceof FormData) {
-    const keys: string[] = []
-    body.forEach((_v, k) => {
-      if (!keys.includes(k)) keys.push(k)
+    const entries: string[] = []
+    body.forEach((v, k) => {
+      if (typeof v === "string") {
+        entries.push(deep ? `${k}=${scrub(v)}` : k)
+      } else if (typeof Blob !== "undefined" && v instanceof Blob) {
+        entries.push(
+          `${k}=<${(v as Blob).type || "application/octet-stream"} ${(v as Blob).size}B>`,
+        )
+      } else {
+        entries.push(k)
+      }
     })
-    return `[FormData: ${keys.length} field${keys.length === 1 ? "" : "s"}${keys.length ? ` — ${keys.join(", ")}` : ""}]`
+    const text = deep ? entries.join("\n") : entries.join(", ")
+    const header = `[FormData: ${entries.length} field${entries.length === 1 ? "" : "s"}]`
+    const combined = entries.length === 0 ? header : `${header}\n${text}`
+    return combined.length > maxBytes ? `${combined.slice(0, maxBytes)}… [truncated]` : combined
   }
   if (typeof Blob !== "undefined" && body instanceof Blob) {
     return `[Blob: ${body.type || "application/octet-stream"}, ${body.size} bytes]`
   }
   if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) {
-    const keys: string[] = []
-    body.forEach((_v, k) => {
-      if (!keys.includes(k)) keys.push(k)
+    const pairs: string[] = []
+    body.forEach((v, k) => {
+      pairs.push(deep ? `${k}=${scrub(v)}` : k)
     })
-    return `[URLSearchParams: ${keys.length} param${keys.length === 1 ? "" : "s"}]`
+    const header = `[URLSearchParams: ${pairs.length} param${pairs.length === 1 ? "" : "s"}]`
+    const combined = pairs.length === 0 ? header : `${header}\n${pairs.join("&")}`
+    return combined.length > maxBytes ? `${combined.slice(0, maxBytes)}… [truncated]` : combined
   }
   if (typeof ArrayBuffer !== "undefined" && body instanceof ArrayBuffer) {
     return `[ArrayBuffer: ${body.byteLength} bytes]`
@@ -109,13 +137,16 @@ export function createNetworkCollector(_initial: NetworkConfig): NetworkCollecto
 
       // Always produce a descriptor for non-string bodies (FormData/Blob/etc.)
       // so the Network tab shows something useful even when requestBody capture
-      // is off. For string bodies, capture the body itself only when opted in.
+      // is off. When opted in, deep-inspect text parts of FormData/URLSearchParams.
+      // For string bodies, capture the body itself only when opted in.
       let requestBody: string | undefined
       const body = init?.body
+      const stringScrub = (s: string) =>
+        scrubString(s, cfg.stringRedactors ?? DEFAULT_STRING_REDACTORS)
       if (cfg.requestBody && typeof body === "string") {
-        requestBody = redactBody(body, { maxBytes: maxBody }) ?? undefined
+        requestBody = stringScrub(redactBody(body, { maxBytes: maxBody }) ?? "") || undefined
       } else if (body !== undefined && body !== null && typeof body !== "string") {
-        requestBody = describeBody(body)
+        requestBody = describeBody(body, Boolean(cfg.requestBody), stringScrub, maxBody)
       }
 
       // Prefer init.headers, but fall back to input.headers when input is a
