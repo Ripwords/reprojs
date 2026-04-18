@@ -1,8 +1,9 @@
+<!-- apps/dashboard/app/components/report-drawer/tabs.vue -->
 <script setup lang="ts">
 import type { LogsAttachment } from "@feedback-tool/shared"
 
 interface Props {
-  activeTab: "overview" | "console" | "network" | "cookies"
+  activeTab: "activity" | "overview" | "console" | "network" | "cookies"
   logs: LogsAttachment | null
 }
 
@@ -23,7 +24,7 @@ const networkErrors = computed(() =>
 <template>
   <nav class="flex gap-4 border-b px-4 text-sm">
     <button
-      v-for="tab in ['overview', 'console', 'network', 'cookies'] as const"
+      v-for="tab in ['activity', 'overview', 'console', 'network', 'cookies'] as const"
       :key="tab"
       type="button"
       class="py-2 capitalize border-b-2 -mb-px"
