@@ -59,9 +59,10 @@ export async function requireProjectRole(
     return { session, effectiveRole: "owner" }
   }
   const [member] = await db
-    .select()
+    .select({ role: projectMembers.role })
     .from(projectMembers)
     .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, session.userId)))
+    .limit(1)
   if (!member) {
     throw createError({ statusCode: 404, statusMessage: "Project not found" })
   }
