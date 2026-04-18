@@ -71,6 +71,7 @@ export const createRateLimiter = createInProcessRateLimiter
 
 let _keyLimiter: RateLimiter | null = null
 let _ipLimiter: RateLimiter | null = null
+let _anonKeyLimiter: RateLimiter | null = null
 
 async function buildLimiter(perMinute: number): Promise<RateLimiter> {
   if (process.env.RATE_LIMIT_STORE === "postgres") {
@@ -92,4 +93,11 @@ export async function getIpLimiter(): Promise<RateLimiter> {
     _ipLimiter = await buildLimiter(Number(process.env.INTAKE_RATE_PER_IP ?? 20))
   }
   return _ipLimiter
+}
+
+export async function getAnonKeyLimiter(): Promise<RateLimiter> {
+  if (!_anonKeyLimiter) {
+    _anonKeyLimiter = await buildLimiter(Number(process.env.INTAKE_RATE_PER_KEY_ANON ?? 10))
+  }
+  return _anonKeyLimiter
 }

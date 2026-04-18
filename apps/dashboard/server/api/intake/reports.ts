@@ -6,7 +6,7 @@ import { db } from "../../db"
 import { projects, reports, reportAttachments } from "../../db/schema"
 import { applyIntakeCors, isOriginAllowed } from "../../lib/intake-cors"
 import { enqueueSync } from "../../lib/enqueue-sync"
-import { getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
+import { getAnonKeyLimiter, getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
 import { getStorage } from "../../lib/storage"
 
 const MAX_BYTES = Number(process.env.INTAKE_MAX_BYTES ?? 5 * 1024 * 1024)
@@ -77,7 +77,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
   }
 
-  const keyTake = await (await getKeyLimiter()).take(`key:${project.id}`)
+  const isAnon = !parsed.context.reporter?.userId
+  const keyLimiter = await (isAnon ? getAnonKeyLimiter() : getKeyLimiter())
+  const keyTake = await keyLimiter.take(`${isAnon ? "anon" : "key"}:${project.id}`)
   if (!keyTake.allowed) {
     event.node.res.setHeader("Retry-After", Math.ceil(keyTake.retryAfterMs / 1000).toString())
     throw createError({ statusCode: 429, statusMessage: "Too many reports for this project" })

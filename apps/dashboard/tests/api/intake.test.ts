@@ -5,6 +5,8 @@ import { createUser, makePngBlob, seedProject, truncateDomain, truncateReports }
 import { db } from "../../server/db"
 import { projects, reports, reportAttachments } from "../../server/db/schema"
 
+process.env.INTAKE_RATE_PER_KEY_ANON = "2"
+
 await setup({ server: true, port: 3000, host: "localhost" })
 setDefaultTimeout(15000)
 
@@ -14,8 +16,19 @@ const ORIGIN = "http://localhost:4000"
 
 function buildReportJSON(
   projectKey: string,
-  extra: Partial<{ title: string; _dwellMs: number; _hp: string }> = {},
+  extra: Partial<{
+    title: string
+    _dwellMs: number
+    _hp: string
+    reporterUserId: string | null
+  }> = {},
 ) {
+  const reporter =
+    extra.reporterUserId === null
+      ? undefined
+      : extra.reporterUserId
+        ? { userId: extra.reporterUserId, email: "user@example.com" }
+        : { email: "user@example.com" }
   return JSON.stringify({
     projectKey,
     title: extra.title ?? "It broke",
@@ -25,7 +38,7 @@ function buildReportJSON(
       userAgent: "Mozilla/5.0 Test",
       viewport: { w: 1440, h: 900 },
       timestamp: new Date().toISOString(),
-      reporter: { email: "user@example.com" },
+      ...(reporter ? { reporter } : {}),
     },
     ...(extra._dwellMs !== undefined ? { _dwellMs: extra._dwellMs } : {}),
     ...(extra._hp !== undefined ? { _hp: extra._hp } : {}),
@@ -184,5 +197,50 @@ describe("intake API", () => {
     })
     expect(r2.status).toBe(429)
     expect(r2.headers.get("retry-after")).toBe("3600")
+  })
+
+  test("tiered rate limit: anonymous stricter than authenticated", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+
+    // Two anonymous submissions (with generous dwell) should succeed at the anon limit of 2
+    for (let i = 0; i < 2; i++) {
+      // eslint-disable-next-line no-await-in-loop -- sequential required: must hit rate limiter in order
+      const r = await fetch("http://localhost:3000/api/intake/reports", {
+        method: "POST",
+        headers: { Origin: ORIGIN },
+        body: buildMultipart(
+          buildReportJSON(PK, { reporterUserId: null, _dwellMs: 2000 }),
+          makePngBlob(),
+        ),
+      })
+      expect(r.status).toBe(201)
+    }
+    // Third anonymous hits the ceiling
+    const r3 = await fetch("http://localhost:3000/api/intake/reports", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: buildMultipart(
+        buildReportJSON(PK, { reporterUserId: null, _dwellMs: 2000 }),
+        makePngBlob(),
+      ),
+    })
+    expect(r3.status).toBe(429)
+
+    // An authenticated submission goes through (different bucket, 60/min)
+    const authed = await fetch("http://localhost:3000/api/intake/reports", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: buildMultipart(
+        buildReportJSON(PK, { reporterUserId: "user_1", _dwellMs: 2000 }),
+        makePngBlob(),
+      ),
+    })
+    expect(authed.status).toBe(201)
   })
 })
