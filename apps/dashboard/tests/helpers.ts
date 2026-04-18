@@ -31,9 +31,13 @@ export async function createUser(
     sql`UPDATE "user" SET email_verified = true, role = ${role} WHERE email = ${email}`,
   )
   const rows = await db.execute(sql`SELECT id FROM "user" WHERE email = ${email}`)
-  // drizzle returns { rows: [...] } for raw execute in node-postgres adapter
-  const firstRow = Array.isArray(rows) ? rows[0] : (rows as { rows: Array<{ id: string }> }).rows[0]
-  return (firstRow as { id: string }).id
+  // drizzle-orm's raw execute typing is `QueryResult<Record<string, unknown>>` under
+  // node-postgres, which doesn't overlap with the runtime shape we depend on.
+  // Go through `unknown` to narrow to the concrete row type we know we're getting.
+  const firstRow = Array.isArray(rows)
+    ? (rows[0] as { id: string })
+    : (rows as unknown as { rows: Array<{ id: string }> }).rows[0]
+  return firstRow.id
 }
 
 export async function signIn(email: string): Promise<string> {

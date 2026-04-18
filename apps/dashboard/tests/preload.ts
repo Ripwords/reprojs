@@ -30,3 +30,6 @@ async function checkServer(retries = 30, delayMs = 1000): Promise<void> {
 if (!process.env.SKIP_SERVER_CHECK) {
   await checkServer()
 }
+
+// Marks this file as a module so top-level `await` above is valid.
+export {}
