@@ -24,23 +24,30 @@ export interface AppSession {
   status: "active" | "invited" | "disabled"
 }
 
+// Type-level: better-auth's $Infer surfaces the full user shape including our
+// configured `additionalFields` (role/status). getSession()'s return type, for
+// reasons internal to better-auth, narrows to the core fields only — but the
+// runtime value IS the full shape. Bridge with a type assertion against the
+// $Infer type (which is authoritative, driven by auth.ts). If auth.ts ever
+// renames a field, TypeScript catches the drift here instead of silently
+// producing `undefined` at the usage site.
+type InferredUser = typeof auth.$Infer.Session.user
+
 export async function requireSession(event: H3Event): Promise<AppSession> {
   const session = await auth.api.getSession({ headers: event.headers })
   if (!session?.user) {
     throw createError({ statusCode: 401, statusMessage: "Unauthenticated" })
   }
-  // better-auth's inferred session.user type doesn't carry our `additionalFields`
-  // (role/status), so cast to the shape we configured in auth.ts.
-  const u = session.user as unknown as {
-    id: string
-    email: string
-    role: "admin" | "member"
-    status: "active" | "invited" | "disabled"
-  }
+  const u = session.user as InferredUser
   if (u.status === "disabled") {
     throw createError({ statusCode: 403, statusMessage: "Account disabled" })
   }
-  return { userId: u.id, email: u.email, role: u.role, status: u.status }
+  return {
+    userId: u.id,
+    email: u.email,
+    role: u.role as AppSession["role"],
+    status: u.status as AppSession["status"],
+  }
 }
 
 export async function requireInstallAdmin(event: H3Event): Promise<AppSession> {

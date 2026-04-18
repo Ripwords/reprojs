@@ -94,7 +94,7 @@ describe("intake API", () => {
     expect(atts[0].kind).toBe("screenshot")
   })
 
-  test("rejects wrong origin with 403 (but still sets ACAO)", async () => {
+  test("rejects wrong origin with 403 and withholds ACAO (no cross-origin oracle)", async () => {
     const admin = await createUser("admin@example.com", "admin")
     await seedProject({
       name: "Demo",
@@ -109,7 +109,10 @@ describe("intake API", () => {
       body: buildMultipart(buildReportJSON(PK), makePngBlob()),
     })
     expect(res.status).toBe(403)
-    expect(res.headers.get("access-control-allow-origin")).toBe("http://evil.example.com")
+    // ACAO deliberately NOT emitted before origin validation — this blocks
+    // cross-origin scripts from reading the 401/403 error body and using it
+    // as an enumeration oracle for valid project keys.
+    expect(res.headers.get("access-control-allow-origin")).toBeNull()
   })
 
   test("rejects bad project key with 401", async () => {

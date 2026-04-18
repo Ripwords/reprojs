@@ -2,18 +2,33 @@ import type { H3Event } from "h3"
 import { getHeader, setHeaders } from "h3"
 
 /**
- * Applies the CORS response headers for the public intake endpoint. Always
- * reflects the request Origin (if present) so the SDK can read both success
- * and error responses. Actual origin-allowlist enforcement happens against
- * the specific project's allow-list inside the POST handler.
+ * Headers for the CORS preflight (OPTIONS) on the intake endpoint.
+ * Safe to reflect the request Origin here: preflights don't expose response
+ * bodies to cross-origin scripts on their own — they only tell the browser
+ * that a subsequent real request will pass CORS. Emitting ACAO here lets the
+ * browser proceed; the real security check happens on the POST response,
+ * where we only emit ACAO AFTER the origin passes the project's allowlist.
  */
-export function applyIntakeCors(event: H3Event) {
+export function applyIntakePreflightCors(event: H3Event) {
   const origin = getHeader(event, "origin") ?? "*"
   setHeaders(event, {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "600",
+    Vary: "Origin",
+  })
+}
+
+/**
+ * Emit ACAO + Vary on a real response AFTER the origin has been validated
+ * against the target project's allowlist. Before validation we deliberately
+ * do NOT emit ACAO, so cross-origin scripts cannot read error response bodies
+ * (e.g. "Invalid project key") and use them as an enumeration oracle.
+ */
+export function applyIntakePostCors(event: H3Event, allowedOrigin: string) {
+  setHeaders(event, {
+    "Access-Control-Allow-Origin": allowedOrigin,
     Vary: "Origin",
   })
 }

@@ -4,7 +4,11 @@ import { randomUUID } from "node:crypto"
 import { LogsAttachment, ReportIntakeInput } from "@feedback-tool/shared"
 import { db } from "../../db"
 import { projects, reports, reportAttachments } from "../../db/schema"
-import { applyIntakeCors, isOriginAllowed } from "../../lib/intake-cors"
+import {
+  applyIntakePostCors,
+  applyIntakePreflightCors,
+  isOriginAllowed,
+} from "../../lib/intake-cors"
 import { enqueueSync } from "../../lib/enqueue-sync"
 import { env } from "../../lib/env"
 import { getAnonKeyLimiter, getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
@@ -19,9 +23,10 @@ const MIN_DWELL_MS = env.INTAKE_MIN_DWELL_MS
 const REQUIRE_DWELL = env.INTAKE_REQUIRE_DWELL
 
 export default defineEventHandler(async (event) => {
-  applyIntakeCors(event)
-
+  // Preflight reflects Origin so browsers can proceed with the real POST.
+  // No response body reads happen on preflight, so this is safe.
   if (event.method === "OPTIONS") {
+    applyIntakePreflightCors(event)
     event.node.res.statusCode = 204
     return ""
   }
@@ -72,8 +77,14 @@ export default defineEventHandler(async (event) => {
   // an attacker with just a leaked project key can burn the legitimate SDK's
   // quota from any origin (including origins not on the allowlist).
   if (!isOriginAllowed(origin, project.allowedOrigins)) {
+    // Deliberately do NOT emit ACAO here — cross-origin scripts cannot read
+    // this 403 body, which removes the cross-origin enumeration oracle.
     throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
   }
+
+  // Origin validated: emit ACAO so the legitimate SDK (on this allowed origin)
+  // can read both success AND error bodies of the rest of this request.
+  applyIntakePostCors(event, origin)
 
   // S1: Honeypot check BEFORE rate-limit takes. Bots that set _hp must not
   // consume quota — tarpit them cheaply without burning the project's budget.

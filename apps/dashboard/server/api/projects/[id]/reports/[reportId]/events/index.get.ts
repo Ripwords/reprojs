@@ -24,28 +24,26 @@ export default defineEventHandler(async (event) => {
   const limit = Math.min(100, Math.max(1, Number(q.limit ?? 50)))
   const offset = Math.max(0, Number(q.offset ?? 0))
 
-  const [countRow] = await db
-    .select({ total: count() })
-    .from(reportEvents)
-    .where(eq(reportEvents.reportId, reportId))
-  const total = countRow?.total ?? 0
-
-  const rows = await db
-    .select({
-      id: reportEvents.id,
-      createdAt: reportEvents.createdAt,
-      kind: reportEvents.kind,
-      payload: reportEvents.payload,
-      actorId: reportEvents.actorId,
-      actorName: userTable.name,
-      actorEmail: userTable.email,
-    })
-    .from(reportEvents)
-    .leftJoin(userTable, eq(userTable.id, reportEvents.actorId))
-    .where(eq(reportEvents.reportId, reportId))
-    .orderBy(desc(reportEvents.createdAt))
-    .limit(limit)
-    .offset(offset)
+  const [countResult, rows] = await Promise.all([
+    db.select({ total: count() }).from(reportEvents).where(eq(reportEvents.reportId, reportId)),
+    db
+      .select({
+        id: reportEvents.id,
+        createdAt: reportEvents.createdAt,
+        kind: reportEvents.kind,
+        payload: reportEvents.payload,
+        actorId: reportEvents.actorId,
+        actorName: userTable.name,
+        actorEmail: userTable.email,
+      })
+      .from(reportEvents)
+      .leftJoin(userTable, eq(userTable.id, reportEvents.actorId))
+      .where(eq(reportEvents.reportId, reportId))
+      .orderBy(desc(reportEvents.createdAt))
+      .limit(limit)
+      .offset(offset),
+  ])
+  const total = countResult[0]?.total ?? 0
 
   const items: ReportEventDTO[] = rows.map((r) => ({
     id: r.id,
