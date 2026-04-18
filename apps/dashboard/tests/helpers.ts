@@ -98,6 +98,10 @@ export async function seedProject(opts: {
   return p.id
 }
 
+export async function truncateGithub() {
+  await db.execute(sql`TRUNCATE report_sync_jobs, github_integrations RESTART IDENTITY CASCADE`)
+}
+
 export function makePngBlob(): Blob {
   // Minimal valid 1x1 PNG (signature + IHDR + IDAT + IEND)
   const bytes = new Uint8Array([
