@@ -14,6 +14,8 @@ const MAX_BYTES = Number(process.env.INTAKE_MAX_BYTES ?? 5 * 1024 * 1024)
 // operator controls. Default OFF so a public deployment can't be trivially
 // rate-limit bypassed by spoofing the header.
 const TRUST_XFF = process.env.TRUST_XFF === "true"
+const MIN_DWELL_MS = Number(process.env.INTAKE_MIN_DWELL_MS ?? 1500)
+const REQUIRE_DWELL = process.env.INTAKE_REQUIRE_DWELL !== "false"
 
 export default defineEventHandler(async (event) => {
   applyIntakeCors(event)
@@ -56,11 +58,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid report payload" })
   }
 
-  const MIN_DWELL_MS = Number(process.env.INTAKE_MIN_DWELL_MS ?? 1500)
-  if (parsed._dwellMs !== undefined && parsed._dwellMs < MIN_DWELL_MS) {
-    throw createError({ statusCode: 400, statusMessage: "Submission too fast" })
-  }
-
   const [project] = await db
     .select()
     .from(projects)
@@ -77,24 +74,41 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
   }
 
-  const isAnon = !parsed.context.reporter?.userId
-  const keyLimiter = await (isAnon ? getAnonKeyLimiter() : getKeyLimiter())
-  const keyTake = await keyLimiter.take(`${isAnon ? "anon" : "key"}:${project.id}`)
-  if (!keyTake.allowed) {
-    event.node.res.setHeader("Retry-After", Math.ceil(keyTake.retryAfterMs / 1000).toString())
-    throw createError({ statusCode: 429, statusMessage: "Too many reports for this project" })
-  }
-  const ipTake = await (await getIpLimiter()).take(`ip:${ip}`)
-  if (!ipTake.allowed) {
-    event.node.res.setHeader("Retry-After", Math.ceil(ipTake.retryAfterMs / 1000).toString())
-    throw createError({ statusCode: 429, statusMessage: "Too many reports from this IP" })
-  }
-
+  // S1: Honeypot check BEFORE rate-limit takes. Bots that set _hp must not
+  // consume quota — tarpit them cheaply without burning the project's budget.
   if (parsed._hp && parsed._hp.length > 0) {
     // Tarpit: look successful to the attacker so they don't switch tactics.
     // Fake UUID, no DB write, no enqueue.
     event.node.res.statusCode = 201
     return { id: randomUUID() }
+  }
+
+  // S2: Require _dwellMs to be present and above the minimum. Bots that omit
+  // the field entirely are now rejected. Opt-out via INTAKE_REQUIRE_DWELL=false
+  // during SDK rollout to avoid breaking older SDK versions.
+  if (REQUIRE_DWELL && (parsed._dwellMs === undefined || parsed._dwellMs < MIN_DWELL_MS)) {
+    throw createError({ statusCode: 400, statusMessage: "Submission too fast" })
+  }
+
+  // P4: Fetch both limiters and fire both takes in parallel to halve the
+  // round-trip count when RATE_LIMIT_STORE=postgres.
+  const isAnon = !parsed.context.reporter?.userId
+  const keyLimiter = await (isAnon ? getAnonKeyLimiter() : getKeyLimiter())
+  const ipLimiter = await getIpLimiter()
+  const [keyTake, ipTake] = await Promise.all([
+    keyLimiter.take(`${isAnon ? "anon" : "key"}:${project.id}`),
+    ipLimiter.take(`ip:${ip}`),
+  ])
+  if (!keyTake.allowed || !ipTake.allowed) {
+    const retryAfterMs = Math.max(
+      keyTake.allowed ? 0 : keyTake.retryAfterMs,
+      ipTake.allowed ? 0 : ipTake.retryAfterMs,
+    )
+    event.node.res.setHeader("Retry-After", Math.ceil(retryAfterMs / 1000).toString())
+    const message = !keyTake.allowed
+      ? "Too many reports for this project"
+      : "Too many reports from this IP"
+    throw createError({ statusCode: 429, statusMessage: message })
   }
 
   // Daily ceiling — hard cap on reports per project per rolling 24h window.
@@ -132,30 +146,49 @@ export default defineEventHandler(async (event) => {
     })
     .returning()
 
-  if (screenshotPart?.data && screenshotPart.data.length > 0) {
+  // P3: Call getStorage() once and fan out attachment writes with Promise.all.
+  // Screenshot and logs uploads no longer serialize.
+  const screenshotData =
+    screenshotPart?.data && screenshotPart.data.length > 0 ? screenshotPart.data : null
+  const logsData = parsedLogs && logsPart?.data ? logsPart.data : null
+  if (screenshotData !== null || logsData !== null) {
     const storage = await getStorage()
-    const key = `${report.id}/screenshot.png`
-    await storage.put(key, new Uint8Array(screenshotPart.data), "image/png")
-    await db.insert(reportAttachments).values({
-      reportId: report.id,
-      kind: "screenshot",
-      storageKey: key,
-      contentType: "image/png",
-      sizeBytes: screenshotPart.data.length,
-    })
-  }
-
-  if (parsedLogs && logsPart?.data) {
-    const storage = await getStorage()
-    const key = `${report.id}/logs.json`
-    await storage.put(key, new Uint8Array(logsPart.data), "application/json")
-    await db.insert(reportAttachments).values({
-      reportId: report.id,
-      kind: "logs",
-      storageKey: key,
-      contentType: "application/json",
-      sizeBytes: logsPart.data.length,
-    })
+    const writes: Promise<void>[] = []
+    if (screenshotData !== null) {
+      const key = `${report.id}/screenshot.png`
+      writes.push(
+        storage
+          .put(key, new Uint8Array(screenshotData), "image/png")
+          .then(() =>
+            db.insert(reportAttachments).values({
+              reportId: report.id,
+              kind: "screenshot",
+              storageKey: key,
+              contentType: "image/png",
+              sizeBytes: screenshotData.length,
+            }),
+          )
+          .then(() => undefined),
+      )
+    }
+    if (logsData !== null) {
+      const key = `${report.id}/logs.json`
+      writes.push(
+        storage
+          .put(key, new Uint8Array(logsData), "application/json")
+          .then(() =>
+            db.insert(reportAttachments).values({
+              reportId: report.id,
+              kind: "logs",
+              storageKey: key,
+              contentType: "application/json",
+              sizeBytes: logsData.length,
+            }),
+          )
+          .then(() => undefined),
+      )
+    }
+    await Promise.all(writes)
   }
 
   await enqueueSync(report.id, project.id).catch((err) => {

@@ -1,0 +1,2 @@
+CREATE INDEX "reports_github_issue_number_idx" ON "reports" USING btree ("github_issue_number") WHERE "reports"."github_issue_number" IS NOT NULL;--> statement-breakpoint
+CREATE INDEX "project_members_user_idx" ON "project_members" USING btree ("user_id");
