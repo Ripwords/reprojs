@@ -11,6 +11,7 @@ import { db } from "../../../../../db"
 import { reportAttachments, reports } from "../../../../../db/schema"
 import { requireProjectRole } from "../../../../../lib/permissions"
 import { getStorage } from "../../../../../lib/storage"
+import { verifyAttachmentToken } from "../../../../../lib/signed-attachment-url"
 
 export default defineEventHandler(async (event) => {
   const projectId = getRouterParam(event, "id")
@@ -18,10 +19,37 @@ export default defineEventHandler(async (event) => {
   if (!projectId || !reportId) {
     throw createError({ statusCode: 400, statusMessage: "missing params" })
   }
-  await requireProjectRole(event, projectId, "viewer")
 
-  const kindRaw = getQuery(event).kind
+  const q = getQuery(event)
+  const kindRaw = q.kind
   const kind = typeof kindRaw === "string" ? kindRaw : "screenshot"
+
+  // Signed-token fast path: used by GitHub-embedded screenshot URLs, no session.
+  const tokenRaw = q.token
+  const expiresRaw = q.expires
+  if (typeof tokenRaw === "string" && typeof expiresRaw === "string") {
+    const expiresAt = Number.parseInt(expiresRaw, 10)
+    if (!Number.isFinite(expiresAt)) {
+      throw createError({ statusCode: 401, statusMessage: "Invalid token" })
+    }
+    const secret = process.env.ATTACHMENT_URL_SECRET
+    if (!secret) {
+      throw createError({ statusCode: 500, statusMessage: "ATTACHMENT_URL_SECRET not set" })
+    }
+    const ok = verifyAttachmentToken({
+      secret,
+      projectId,
+      reportId,
+      kind,
+      expiresAt,
+      token: tokenRaw,
+    })
+    if (!ok) {
+      throw createError({ statusCode: 401, statusMessage: "Invalid or expired token" })
+    }
+  } else {
+    await requireProjectRole(event, projectId, "viewer")
+  }
 
   const [row] = await db
     .select({
