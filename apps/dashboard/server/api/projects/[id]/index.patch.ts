@@ -25,5 +25,6 @@ export default defineEventHandler(async (event) => {
     effectiveRole: "owner" as const,
     publicKey: updated.publicKey,
     allowedOrigins: updated.allowedOrigins,
+    dailyReportCap: updated.dailyReportCap,
   }
 })

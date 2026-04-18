@@ -22,6 +22,7 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       effectiveRole: "owner",
+      dailyReportCap: r.dailyReportCap,
     }))
   }
 
@@ -33,6 +34,7 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
       createdAt: projects.createdAt,
       updatedAt: projects.updatedAt,
       role: projectMembers.role,
+      dailyReportCap: projects.dailyReportCap,
     })
     .from(projects)
     .innerJoin(projectMembers, eq(projectMembers.projectId, projects.id))
@@ -47,5 +49,6 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     effectiveRole: r.role as "viewer" | "developer" | "owner",
+    dailyReportCap: r.dailyReportCap,
   }))
 })

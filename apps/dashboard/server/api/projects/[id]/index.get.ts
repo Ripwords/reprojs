@@ -22,5 +22,6 @@ export default defineEventHandler(async (event) => {
     effectiveRole,
     publicKey: p.publicKey,
     allowedOrigins: p.allowedOrigins,
+    dailyReportCap: p.dailyReportCap,
   }
 })

@@ -29,5 +29,6 @@ export default defineEventHandler(async (event) => {
     createdAt: created.createdAt.toISOString(),
     updatedAt: created.updatedAt.toISOString(),
     effectiveRole: "owner" as const,
+    dailyReportCap: created.dailyReportCap,
   }
 })
