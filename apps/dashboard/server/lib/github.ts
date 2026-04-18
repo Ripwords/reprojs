@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 import { isAbsolute, resolve } from "node:path"
 import { createInstallationClient } from "@feedback-tool/integrations-github"
 import type { GitHubInstallationClient } from "@feedback-tool/integrations-github"
+import { env } from "./env"
 
 function resolvePrivateKey(raw: string): string {
   if (raw.includes("-----BEGIN")) return raw.replace(/\\n/g, "\n")
@@ -23,8 +24,8 @@ export function __setClientOverride(
 
 export function getGithubClient(installationId: number): GitHubInstallationClient {
   if (overrideFactory) return overrideFactory(installationId)
-  const appId = process.env.GITHUB_APP_ID
-  const raw = process.env.GITHUB_APP_PRIVATE_KEY ?? ""
+  const appId = env.GITHUB_APP_ID
+  const raw = env.GITHUB_APP_PRIVATE_KEY
   if (!appId || !raw) {
     throw new Error("GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY must be set")
   }
@@ -32,7 +33,7 @@ export function getGithubClient(installationId: number): GitHubInstallationClien
 }
 
 export function getWebhookSecret(): string {
-  const s = process.env.GITHUB_APP_WEBHOOK_SECRET
+  const s = env.GITHUB_APP_WEBHOOK_SECRET
   if (!s) throw new Error("GITHUB_APP_WEBHOOK_SECRET must be set")
   return s
 }

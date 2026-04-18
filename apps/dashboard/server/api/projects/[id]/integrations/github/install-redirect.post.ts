@@ -1,4 +1,5 @@
 import { createError, defineEventHandler, getRouterParam } from "h3"
+import { env } from "../../../../../lib/env"
 import { signInstallState } from "../../../../../lib/github"
 import { requireProjectRole } from "../../../../../lib/permissions"
 
@@ -8,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const { session } = await requireProjectRole(event, projectId, "owner")
   const exp = Math.floor(Date.now() / 1000) + 10 * 60
   const state = signInstallState({ projectId, userId: session.userId, exp })
-  const slug = process.env.GITHUB_APP_SLUG ?? "feedback-tool"
+  const slug = env.GITHUB_APP_SLUG
   return {
     url: `https://github.com/apps/${slug}/installations/new?state=${state}`,
   }

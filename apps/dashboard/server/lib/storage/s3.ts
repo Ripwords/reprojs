@@ -4,11 +4,12 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3"
+import { env } from "../env"
 import type { StorageAdapter } from "./index"
 
 function resolveCredentials(): { accessKeyId: string; secretAccessKey: string } {
-  const envId = process.env.S3_ACCESS_KEY_ID
-  const envSecret = process.env.S3_SECRET_ACCESS_KEY
+  const envId = env.S3_ACCESS_KEY_ID
+  const envSecret = env.S3_SECRET_ACCESS_KEY
   if (envId && envSecret) return { accessKeyId: envId, secretAccessKey: envSecret }
   throw new Error("S3 credentials missing. Set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY.")
 }
@@ -74,14 +75,12 @@ export class S3Adapter implements StorageAdapter {
   private readonly bucket: string
 
   constructor() {
-    this.bucket = process.env.S3_BUCKET ?? "feedback-tool-attachments"
-    const endpoint = process.env.S3_ENDPOINT
-      ? validateS3Endpoint(process.env.S3_ENDPOINT)
-      : undefined
+    this.bucket = env.S3_BUCKET
+    const endpoint = env.S3_ENDPOINT ? validateS3Endpoint(env.S3_ENDPOINT) : undefined
     this.client = new S3Client({
       ...(endpoint ? { endpoint } : {}),
-      region: process.env.S3_REGION ?? "us-east-1",
-      forcePathStyle: process.env.S3_VIRTUAL_HOSTED !== "true",
+      region: env.S3_REGION,
+      forcePathStyle: !env.S3_VIRTUAL_HOSTED,
       credentials: resolveCredentials(),
     })
   }

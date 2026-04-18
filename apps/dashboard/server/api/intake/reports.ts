@@ -6,16 +6,17 @@ import { db } from "../../db"
 import { projects, reports, reportAttachments } from "../../db/schema"
 import { applyIntakeCors, isOriginAllowed } from "../../lib/intake-cors"
 import { enqueueSync } from "../../lib/enqueue-sync"
+import { env } from "../../lib/env"
 import { getAnonKeyLimiter, getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
 import { getStorage } from "../../lib/storage"
 
-const MAX_BYTES = Number(process.env.INTAKE_MAX_BYTES ?? 5 * 1024 * 1024)
+const MAX_BYTES = env.INTAKE_MAX_BYTES
 // Only trust X-Forwarded-For when the deployment is behind a reverse proxy the
 // operator controls. Default OFF so a public deployment can't be trivially
 // rate-limit bypassed by spoofing the header.
-const TRUST_XFF = process.env.TRUST_XFF === "true"
-const MIN_DWELL_MS = Number(process.env.INTAKE_MIN_DWELL_MS ?? 1500)
-const REQUIRE_DWELL = process.env.INTAKE_REQUIRE_DWELL !== "false"
+const TRUST_XFF = env.TRUST_XFF
+const MIN_DWELL_MS = env.INTAKE_MIN_DWELL_MS
+const REQUIRE_DWELL = env.INTAKE_REQUIRE_DWELL
 
 export default defineEventHandler(async (event) => {
   applyIntakeCors(event)

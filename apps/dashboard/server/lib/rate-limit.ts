@@ -1,3 +1,5 @@
+import { env } from "./env"
+
 export interface RateLimiterOptions {
   perMinute: number
   now?: () => number
@@ -71,7 +73,7 @@ let _ipLimiter: RateLimiter | null = null
 let _anonKeyLimiter: RateLimiter | null = null
 
 async function buildLimiter(perMinute: number): Promise<RateLimiter> {
-  if (process.env.RATE_LIMIT_STORE === "postgres") {
+  if (env.RATE_LIMIT_STORE === "postgres") {
     const { createPgRateLimiter } = await import("./rate-limit-pg")
     return createPgRateLimiter({ perMinute })
   }
@@ -80,21 +82,21 @@ async function buildLimiter(perMinute: number): Promise<RateLimiter> {
 
 export async function getKeyLimiter(): Promise<RateLimiter> {
   if (!_keyLimiter) {
-    _keyLimiter = await buildLimiter(Number(process.env.INTAKE_RATE_PER_KEY ?? 60))
+    _keyLimiter = await buildLimiter(env.INTAKE_RATE_PER_KEY)
   }
   return _keyLimiter
 }
 
 export async function getIpLimiter(): Promise<RateLimiter> {
   if (!_ipLimiter) {
-    _ipLimiter = await buildLimiter(Number(process.env.INTAKE_RATE_PER_IP ?? 20))
+    _ipLimiter = await buildLimiter(env.INTAKE_RATE_PER_IP)
   }
   return _ipLimiter
 }
 
 export async function getAnonKeyLimiter(): Promise<RateLimiter> {
   if (!_anonKeyLimiter) {
-    _anonKeyLimiter = await buildLimiter(Number(process.env.INTAKE_RATE_PER_KEY_ANON ?? 10))
+    _anonKeyLimiter = await buildLimiter(env.INTAKE_RATE_PER_KEY_ANON)
   }
   return _anonKeyLimiter
 }

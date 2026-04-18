@@ -2,10 +2,11 @@ import { createError, defineEventHandler, getQuery, sendRedirect } from "h3"
 import { eq } from "drizzle-orm"
 import { db } from "../../../db"
 import { githubIntegrations } from "../../../db/schema"
+import { env } from "../../../lib/env"
 import { verifyInstallState } from "../../../lib/github"
 import { requireProjectRole } from "../../../lib/permissions"
 
-const dashboardBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
+const dashboardBaseUrl = env.BETTER_AUTH_URL
 
 function errorStatus(err: unknown): number | null {
   if (err && typeof err === "object" && "statusCode" in err) {

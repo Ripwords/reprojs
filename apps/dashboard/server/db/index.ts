@@ -1,9 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres"
 import { Pool } from "pg"
+import { env } from "../lib/env"
 import * as schema from "./schema"
-
-const url = process.env.DATABASE_URL
-if (!url) throw new Error("DATABASE_URL is required")
 
 // Pool + timeout defaults chosen so a runaway query or a leaked transaction
 // can't drain the pool:
@@ -16,10 +14,10 @@ if (!url) throw new Error("DATABASE_URL is required")
 // comfortably above any realistic query latency. Raise via env if a future
 // workload legitimately needs longer.
 const client = new Pool({
-  connectionString: url,
-  max: Number(process.env.DB_POOL_MAX ?? 10),
-  statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 30_000),
-  idle_in_transaction_session_timeout: Number(process.env.DB_IDLE_TX_TIMEOUT_MS ?? 10_000),
+  connectionString: env.DATABASE_URL,
+  max: env.DB_POOL_MAX,
+  statement_timeout: env.DB_STATEMENT_TIMEOUT_MS,
+  idle_in_transaction_session_timeout: env.DB_IDLE_TX_TIMEOUT_MS,
 })
 export const db = drizzle(client, { schema })
 export type DB = typeof db

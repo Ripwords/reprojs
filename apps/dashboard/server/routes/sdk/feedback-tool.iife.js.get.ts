@@ -1,13 +1,15 @@
 import { readFile, stat } from "node:fs/promises"
 import { join } from "node:path"
 import { createError, defineEventHandler, setHeader, setResponseStatus } from "h3"
+import { env } from "../../lib/env"
 
 // `bun run dev` at the repo root invokes `bun --filter dashboard dev`, which
 // sets cwd to `apps/dashboard/`. In production, cwd will be the `.output/`
 // deploy root. An explicit SDK_PATH env var overrides both for custom deploys.
 const SDK_PATH =
-  process.env.SDK_PATH ??
-  join(process.cwd(), "..", "..", "packages", "core", "dist", "feedback-tool.iife.js")
+  env.SDK_PATH !== ""
+    ? env.SDK_PATH
+    : join(process.cwd(), "..", "..", "packages", "core", "dist", "feedback-tool.iife.js")
 
 // Keyed on file mtime so a rebuild (new sdk:build output) invalidates the cache
 // automatically — no dashboard restart required.

@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer"
+import { env } from "./env"
 
 type MailProvider = "console" | "ethereal" | "smtp"
 
@@ -61,17 +62,17 @@ async function getTransporter(): Promise<Transporter | null> {
 function loadConfig(): MailConfig {
   // Default: `console` for dev (prints verification URL to stdout — no external
   // network, no rate-limit friction). Set MAIL_PROVIDER=smtp for real email.
-  const provider = (process.env.MAIL_PROVIDER ?? "console") as MailProvider
-  const from = process.env.SMTP_FROM ?? "Feedback Tool <no-reply@localhost>"
+  const provider: MailProvider = env.MAIL_PROVIDER
+  const from = env.SMTP_FROM
   if (provider === "smtp") {
     return {
       provider,
       from,
       smtp: {
-        host: process.env.SMTP_HOST ?? "",
-        port: Number(process.env.SMTP_PORT ?? 587),
-        user: process.env.SMTP_USER ?? "",
-        pass: process.env.SMTP_PASS ?? "",
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        user: env.SMTP_USER,
+        pass: env.SMTP_PASS,
       },
     }
   }

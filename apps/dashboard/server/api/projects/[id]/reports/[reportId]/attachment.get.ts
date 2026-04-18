@@ -9,6 +9,7 @@ import {
 import { and, eq } from "drizzle-orm"
 import { db } from "../../../../../db"
 import { reportAttachments, reports } from "../../../../../db/schema"
+import { env } from "../../../../../lib/env"
 import { requireProjectRole } from "../../../../../lib/permissions"
 import { getStorage } from "../../../../../lib/storage"
 import { verifyAttachmentToken } from "../../../../../lib/signed-attachment-url"
@@ -32,12 +33,8 @@ export default defineEventHandler(async (event) => {
     if (!Number.isFinite(expiresAt)) {
       throw createError({ statusCode: 401, statusMessage: "Invalid token" })
     }
-    const secret = process.env.ATTACHMENT_URL_SECRET
-    if (!secret) {
-      throw createError({ statusCode: 500, statusMessage: "ATTACHMENT_URL_SECRET not set" })
-    }
     const ok = verifyAttachmentToken({
-      secret,
+      secret: env.ATTACHMENT_URL_SECRET,
       projectId,
       reportId,
       kind,

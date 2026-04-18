@@ -4,6 +4,7 @@ import { InviteUserInput } from "@feedback-tool/shared"
 import { randomBytes } from "node:crypto"
 import { db } from "../../db"
 import { user } from "../../db/schema"
+import { env } from "../../lib/env"
 import { requireInstallAdmin } from "../../lib/permissions"
 import { sendMail } from "../../lib/email"
 import { renderTemplate } from "../../lib/render-template"
@@ -39,7 +40,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: "Insert failed" })
   }
 
-  const signInUrl = `${process.env.BETTER_AUTH_URL}/auth/sign-in`
+  const signInUrl = `${env.BETTER_AUTH_URL}/auth/sign-in`
   const html = await renderTemplate("invite", {
     email: invited.email,
     url: signInUrl,

@@ -5,6 +5,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { magicLink } from "better-auth/plugins/magic-link"
 import { db } from "../db"
 import { appSettings, user } from "../db/schema"
+import { env, getAuthRateLimitEnabled } from "./env"
 import { renderTemplate } from "./render-template"
 import { sendMail } from "./email"
 
@@ -17,17 +18,13 @@ import { sendMail } from "./email"
 //   - /session (read-only, not brute-forceable)
 //   - /sign-out (not brute-forceable)
 //   - /callback/* (OAuth provider callbacks — capping breaks real login flows)
-const AUTH_RATE_PER_IP_PER_15MIN = Number(process.env.AUTH_RATE_PER_IP_PER_15MIN ?? 5)
 const AUTH_RATE_WINDOW_SEC = 15 * 60
 // Enable in production by default (matches better-auth's own default).
 // `AUTH_RATE_LIMIT_ENABLED=true` force-enables in dev/test so the dedicated
 // test suite (and local smoke tests) can exercise the 429 path.
 // `AUTH_RATE_LIMIT_ENABLED=false` disables even in production (escape hatch).
-const AUTH_RATE_LIMIT_ENABLED =
-  process.env.AUTH_RATE_LIMIT_ENABLED === "true" ||
-  (process.env.AUTH_RATE_LIMIT_ENABLED !== "false" && process.env.NODE_ENV === "production")
 
-const strictAuthRule = { window: AUTH_RATE_WINDOW_SEC, max: AUTH_RATE_PER_IP_PER_15MIN }
+const strictAuthRule = { window: AUTH_RATE_WINDOW_SEC, max: env.AUTH_RATE_PER_IP_PER_15MIN }
 
 type GateRejection = "domain_not_allowed" | "not_invited"
 
@@ -115,11 +112,11 @@ async function promoteInvitedOrFirstUser(userId: string): Promise<void> {
 }
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL,
-  secret: process.env.BETTER_AUTH_SECRET,
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: "pg" }),
   rateLimit: {
-    enabled: AUTH_RATE_LIMIT_ENABLED,
+    enabled: getAuthRateLimitEnabled(),
     // In-process memory store. Fine for single-process self-host (our default
     // deployment target). Multi-worker setups should flip to `database` or wire
     // `customStorage` into the same Postgres bucket table the intake uses.
@@ -139,19 +136,19 @@ export const auth = betterAuth({
     },
   },
   socialProviders: {
-    ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+    ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
       ? {
           github: {
-            clientId: process.env.GITHUB_CLIENT_ID,
-            clientSecret: process.env.GITHUB_CLIENT_SECRET,
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
           },
         }
       : {}),
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? {
           google: {
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
           },
         }
       : {}),

@@ -4,13 +4,14 @@ import { and, eq } from "drizzle-orm"
 import { verifyWebhookSignature } from "@feedback-tool/integrations-github"
 import { db } from "../../../db"
 import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
+import { env } from "../../../lib/env"
 import { getWebhookSecret } from "../../../lib/github"
 
 // GitHub's own webhook deliveries are bounded by their 25 MB delivery cap, but
 // a direct attacker posting to this URL could otherwise stream an arbitrary
 // amount into memory before the HMAC check rejects them. 1 MB comfortably fits
 // any real Issues / Installation event payload.
-const MAX_BYTES = Number(process.env.GITHUB_WEBHOOK_MAX_BYTES ?? 1_048_576)
+const MAX_BYTES = env.GITHUB_WEBHOOK_MAX_BYTES
 
 interface IssuesPayload {
   action: "opened" | "closed" | "reopened" | "edited" | "deleted" | string

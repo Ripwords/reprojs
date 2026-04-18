@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { _reloadEnvForTesting } from "../env"
 import { S3Adapter } from "./s3"
 
 // validateS3Endpoint is not exported; we exercise it through the S3Adapter
 // constructor by setting S3_ENDPOINT and asserting that construction throws.
+//
+// The env module parses `process.env` once at import time, so each test must
+// mutate `process.env` and then call `_reloadEnvForTesting()` to refresh the
+// validated snapshot before instantiating `S3Adapter`.
 
 const SAVED: Record<string, string | undefined> = {}
 const ENV_KEYS = [
@@ -29,15 +34,18 @@ afterEach(() => {
     if (prev === undefined) delete process.env[k]
     else process.env[k] = prev
   }
+  _reloadEnvForTesting()
 })
 
 function expectEndpointRejected(endpoint: string): void {
   process.env.S3_ENDPOINT = endpoint
+  _reloadEnvForTesting()
   expect(() => new S3Adapter()).toThrow(/instance metadata|not a valid URL|protocol must be/)
 }
 
 function expectEndpointAccepted(endpoint: string): void {
   process.env.S3_ENDPOINT = endpoint
+  _reloadEnvForTesting()
   expect(() => new S3Adapter()).not.toThrow()
 }
 
