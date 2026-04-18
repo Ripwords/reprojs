@@ -7,7 +7,8 @@ import { requireInstallAdmin } from "../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
   await requireInstallAdmin(event)
-  const id = getRouterParam(event, "id")!
+  const id = getRouterParam(event, "id")
+  if (!id) throw createError({ statusCode: 400, statusMessage: "missing id" })
   const body = await readValidatedBody(event, (b: unknown) => UpdateUserInput.parse(b))
 
   const [target] = await db.select().from(user).where(eq(user.id, id))

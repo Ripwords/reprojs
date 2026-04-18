@@ -97,11 +97,9 @@ describe("project members API", () => {
       `/api/projects/${projectId}/members`,
       { headers: { cookie: ownerCookie } },
     )
-    const otherMember = (members as ProjectMemberDTO[]).find(
-      (m) => m.email === "other@example.com",
-    )!
+    const otherMember = (members as ProjectMemberDTO[]).find((m) => m.email === "other@example.com")
 
-    await apiFetch(`/api/projects/${projectId}/members/${otherMember.userId}`, {
+    await apiFetch(`/api/projects/${projectId}/members/${otherMember?.userId}`, {
       method: "DELETE",
       headers: { cookie: ownerCookie },
     })

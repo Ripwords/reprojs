@@ -12,12 +12,14 @@ const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
 async function checkServer(retries = 30, delayMs = 1000): Promise<void> {
   for (let i = 0; i < retries; i++) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- sequential retry loop; each attempt must wait before deciding to retry
       const res = await fetch(`${BASE_URL}/api/me`, { signal: AbortSignal.timeout(3000) })
       if (res.status === 401 || res.status === 200) return
     } catch {
       // not ready yet
     }
     if (i < retries - 1) {
+      // eslint-disable-next-line no-await-in-loop -- delay between retries must be sequential
       await new Promise((r) => setTimeout(r, delayMs))
     }
   }

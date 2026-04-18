@@ -68,19 +68,21 @@ export default defineEventHandler(async (event) => {
   } else if (kind === "installation_repositories") {
     const p = payload as unknown as InstallationReposPayload
     if (p.action === "removed" && p.repositories_removed?.length) {
-      const removedNames = p.repositories_removed.map((r) => r.full_name)
+      const removedNames = new Set(p.repositories_removed.map((r) => r.full_name))
       const rows = await db
         .select()
         .from(githubIntegrations)
         .where(eq(githubIntegrations.installationId, p.installation.id))
-      for (const row of rows) {
-        if (removedNames.includes(`${row.repoOwner}/${row.repoName}`)) {
-          await db
-            .update(githubIntegrations)
-            .set({ status: "disconnected", updatedAt: new Date() })
-            .where(eq(githubIntegrations.projectId, row.projectId))
-        }
-      }
+      await Promise.all(
+        rows
+          .filter((row) => removedNames.has(`${row.repoOwner}/${row.repoName}`))
+          .map((row) =>
+            db
+              .update(githubIntegrations)
+              .set({ status: "disconnected", updatedAt: new Date() })
+              .where(eq(githubIntegrations.projectId, row.projectId)),
+          ),
+      )
     }
   } else if (kind === "issues") {
     const p = payload as unknown as IssuesPayload

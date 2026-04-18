@@ -52,18 +52,22 @@ export default defineEventHandler(async (event) => {
     const parts: ReturnType<typeof eq>[] = []
     if (userIds.length) parts.push(inArray(reports.assigneeId, userIds))
     if (wantUnassigned) parts.push(isNull(reports.assigneeId))
-    if (parts.length === 1) whereParts.push(parts[0]!)
-    else if (parts.length > 1) whereParts.push(or(...parts)!)
+    if (parts.length === 1 && parts[0]) whereParts.push(parts[0])
+    else if (parts.length > 1) {
+      const combined = or(...parts)
+      if (combined) whereParts.push(combined)
+    }
   }
   if (searchRaw) {
     const pat = `%${searchRaw}%`
-    whereParts.push(or(ilike(reports.title, pat), ilike(reports.description, pat))!)
+    const searchCondition = or(ilike(reports.title, pat), ilike(reports.description, pat))
+    if (searchCondition) whereParts.push(searchCondition)
   }
 
   const whereClause = and(...whereParts)
 
   const countResult = await db.select({ total: count() }).from(reports).where(whereClause)
-  const total = countResult[0]!.total
+  const total = countResult[0]?.total ?? 0
 
   const rows = await db
     .select({

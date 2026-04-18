@@ -44,7 +44,7 @@ async function seedReport(
       assigneeId: overrides.assigneeId ?? null,
     })
     .returning({ id: reports.id })
-  return row!.id
+  return row?.id
 }
 
 async function addMember(projectId: string, userId: string, role: "developer" | "viewer") {
@@ -95,7 +95,7 @@ describe("ticket inbox API", () => {
     }>(`/api/projects/${pid}/reports?assignee=me`, { headers: { cookie } })
     expect(status).toBe(200)
     expect(body.items.length).toBe(1)
-    expect(body.items[0]!.assignee?.id).toBe(owner)
+    expect(body.items[0]?.assignee?.id).toBe(owner)
   })
 
   test("list filters by tag AND semantics", async () => {
@@ -115,7 +115,7 @@ describe("ticket inbox API", () => {
       { headers: { cookie } },
     )
     expect(body.total).toBe(1)
-    expect([...body.items[0]!.tags].toSorted()).toEqual(["ios", "mobile"])
+    expect([...(body.items[0]?.tags ?? [])].toSorted()).toEqual(["ios", "mobile"])
   })
 
   test("text search is case-insensitive on title and description", async () => {
@@ -175,7 +175,7 @@ describe("ticket inbox API", () => {
     expect(status).toBe(200)
     const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, rid))
     expect(evs.length).toBe(1)
-    expect(evs[0]!.kind).toBe("status_changed")
+    expect(evs[0]?.kind).toBe("status_changed")
   })
 
   test("PATCH multiple fields emits one event per changed field", async () => {
@@ -265,7 +265,7 @@ describe("ticket inbox API", () => {
     })
     expect(status).toBe(403)
     const [current] = await db.select().from(reports).where(eq(reports.id, rid))
-    expect(current!.status).toBe("open")
+    expect(current?.status).toBe("open")
   })
 
   test("assigning to a viewer is rejected", async () => {
@@ -312,8 +312,8 @@ describe("ticket inbox API", () => {
       items: Array<{ kind: string; actor: { email: string } | null }>
     }>(`/api/projects/${pid}/reports/${rid}/events`, { headers: { cookie } })
     expect(body.items.length).toBe(2)
-    expect(body.items[0]!.kind).toBe("priority_changed") // newer
-    expect(body.items[0]!.actor?.email).toBe("owner@example.com")
-    expect(body.items[1]!.kind).toBe("status_changed") // older
+    expect(body.items[0]?.kind).toBe("priority_changed") // newer
+    expect(body.items[0]?.actor?.email).toBe("owner@example.com")
+    expect(body.items[1]?.kind).toBe("status_changed") // older
   })
 })

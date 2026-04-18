@@ -59,9 +59,11 @@ export default defineEventHandler(async (event) => {
       if (Object.keys(patch).length === 0) continue
 
       patch.updatedAt = new Date()
+      // eslint-disable-next-line no-await-in-loop -- sequential tx writes; each row depends on its own patch computed above
       await tx.update(reports).set(patch).where(eq(reports.id, current.id))
       updated.push(current.id)
       allEvents.push(...buildReportEvents(current.id, actorId, change))
+      // eslint-disable-next-line no-await-in-loop -- enqueue must follow the tx update for each report
       await enqueueSync(current.id, id)
     }
 

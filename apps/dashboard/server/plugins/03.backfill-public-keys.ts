@@ -12,8 +12,10 @@ export default defineNitroPlugin(async () => {
 
   if (missing.length === 0) return
 
-  for (const { id } of missing) {
-    await db.update(projects).set({ publicKey: generatePublicKey() }).where(eq(projects.id, id))
-  }
+  await Promise.all(
+    missing.map(({ id }) =>
+      db.update(projects).set({ publicKey: generatePublicKey() }).where(eq(projects.id, id)),
+    ),
+  )
   console.info(`[backfill-public-keys] generated keys for ${missing.length} project(s)`)
 })

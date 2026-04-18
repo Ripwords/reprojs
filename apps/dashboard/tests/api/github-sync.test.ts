@@ -274,7 +274,7 @@ describe("worker reconcile", () => {
         },
       })
       .returning({ id: reports.id })
-    return { pid, reportId: r!.id }
+    return { pid, reportId: r?.id }
   }
 
   test("first reconcile creates issue + writes github columns", async () => {
@@ -416,9 +416,9 @@ describe("webhook", () => {
       body,
     })
     expect(res.status).toBe(202)
-    const [updated] = await db.select().from(reports).where(eq(reports.id, r!.id))
+    const [updated] = await db.select().from(reports).where(eq(reports.id, r?.id))
     expect(updated?.status).toBe("resolved")
-    const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, r!.id))
+    const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, r?.id))
     expect(evs.length).toBe(1)
     expect(evs[0]?.kind).toBe("status_changed")
     expect(evs[0]?.actorId).toBeNull()
@@ -493,12 +493,12 @@ describe("manual sync + unlink + enqueue hooks", () => {
       })
       .returning({ id: reports.id })
     const cookie = await signIn("owner@example.com")
-    const { status } = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+    const { status } = await apiFetch(`/api/projects/${pid}/reports/${r?.id}/github-sync`, {
       method: "POST",
       headers: { cookie },
     })
     expect(status).toBe(200)
-    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r!.id))
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r?.id))
     expect(jobs.length).toBe(1)
     expect(jobs[0]?.state).toBe("pending")
   })
@@ -529,15 +529,15 @@ describe("manual sync + unlink + enqueue hooks", () => {
       })
       .returning({ id: reports.id })
     const cookie = await signIn("owner@example.com")
-    await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+    await apiFetch(`/api/projects/${pid}/reports/${r?.id}/github-sync`, {
       method: "POST",
       headers: { cookie },
     })
-    await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+    await apiFetch(`/api/projects/${pid}/reports/${r?.id}/github-sync`, {
       method: "POST",
       headers: { cookie },
     })
-    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r!.id))
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r?.id))
     expect(jobs.length).toBe(1)
   })
 
@@ -566,18 +566,18 @@ describe("manual sync + unlink + enqueue hooks", () => {
         githubIssueUrl: "https://github.com/acme/frontend/issues/7",
       })
       .returning({ id: reports.id })
-    await db.insert(reportSyncJobs).values({ reportId: r!.id })
+    await db.insert(reportSyncJobs).values({ reportId: r?.id })
     const cookie = await signIn("owner@example.com")
-    const { status } = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-unlink`, {
+    const { status } = await apiFetch(`/api/projects/${pid}/reports/${r?.id}/github-unlink`, {
       method: "POST",
       headers: { cookie },
     })
     expect(status).toBe(200)
-    const [row] = await db.select().from(reports).where(eq(reports.id, r!.id))
+    const [row] = await db.select().from(reports).where(eq(reports.id, r?.id))
     expect(row?.githubIssueNumber).toBeNull()
-    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r!.id))
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r?.id))
     expect(jobs.length).toBe(0)
-    const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, r!.id))
+    const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, r?.id))
     expect(evs.find((e) => e.kind === "github_unlinked")).toBeDefined()
   })
 
@@ -648,12 +648,12 @@ describe("manual sync + unlink + enqueue hooks", () => {
       })
       .returning({ id: reports.id })
     const cookie = await signIn("viewer@example.com")
-    const r1 = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+    const r1 = await apiFetch(`/api/projects/${pid}/reports/${r?.id}/github-sync`, {
       method: "POST",
       headers: { cookie },
     })
     expect(r1.status).toBe(403)
-    const r2 = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-unlink`, {
+    const r2 = await apiFetch(`/api/projects/${pid}/reports/${r?.id}/github-unlink`, {
       method: "POST",
       headers: { cookie },
     })

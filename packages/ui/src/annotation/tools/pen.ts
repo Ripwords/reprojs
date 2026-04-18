@@ -17,7 +17,8 @@ export const penTool: ToolHandler = {
   },
   onPointerMove(ctx: ToolContext): Shape {
     const s = ctx.shape as PenShape
-    const last = s.points[s.points.length - 1]!
+    const last = s.points[s.points.length - 1]
+    if (!last) return s
     const dx = ctx.worldX - last.x
     const dy = ctx.worldY - last.y
     if (dx * dx + dy * dy < MIN_DISTANCE_SQ) return s
@@ -28,7 +29,8 @@ export const penTool: ToolHandler = {
   },
   onPointerUp(ctx: ToolContext): Shape | null {
     const s = ctx.shape as PenShape
-    const last = s.points[s.points.length - 1]!
+    const last = s.points[s.points.length - 1]
+    if (!last) return null
     const addLast =
       last.x !== ctx.worldX || last.y !== ctx.worldY
         ? [...s.points, { x: ctx.worldX, y: ctx.worldY, p: ctx.pressure }]

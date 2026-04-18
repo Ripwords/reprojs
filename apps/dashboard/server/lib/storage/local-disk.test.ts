@@ -13,7 +13,7 @@ beforeEach(async () => {
 })
 
 afterAll(async () => {
-  for (const r of roots) await rm(r, { recursive: true, force: true })
+  await Promise.all(roots.map((r) => rm(r, { recursive: true, force: true })))
 })
 
 describe("LocalDiskAdapter", () => {

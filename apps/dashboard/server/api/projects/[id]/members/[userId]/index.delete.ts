@@ -5,8 +5,10 @@ import { projectMembers } from "../../../../../db/schema"
 import { requireProjectRole } from "../../../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, "id")!
-  const userId = getRouterParam(event, "userId")!
+  const id = getRouterParam(event, "id")
+  if (!id) throw createError({ statusCode: 400, statusMessage: "missing project id" })
+  const userId = getRouterParam(event, "userId")
+  if (!userId) throw createError({ statusCode: 400, statusMessage: "missing userId" })
   await requireProjectRole(event, id, "owner")
 
   // Last-owner guard: cannot remove a user who is the last owner.

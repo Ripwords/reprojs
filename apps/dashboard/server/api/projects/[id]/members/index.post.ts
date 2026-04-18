@@ -6,7 +6,8 @@ import { projectMembers, user } from "../../../../db/schema"
 import { requireProjectRole } from "../../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, "id")!
+  const id = getRouterParam(event, "id")
+  if (!id) throw createError({ statusCode: 400, statusMessage: "missing project id" })
   await requireProjectRole(event, id, "owner")
   const body = await readValidatedBody(event, (b: unknown) => AddProjectMemberInput.parse(b))
 

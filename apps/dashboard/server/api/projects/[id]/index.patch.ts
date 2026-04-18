@@ -1,4 +1,4 @@
-import { defineEventHandler, getRouterParam, readValidatedBody } from "h3"
+import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
 import { eq } from "drizzle-orm"
 import { UpdateProjectInput } from "@feedback-tool/shared"
 import { db } from "../../../db"
@@ -6,7 +6,8 @@ import { projects } from "../../../db/schema"
 import { requireProjectRole } from "../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, "id")!
+  const id = getRouterParam(event, "id")
+  if (!id) throw createError({ statusCode: 400, statusMessage: "missing project id" })
   await requireProjectRole(event, id, "owner")
   const body = await readValidatedBody(event, (b: unknown) => UpdateProjectInput.parse(b))
 
@@ -15,6 +16,8 @@ export default defineEventHandler(async (event) => {
     .set({ ...body, updatedAt: new Date() })
     .where(eq(projects.id, id))
     .returning()
+
+  if (!updated) throw createError({ statusCode: 404, statusMessage: "Project not found" })
 
   return {
     id: updated.id,

@@ -1,4 +1,4 @@
-import { defineEventHandler, getQuery, getRouterParam } from "h3"
+import { createError, defineEventHandler, getQuery, getRouterParam } from "h3"
 import { and, eq, inArray } from "drizzle-orm"
 import { ProjectMemberRole, type ProjectMemberDTO } from "@feedback-tool/shared"
 import { db } from "../../../../db"
@@ -7,7 +7,8 @@ import { user } from "../../../../db/schema"
 import { requireProjectRole } from "../../../../lib/permissions"
 
 export default defineEventHandler(async (event): Promise<ProjectMemberDTO[]> => {
-  const id = getRouterParam(event, "id")!
+  const id = getRouterParam(event, "id")
+  if (!id) throw createError({ statusCode: 400, statusMessage: "missing project id" })
   await requireProjectRole(event, id, "viewer")
 
   const roleParam = getQuery(event).role
