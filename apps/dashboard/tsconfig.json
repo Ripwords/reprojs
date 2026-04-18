@@ -1,6 +1,6 @@
 {
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
-    "types": ["bun"]
+    "types": ["bun", "node"]
   }
 }
