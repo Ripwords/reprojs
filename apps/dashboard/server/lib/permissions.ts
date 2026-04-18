@@ -24,28 +24,23 @@ export interface AppSession {
   status: "active" | "invited" | "disabled"
 }
 
-type AuthUser = {
-  id: string
-  email: string
-  role: "admin" | "member"
-  status: "active" | "invited" | "disabled"
-}
-
 export async function requireSession(event: H3Event): Promise<AppSession> {
   const session = await auth.api.getSession({ headers: event.headers })
   if (!session?.user) {
     throw createError({ statusCode: 401, statusMessage: "Unauthenticated" })
   }
-  const u = session.user as unknown as AuthUser
+  // better-auth's inferred session.user type doesn't carry our `additionalFields`
+  // (role/status), so cast to the shape we configured in auth.ts.
+  const u = session.user as unknown as {
+    id: string
+    email: string
+    role: "admin" | "member"
+    status: "active" | "invited" | "disabled"
+  }
   if (u.status === "disabled") {
     throw createError({ statusCode: 403, statusMessage: "Account disabled" })
   }
-  return {
-    userId: u.id,
-    email: u.email,
-    role: u.role,
-    status: u.status,
-  }
+  return { userId: u.id, email: u.email, role: u.role, status: u.status }
 }
 
 export async function requireInstallAdmin(event: H3Event): Promise<AppSession> {

@@ -26,7 +26,6 @@ export const SystemInfo = z.object({
     .optional(),
   pageUrl: z.string().url(),
   referrer: z.string().optional(),
-  documentReferrer: z.string().optional(),
   timestamp: z.string(),
 })
 export type SystemInfo = z.infer<typeof SystemInfo>

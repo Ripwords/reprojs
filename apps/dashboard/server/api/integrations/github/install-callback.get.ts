@@ -2,8 +2,10 @@ import { createError, defineEventHandler, getQuery, sendRedirect } from "h3"
 import { eq } from "drizzle-orm"
 import { db } from "../../../db"
 import { githubIntegrations } from "../../../db/schema"
-import { getDashboardBaseUrl, verifyInstallState } from "../../../lib/github"
+import { verifyInstallState } from "../../../lib/github"
 import { requireProjectRole } from "../../../lib/permissions"
+
+const dashboardBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
 
 function errorStatus(err: unknown): number | null {
   if (err && typeof err === "object" && "statusCode" in err) {
@@ -63,7 +65,7 @@ export default defineEventHandler(async (event) => {
     }
     return sendRedirect(
       event,
-      `${getDashboardBaseUrl()}/projects/${existing.projectId}/settings?tab=github&updated=1`,
+      `${dashboardBaseUrl}/projects/${existing.projectId}/settings?tab=github&updated=1`,
       302,
     )
   }
@@ -108,7 +110,7 @@ export default defineEventHandler(async (event) => {
 
   return sendRedirect(
     event,
-    `${getDashboardBaseUrl()}/projects/${claims.projectId}/settings?tab=github&installed=1`,
+    `${dashboardBaseUrl}/projects/${claims.projectId}/settings?tab=github&installed=1`,
     302,
   )
 })

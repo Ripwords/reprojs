@@ -11,11 +11,3 @@ export function generatePublicKey(): string {
   }
   return out
 }
-
-export function isValidPublicKey(s: unknown): s is string {
-  if (typeof s !== "string") return false
-  if (!s.startsWith(PREFIX)) return false
-  const tail = s.slice(PREFIX.length)
-  if (tail.length !== KEY_LEN) return false
-  return /^[A-Za-z0-9]+$/.test(tail)
-}

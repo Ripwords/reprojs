@@ -60,26 +60,6 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
-    betterAuthSecret: process.env.BETTER_AUTH_SECRET ?? "",
-    databaseUrl: process.env.DATABASE_URL ?? "",
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID ?? "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
-    },
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    },
-    mail: {
-      provider: process.env.MAIL_PROVIDER ?? "ethereal",
-      smtp: {
-        host: process.env.SMTP_HOST ?? "",
-        port: Number(process.env.SMTP_PORT ?? 587),
-        user: process.env.SMTP_USER ?? "",
-        pass: process.env.SMTP_PASS ?? "",
-        from: process.env.SMTP_FROM ?? "Feedback Tool <no-reply@localhost>",
-      },
-    },
     public: {
       betterAuthUrl: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
       hasGithubOAuth: !!process.env.GITHUB_CLIENT_ID,

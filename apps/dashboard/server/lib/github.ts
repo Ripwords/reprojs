@@ -37,20 +37,6 @@ export function getWebhookSecret(): string {
   return s
 }
 
-export function getAttachmentUrlSecret(): string {
-  const s = process.env.ATTACHMENT_URL_SECRET
-  if (!s) throw new Error("ATTACHMENT_URL_SECRET must be set")
-  return s
-}
-
-export function getDashboardBaseUrl(): string {
-  return process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
-}
-
-export function getAppSlug(): string {
-  return process.env.GITHUB_APP_SLUG ?? "feedback-tool"
-}
-
 // === Install-state signing (used by G-18 install-redirect + install-callback) ===
 
 interface InstallStateClaims {

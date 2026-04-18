@@ -45,7 +45,6 @@ export function snapshotSystemInfo(): SystemInfo {
       : undefined,
     pageUrl: location.href,
     referrer,
-    documentReferrer: referrer,
     timestamp: new Date().toISOString(),
   }
 }

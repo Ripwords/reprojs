@@ -2,8 +2,18 @@
 import { eq } from "drizzle-orm"
 import { type LogsAttachment, type ReportContext } from "@feedback-tool/shared"
 import { buildIssueBody, labelsFor, reportMarker } from "./github-helpers"
-import { getAttachmentUrlSecret, getDashboardBaseUrl, getGithubClient } from "./github"
+import { getGithubClient } from "./github"
 import { buildSignedAttachmentUrl } from "./signed-attachment-url"
+
+function dashboardBaseUrl(): string {
+  return process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
+}
+
+function attachmentUrlSecret(): string {
+  const s = process.env.ATTACHMENT_URL_SECRET
+  if (!s) throw new Error("ATTACHMENT_URL_SECRET must be set")
+  return s
+}
 import { getStorage } from "./storage"
 import { db } from "../db"
 import { githubIntegrations, reportAttachments, reports, reportSyncJobs } from "../db/schema"
@@ -56,11 +66,11 @@ export async function reconcileReport(reportId: string): Promise<void> {
 
   const screenshotUrl = hasScreenshot
     ? buildSignedAttachmentUrl({
-        baseUrl: getDashboardBaseUrl(),
+        baseUrl: dashboardBaseUrl(),
         projectId: report.projectId,
         reportId: report.id,
         kind: "screenshot",
-        secret: getAttachmentUrlSecret(),
+        secret: attachmentUrlSecret(),
         ttlSeconds: 60 * 60 * 24 * 7, // 7 days
       })
     : null
@@ -85,7 +95,7 @@ export async function reconcileReport(reportId: string): Promise<void> {
     reporterEmail: ctx.reporter?.email ?? null,
     createdAt: report.createdAt,
     screenshotUrl,
-    dashboardUrl: `${getDashboardBaseUrl()}/projects/${report.projectId}/reports/${report.id}`,
+    dashboardUrl: `${dashboardBaseUrl()}/projects/${report.projectId}/reports/${report.id}`,
     systemInfo: ctx.systemInfo,
     metadata: ctx.metadata,
     console: logs?.console,
