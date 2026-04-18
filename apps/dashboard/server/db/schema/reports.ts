@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import { check, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { user } from "./auth-schema"
 import { projects } from "./projects"
 
 export const reports = pgTable(
@@ -21,7 +22,7 @@ export const reports = pgTable(
     status: text("status", { enum: ["open", "in_progress", "resolved", "closed"] })
       .notNull()
       .default("open"),
-    assigneeId: text("assignee_id"),
+    assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
     priority: text("priority", { enum: ["low", "normal", "high", "urgent"] })
       .notNull()
       .default("normal"),

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm"
-import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
+import { integer, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core"
 
 export const projects = pgTable(
   "projects",
@@ -7,7 +7,7 @@ export const projects = pgTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    name: text("name").notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
     createdBy: text("created_by").notNull(),
     publicKey: text("public_key"),
     allowedOrigins: text("allowed_origins")

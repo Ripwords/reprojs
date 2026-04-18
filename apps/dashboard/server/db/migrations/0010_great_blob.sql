@@ -1,0 +1,2 @@
+ALTER TABLE "projects" ALTER COLUMN "name" SET DATA TYPE varchar(120);--> statement-breakpoint
+ALTER TABLE "reports" ADD CONSTRAINT "reports_assignee_id_user_id_fk" FOREIGN KEY ("assignee_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
