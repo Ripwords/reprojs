@@ -1,13 +1,24 @@
 import { createAuthClient } from "better-auth/vue"
+import { magicLinkClient } from "better-auth/client/plugins"
 
-// Lazy singleton — must be created inside Nuxt context (composable, middleware, plugin, setup)
-let _client: ReturnType<typeof createAuthClient> | null = null
+// The lazy-singleton pattern would erase the plugin generics (because
+// `ReturnType<typeof createAuthClient>` loses the `Option` type parameter),
+// so we materialize the typed client once via a factory and let TypeScript
+// infer the full shape — including signIn.magicLink — through `AuthClient`.
+function makeClient() {
+  return createAuthClient({
+    baseURL: useRuntimeConfig().public.betterAuthUrl,
+    plugins: [magicLinkClient()],
+  })
+}
 
-export function useAuthClient() {
+type AuthClient = ReturnType<typeof makeClient>
+
+let _client: AuthClient | null = null
+
+export function useAuthClient(): AuthClient {
   if (!_client) {
-    _client = createAuthClient({
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
-    })
+    _client = makeClient()
   }
   return _client
 }

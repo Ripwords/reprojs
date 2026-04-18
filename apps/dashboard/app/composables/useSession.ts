@@ -11,6 +11,5 @@ export const useSession = () => {
     isAdmin,
     signIn: client.signIn,
     signOut: client.signOut,
-    signUp: client.signUp,
   }
 }
