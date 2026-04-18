@@ -207,3 +207,11 @@ export const ReportDetailDTO = ReportSummaryDTO.extend({
   attachments: z.array(AttachmentDTO),
 })
 export type ReportDetailDTO = z.infer<typeof ReportDetailDTO>
+
+export const IntakeResponse = z.object({
+  id: z.string().uuid(),
+  /** True when the server silently dropped the replay part (per-project or per-deployment disable). */
+  replayStored: z.boolean().optional(),
+  replayDisabled: z.boolean().optional(),
+})
+export type IntakeResponse = z.infer<typeof IntakeResponse>
