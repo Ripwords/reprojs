@@ -71,12 +71,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
   }
 
-  const keyTake = getKeyLimiter().take(`key:${project.id}`)
+  const keyTake = await (await getKeyLimiter()).take(`key:${project.id}`)
   if (!keyTake.allowed) {
     event.node.res.setHeader("Retry-After", Math.ceil(keyTake.retryAfterMs / 1000).toString())
     throw createError({ statusCode: 429, statusMessage: "Too many reports for this project" })
   }
-  const ipTake = getIpLimiter().take(`ip:${ip}`)
+  const ipTake = await (await getIpLimiter()).take(`ip:${ip}`)
   if (!ipTake.allowed) {
     event.node.res.setHeader("Retry-After", Math.ceil(ipTake.retryAfterMs / 1000).toString())
     throw createError({ statusCode: 429, statusMessage: "Too many reports from this IP" })

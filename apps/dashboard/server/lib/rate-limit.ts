@@ -8,6 +8,10 @@ export interface TakeResult {
   retryAfterMs: number
 }
 
+export interface RateLimiter {
+  take(key: string): Promise<TakeResult>
+}
+
 interface Bucket {
   tokens: number
   lastRefillMs: number
@@ -15,7 +19,16 @@ interface Bucket {
 
 const WINDOW_MS = 60_000
 
-export function createRateLimiter(opts: RateLimiterOptions) {
+/**
+ * In-process token-bucket limiter. Lost on restart; per-worker under cluster.
+ * Fine for single-process self-hosted deployments. For multi-process or
+ * container-orchestrated setups, set `RATE_LIMIT_STORE=postgres` to use the
+ * Postgres-backed limiter in rate-limit-pg.ts instead.
+ */
+export function createInProcessRateLimiter(opts: RateLimiterOptions): RateLimiter & {
+  _sweep: () => void
+  _size: () => number
+} {
   const { perMinute } = opts
   const now = opts.now ?? (() => Date.now())
   const buckets = new Map<string, Bucket>()
@@ -28,7 +41,7 @@ export function createRateLimiter(opts: RateLimiterOptions) {
   }
 
   return {
-    take(key: string): TakeResult {
+    async take(key: string): Promise<TakeResult> {
       const t = now()
       let b = buckets.get(key)
       if (!b) {
@@ -53,19 +66,30 @@ export function createRateLimiter(opts: RateLimiterOptions) {
   }
 }
 
-let _keyLimiter: ReturnType<typeof createRateLimiter> | null = null
-let _ipLimiter: ReturnType<typeof createRateLimiter> | null = null
+// Back-compat alias for existing imports / tests.
+export const createRateLimiter = createInProcessRateLimiter
 
-export function getKeyLimiter() {
+let _keyLimiter: RateLimiter | null = null
+let _ipLimiter: RateLimiter | null = null
+
+async function buildLimiter(perMinute: number): Promise<RateLimiter> {
+  if (process.env.RATE_LIMIT_STORE === "postgres") {
+    const { createPgRateLimiter } = await import("./rate-limit-pg")
+    return createPgRateLimiter({ perMinute })
+  }
+  return createInProcessRateLimiter({ perMinute })
+}
+
+export async function getKeyLimiter(): Promise<RateLimiter> {
   if (!_keyLimiter) {
-    _keyLimiter = createRateLimiter({ perMinute: Number(process.env.INTAKE_RATE_PER_KEY ?? 60) })
+    _keyLimiter = await buildLimiter(Number(process.env.INTAKE_RATE_PER_KEY ?? 60))
   }
   return _keyLimiter
 }
 
-export function getIpLimiter() {
+export async function getIpLimiter(): Promise<RateLimiter> {
   if (!_ipLimiter) {
-    _ipLimiter = createRateLimiter({ perMinute: Number(process.env.INTAKE_RATE_PER_IP ?? 20) })
+    _ipLimiter = await buildLimiter(Number(process.env.INTAKE_RATE_PER_IP ?? 20))
   }
   return _ipLimiter
 }
