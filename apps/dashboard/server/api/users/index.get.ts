@@ -8,7 +8,7 @@ import { requireInstallAdmin } from "../../lib/permissions"
 export default defineEventHandler(async (event): Promise<UserDTO[]> => {
   await requireInstallAdmin(event)
 
-  const rows = await db.select().from(user).orderBy(desc(user.createdAt))
+  const rows = await db.select().from(user).orderBy(desc(user.createdAt)).limit(500)
 
   return rows.map((u) => ({
     id: u.id,
