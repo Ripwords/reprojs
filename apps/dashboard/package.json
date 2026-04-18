@@ -12,6 +12,7 @@
     "icons": "bun scripts/generate-icons.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.700.0",
     "@feedback-tool/integrations-github": "workspace:*",
     "@feedback-tool/shared": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",
