@@ -1,6 +1,7 @@
 <!-- apps/dashboard/app/components/inbox/report-row.vue -->
 <script setup lang="ts">
 import type { ReportSummaryDTO } from "@feedback-tool/shared"
+import { safeHref } from "~/composables/use-safe-href"
 
 interface Props {
   report: ReportSummaryDTO
@@ -54,7 +55,7 @@ function relTime(iso: string): string {
     <td class="p-2 text-xs">
       <a
         v-if="report.githubIssueNumber && report.githubIssueUrl"
-        :href="report.githubIssueUrl"
+        :href="safeHref(report.githubIssueUrl)"
         target="_blank"
         rel="noopener"
         class="text-neutral-500 hover:text-neutral-900"

@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import type { ReportPriority, ReportStatus, ReportSummaryDTO } from "@feedback-tool/shared"
 import UnlinkDialog from "~/components/integrations/github/unlink-dialog.vue"
+import { safeHref } from "~/composables/use-safe-href"
 
 interface Member {
   userId: string
@@ -170,7 +171,7 @@ async function removeTag(name: string) {
       <span class="text-xs uppercase text-neutral-500">GitHub</span>
       <template v-if="report.githubIssueNumber && report.githubIssueUrl">
         <a
-          :href="report.githubIssueUrl"
+          :href="safeHref(report.githubIssueUrl)"
           target="_blank"
           rel="noopener"
           class="underline text-neutral-700"
