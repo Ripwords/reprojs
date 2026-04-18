@@ -6,13 +6,14 @@ import ConsoleTab from "./console-tab.vue"
 import CookiesTab from "./cookies-tab.vue"
 import NetworkTab from "./network-tab.vue"
 import OverviewTab from "./overview-tab.vue"
+import ReplayTab from "./replay-tab.vue"
 import Tabs from "./tabs.vue"
 import TriagePanel from "./triage-panel.vue"
 
 const props = defineProps<{ projectId: string; report: ReportSummaryDTO }>()
 const emit = defineEmits<{ close: [] }>()
 
-type TabName = "activity" | "overview" | "console" | "network" | "cookies"
+type TabName = "activity" | "overview" | "console" | "network" | "cookies" | "replay"
 const activeTab = ref<TabName>("activity")
 const logs = ref<LogsAttachment | null>(null)
 const logsLoaded = ref(false)
@@ -67,6 +68,7 @@ function onKey(e: KeyboardEvent) {
   if (e.key === "3") activeTab.value = "console"
   if (e.key === "4") activeTab.value = "network"
   if (e.key === "5") activeTab.value = "cookies"
+  if (e.key === "6") activeTab.value = "replay"
 }
 onMounted(() => window.addEventListener("keydown", onKey))
 onUnmounted(() => window.removeEventListener("keydown", onKey))
@@ -99,6 +101,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
       <ConsoleTab v-else-if="activeTab === 'console'" :logs="logs" />
       <NetworkTab v-else-if="activeTab === 'network'" :logs="logs" />
       <CookiesTab v-else-if="activeTab === 'cookies'" :project-id="projectId" :report="current" />
+      <ReplayTab
+        v-else-if="activeTab === 'replay'"
+        :project-id="projectId"
+        :report-id="current.id"
+        :has-replay="true"
+      />
     </aside>
   </div>
 </template>
