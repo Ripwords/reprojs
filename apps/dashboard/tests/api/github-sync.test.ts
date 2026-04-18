@@ -16,7 +16,13 @@ import {
   truncateReports,
 } from "../helpers"
 import { db } from "../../server/db"
-import { githubIntegrations, projectMembers, reports, reportEvents } from "../../server/db/schema"
+import {
+  githubIntegrations,
+  projectMembers,
+  reports,
+  reportEvents,
+  reportSyncJobs,
+} from "../../server/db/schema"
 import { createHmac } from "node:crypto"
 import { reconcileReport } from "../../server/lib/github-reconcile"
 
@@ -450,5 +456,211 @@ describe("webhook", () => {
       .from(githubIntegrations)
       .where(eq(githubIntegrations.projectId, pid))
     expect(row?.status).toBe("disconnected")
+  })
+})
+
+describe("manual sync + unlink + enqueue hooks", () => {
+  afterEach(async () => {
+    await truncateGithub()
+    await truncateReports()
+    await truncateDomain()
+  })
+
+  test("POST /github-sync enqueues a job", async () => {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    await db
+      .insert(githubIntegrations)
+      .values({ projectId: pid, installationId: 10, repoOwner: "acme", repoName: "frontend" })
+    const [r] = await db
+      .insert(reports)
+      .values({
+        projectId: pid,
+        title: "x",
+        description: "x",
+        context: {
+          pageUrl: "x",
+          userAgent: "x",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+      })
+      .returning({ id: reports.id })
+    const cookie = await signIn("owner@example.com")
+    const { status } = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(status).toBe(200)
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r!.id))
+    expect(jobs.length).toBe(1)
+    expect(jobs[0]?.state).toBe("pending")
+  })
+
+  test("POST /github-sync is idempotent (second call doesn't duplicate)", async () => {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    await db
+      .insert(githubIntegrations)
+      .values({ projectId: pid, installationId: 10, repoOwner: "acme", repoName: "frontend" })
+    const [r] = await db
+      .insert(reports)
+      .values({
+        projectId: pid,
+        title: "x",
+        description: "x",
+        context: {
+          pageUrl: "x",
+          userAgent: "x",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+      })
+      .returning({ id: reports.id })
+    const cookie = await signIn("owner@example.com")
+    await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r!.id))
+    expect(jobs.length).toBe(1)
+  })
+
+  test("POST /github-unlink clears columns + deletes pending job + inserts event", async () => {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    const [r] = await db
+      .insert(reports)
+      .values({
+        projectId: pid,
+        title: "x",
+        description: "x",
+        context: {
+          pageUrl: "x",
+          userAgent: "x",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+        githubIssueNumber: 7,
+        githubIssueNodeId: "NODE_7",
+        githubIssueUrl: "https://github.com/acme/frontend/issues/7",
+      })
+      .returning({ id: reports.id })
+    await db.insert(reportSyncJobs).values({ reportId: r!.id })
+    const cookie = await signIn("owner@example.com")
+    const { status } = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-unlink`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(status).toBe(200)
+    const [row] = await db.select().from(reports).where(eq(reports.id, r!.id))
+    expect(row?.githubIssueNumber).toBeNull()
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r!.id))
+    expect(jobs.length).toBe(0)
+    const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, r!.id))
+    expect(evs.find((e) => e.kind === "github_unlinked")).toBeDefined()
+  })
+
+  test("intake with connected integration enqueues a sync job", async () => {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    await db
+      .insert(githubIntegrations)
+      .values({ projectId: pid, installationId: 10, repoOwner: "acme", repoName: "frontend" })
+    const fd = new FormData()
+    fd.set(
+      "report",
+      new Blob(
+        [
+          JSON.stringify({
+            projectKey: PK,
+            title: "from intake",
+            description: "x",
+            context: {
+              pageUrl: "http://localhost:4000/p",
+              userAgent: "UA",
+              viewport: { w: 1, h: 1 },
+              timestamp: new Date().toISOString(),
+            },
+          }),
+        ],
+        { type: "application/json" },
+      ),
+    )
+    const res = await fetch("http://localhost:3000/api/intake/reports", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: fd,
+    })
+    expect(res.status).toBe(201)
+    const { id } = (await res.json()) as { id: string }
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, id))
+    expect(jobs.length).toBe(1)
+  })
+
+  test("viewer forbidden on github-sync, github-unlink, retry-failed", async () => {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const viewer = await createUser("viewer@example.com", "member")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    await db.insert(projectMembers).values({ projectId: pid, userId: viewer, role: "viewer" })
+    const [r] = await db
+      .insert(reports)
+      .values({
+        projectId: pid,
+        title: "x",
+        description: "x",
+        context: {
+          pageUrl: "x",
+          userAgent: "x",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+      })
+      .returning({ id: reports.id })
+    const cookie = await signIn("viewer@example.com")
+    const r1 = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-sync`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(r1.status).toBe(403)
+    const r2 = await apiFetch(`/api/projects/${pid}/reports/${r!.id}/github-unlink`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(r2.status).toBe(403)
+    const r3 = await apiFetch(`/api/projects/${pid}/integrations/github/retry-failed`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(r3.status).toBe(403)
   })
 })
