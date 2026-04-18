@@ -1,3 +1,11 @@
+# DEV ONLY — this compose file is for local development on a single-developer
+# machine. It uses default credentials and binds Postgres on all interfaces.
+# For production:
+#   - Rotate POSTGRES_PASSWORD to a strong secret (inject via env or Docker secrets)
+#   - Bind the port to 127.0.0.1 only, or remove the ports: block and access via
+#     the internal docker network
+#   - Pin image tags to exact digests, not floating major versions
+#   - Enable healthchecks + restart: unless-stopped
 name: feedback_tool
 services:
   postgres:
@@ -7,7 +15,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: feedback_tool
     ports:
-      - "5436:5432"
+      - "127.0.0.1:5436:5432"
     volumes:
       - feedback_tool_data:/var/lib/postgresql/data
     healthcheck:
