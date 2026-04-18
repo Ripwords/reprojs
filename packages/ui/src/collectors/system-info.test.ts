@@ -34,4 +34,29 @@ describe("snapshotSystemInfo", () => {
     const s = snapshotSystemInfo()
     expect(s.connection).toBeUndefined()
   })
+
+  test("prefers navigator.userAgentData.platform when available (fixes MacIntel on Apple Silicon)", () => {
+    const nav = globalThis.navigator as unknown as { userAgentData?: { platform: string } }
+    const had = Object.hasOwn(nav, "userAgentData")
+    const prior = nav.userAgentData
+    nav.userAgentData = { platform: "macOS" }
+    try {
+      expect(snapshotSystemInfo().platform).toBe("macOS")
+    } finally {
+      if (had) nav.userAgentData = prior
+      else delete nav.userAgentData
+    }
+  })
+
+  test("falls back to navigator.platform when userAgentData is missing", () => {
+    const nav = globalThis.navigator as unknown as { userAgentData?: unknown; platform: string }
+    const had = Object.hasOwn(nav, "userAgentData")
+    const prior = nav.userAgentData
+    delete nav.userAgentData
+    try {
+      expect(snapshotSystemInfo().platform).toBe(navigator.platform)
+    } finally {
+      if (had) nav.userAgentData = prior
+    }
+  })
 })

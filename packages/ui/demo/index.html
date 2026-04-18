@@ -14,18 +14,22 @@
         background: #fafafa;
         color: #111;
       }
+
       header {
         padding: 40px;
         background: #111;
         color: #fff;
       }
+
       header h1 {
         margin: 0 0 8px;
       }
+
       header p {
         margin: 0;
         opacity: 0.7;
       }
+
       main {
         padding: 32px;
         max-width: 960px;
@@ -34,6 +38,7 @@
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
         gap: 16px;
       }
+
       .card {
         background: #fff;
         border: 1px solid #eee;
@@ -41,15 +46,18 @@
         padding: 16px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       }
+
       .card h3 {
         margin: 0 0 8px;
         font-size: 15px;
       }
+
       .card p {
         margin: 0 0 12px;
         font-size: 14px;
         color: #555;
       }
+
       .broken-btn {
         background: #d32f2f;
         color: #fff;
@@ -58,11 +66,13 @@
         border-radius: 6px;
         cursor: pointer;
       }
+
       form.card label {
         display: block;
         margin-bottom: 8px;
         font-size: 13px;
       }
+
       form.card input {
         width: 100%;
         padding: 8px;
@@ -71,6 +81,7 @@
       }
     </style>
   </head>
+
   <body>
     <header>
       <h1>Demo page</h1>
@@ -114,7 +125,7 @@
     <!-- Load the SDK (served by Bun at /sdk.iife.js) -->
     <script src="/sdk.iife.js"></script>
     <script>
-      const PROJECT_KEY = window.FT_DEMO_KEY || "ft_pk_REPLACE_ME_REPLACE_ME_REP"
+      const PROJECT_KEY = window.FT_DEMO_KEY || "ft_pk_BUspEVz7Bya5vi21Z1cHZJug"
       const ENDPOINT = "http://localhost:3000"
 
       if (/^ft_pk_[A-Za-z0-9]{24}$/.test(PROJECT_KEY)) {

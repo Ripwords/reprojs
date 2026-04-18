@@ -6,6 +6,19 @@ interface NetworkInformationLike {
   downlink?: number
 }
 
+interface NavigatorUADataLike {
+  platform?: string
+}
+
+// navigator.platform is deprecated and hardcodes "MacIntel" on Apple Silicon for
+// web-compat reasons. Prefer navigator.userAgentData.platform when available
+// (Chromium: "macOS", "Windows", "Linux", "Android") and fall back otherwise.
+function resolvePlatform(): string {
+  const uaData = (navigator as unknown as { userAgentData?: NavigatorUADataLike }).userAgentData
+  if (uaData?.platform) return uaData.platform
+  return navigator.platform
+}
+
 export function snapshotSystemInfo(): SystemInfo {
   const tz = (() => {
     try {
@@ -19,7 +32,7 @@ export function snapshotSystemInfo(): SystemInfo {
   const referrer = document.referrer || undefined
   return {
     userAgent: navigator.userAgent,
-    platform: navigator.platform,
+    platform: resolvePlatform(),
     language: navigator.language,
     timezone: tz,
     timezoneOffset: offset,
