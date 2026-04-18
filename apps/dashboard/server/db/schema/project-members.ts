@@ -1,4 +1,4 @@
-import { pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { index, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { projects } from "./projects"
 
 export const projectMembers = pgTable(
@@ -14,6 +14,7 @@ export const projectMembers = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.projectId, table.userId] }),
+    userIdx: index("project_members_user_idx").on(table.userId),
   }),
 )
 

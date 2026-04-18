@@ -29,9 +29,7 @@ export default defineEventHandler(async (event): Promise<ProjectOverviewDTO> => 
     last7Rows,
     volumeRows,
     gi,
-    failedRows,
-    pendingRows,
-    syncingRows,
+    syncJobRows,
     linkedRows,
     eventRows,
   ] = await Promise.all([
@@ -73,22 +71,11 @@ export default defineEventHandler(async (event): Promise<ProjectOverviewDTO> => 
       .then((rows) => rows[0] ?? null),
 
     db
-      .select({ failed: count() })
+      .select({ state: reportSyncJobs.state, c: count() })
       .from(reportSyncJobs)
       .innerJoin(reports, eq(reports.id, reportSyncJobs.reportId))
-      .where(and(eq(reports.projectId, projectId), eq(reportSyncJobs.state, "failed"))),
-
-    db
-      .select({ pending: count() })
-      .from(reportSyncJobs)
-      .innerJoin(reports, eq(reports.id, reportSyncJobs.reportId))
-      .where(and(eq(reports.projectId, projectId), eq(reportSyncJobs.state, "pending"))),
-
-    db
-      .select({ syncing: count() })
-      .from(reportSyncJobs)
-      .innerJoin(reports, eq(reports.id, reportSyncJobs.reportId))
-      .where(and(eq(reports.projectId, projectId), eq(reportSyncJobs.state, "syncing"))),
+      .where(eq(reports.projectId, projectId))
+      .groupBy(reportSyncJobs.state),
 
     db
       .select({ linked: count() })
@@ -117,10 +104,11 @@ export default defineEventHandler(async (event): Promise<ProjectOverviewDTO> => 
 
   const total = totalRows[0]?.total ?? 0
   const last7 = last7Rows[0]?.last7 ?? 0
-  const failed = failedRows[0]?.failed ?? 0
-  const pending = pendingRows[0]?.pending ?? 0
-  const syncing = syncingRows[0]?.syncing ?? 0
   const linked = linkedRows[0]?.linked ?? 0
+  const syncJobStateCounts = new Map(syncJobRows.map((r) => [r.state, r.c]))
+  const failed = syncJobStateCounts.get("failed") ?? 0
+  const pending = syncJobStateCounts.get("pending") ?? 0
+  const syncing = syncJobStateCounts.get("syncing") ?? 0
 
   const byStatus = { open: 0, in_progress: 0, resolved: 0, closed: 0 } as Record<string, number>
   for (const r of statusCounts) byStatus[r.key] = r.c
