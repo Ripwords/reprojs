@@ -156,8 +156,12 @@
           ["theme", "light"],
           ["recent_project", "demo"],
         ]
+        // RFC 6265 forbids spaces, commas, semicolons, and a handful of other
+        // control chars in raw cookie values — the browser silently drops the
+        // entire Set-Cookie when one is present. encodeURIComponent takes care
+        // of that for the "Bearer eyJ..." value and anything else we add later.
         for (const [name, value] of cookies) {
-          document.cookie = `${name}=${value}; path=/; max-age=${oneDay}; SameSite=Lax`
+          document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${oneDay}; SameSite=Lax`
         }
         if (window.FeedbackTool && typeof window.FeedbackTool.log === "function") {
           window.FeedbackTool.log("demo.cookies.seeded", { count: cookies.length })
