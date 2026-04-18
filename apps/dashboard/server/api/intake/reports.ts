@@ -1,5 +1,6 @@
 import { createError, defineEventHandler, getHeader, getRequestIP, readMultipartFormData } from "h3"
 import { eq } from "drizzle-orm"
+import { randomUUID } from "node:crypto"
 import { LogsAttachment, ReportIntakeInput } from "@feedback-tool/shared"
 import { db } from "../../db"
 import { projects, reports, reportAttachments } from "../../db/schema"
@@ -85,6 +86,13 @@ export default defineEventHandler(async (event) => {
   if (!ipTake.allowed) {
     event.node.res.setHeader("Retry-After", Math.ceil(ipTake.retryAfterMs / 1000).toString())
     throw createError({ statusCode: 429, statusMessage: "Too many reports from this IP" })
+  }
+
+  if (parsed._hp && parsed._hp.length > 0) {
+    // Tarpit: look successful to the attacker so they don't switch tactics.
+    // Fake UUID, no DB write, no enqueue.
+    event.node.res.statusCode = 201
+    return { id: randomUUID() }
   }
 
   const logsPart = parts.find((p) => p.name === "logs")

@@ -133,4 +133,27 @@ describe("intake API", () => {
     })
     expect(res.status).toBe(400)
   })
+
+  test("honeypot: non-empty _hp returns fake 201 and does not persist", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+    const res = await fetch("http://localhost:3000/api/intake/reports", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: buildMultipart(buildReportJSON(PK, { _hp: "i-am-a-bot" }), makePngBlob()),
+    })
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as { id: string }
+    expect(body.id).toMatch(/^[0-9a-f-]{36}$/)
+    const rows = await db
+      .select()
+      .from(reports)
+      .where(sql`project_id = ${projectId}`)
+    expect(rows.length).toBe(0)
+  })
 })
