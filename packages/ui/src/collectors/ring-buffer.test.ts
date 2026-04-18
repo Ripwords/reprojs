@@ -21,13 +21,28 @@ describe("RingBuffer", () => {
     expect(b.drain()).toEqual([3, 4, 5])
   })
 
-  test("drain returns a copy and does not clear", () => {
+  test("drain returns a copy and empties the buffer", () => {
     const b = new RingBuffer<number>(3)
     b.push(1)
     b.push(2)
     const first = b.drain()
-    first.push(999 as never)
-    expect(b.drain()).toEqual([1, 2])
+    expect(first).toEqual([1, 2])
+    // Mutating the returned copy does not affect the buffer.
+    first.push(999)
+    // After drain, the buffer must be empty — a second drain yields nothing.
+    expect(b.drain()).toEqual([])
+    expect(b.size()).toBe(0)
+  })
+
+  test("peek returns a copy without draining", () => {
+    const b = new RingBuffer<number>(3)
+    b.push(1)
+    b.push(2)
+    const first = b.peek()
+    expect(first).toEqual([1, 2])
+    // peek must not clear: repeated peeks return the same contents.
+    expect(b.peek()).toEqual([1, 2])
+    expect(b.size()).toBe(2)
   })
 
   test("clear empties the buffer", () => {
@@ -36,7 +51,7 @@ describe("RingBuffer", () => {
     b.push(2)
     b.clear()
     expect(b.size()).toBe(0)
-    expect(b.drain()).toEqual([])
+    expect(b.peek()).toEqual([])
   })
 
   test("size reflects current count", () => {

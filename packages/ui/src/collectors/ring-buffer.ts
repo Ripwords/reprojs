@@ -10,6 +10,12 @@ export class RingBuffer<T> {
   }
 
   drain(): T[] {
+    const copy = this.items.slice()
+    this.items.length = 0
+    return copy
+  }
+
+  peek(): T[] {
     return this.items.slice()
   }
 
