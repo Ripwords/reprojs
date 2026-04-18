@@ -1,4 +1,4 @@
-import { defineEventHandler, readValidatedBody } from "h3"
+import { createError, defineEventHandler, readValidatedBody } from "h3"
 import { eq } from "drizzle-orm"
 import { UpdateAppSettingsInput } from "@feedback-tool/shared"
 import { db } from "../../db"
@@ -14,6 +14,9 @@ export default defineEventHandler(async (event) => {
     .set({ ...body, updatedAt: new Date() })
     .where(eq(appSettings.id, 1))
     .returning()
+  if (!updated) {
+    throw createError({ statusCode: 500, statusMessage: "Insert failed" })
+  }
 
   return {
     signupGated: updated.signupGated,

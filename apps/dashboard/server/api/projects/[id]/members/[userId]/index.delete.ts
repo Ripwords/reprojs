@@ -22,10 +22,11 @@ export default defineEventHandler(async (event) => {
   }
 
   if (member.role === "owner") {
-    const [{ c }] = await db
+    const [countRow] = await db
       .select({ c: count() })
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, id), eq(projectMembers.role, "owner")))
+    const c = countRow?.c ?? 0
     if (c <= 1) {
       throw createError({ statusCode: 409, statusMessage: "Cannot remove the last owner" })
     }

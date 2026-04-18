@@ -22,6 +22,8 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       effectiveRole: "owner",
+      publicKey: r.publicKey,
+      allowedOrigins: r.allowedOrigins,
       dailyReportCap: r.dailyReportCap,
     }))
   }
@@ -34,6 +36,8 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
       createdAt: projects.createdAt,
       updatedAt: projects.updatedAt,
       role: projectMembers.role,
+      publicKey: projects.publicKey,
+      allowedOrigins: projects.allowedOrigins,
       dailyReportCap: projects.dailyReportCap,
     })
     .from(projects)
@@ -48,6 +52,8 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     effectiveRole: r.role as "viewer" | "developer" | "owner",
+    publicKey: r.publicKey,
+    allowedOrigins: r.allowedOrigins,
     dailyReportCap: r.dailyReportCap,
   }))
 })

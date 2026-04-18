@@ -15,10 +15,11 @@ export default defineEventHandler(async (event) => {
 
   // Last-owner guard: if demoting from owner, ensure at least one other owner remains.
   if (body.role !== "owner") {
-    const [{ c }] = await db
+    const [countRow] = await db
       .select({ c: count() })
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, id), eq(projectMembers.role, "owner")))
+    const c = countRow?.c ?? 0
     const isCurrentlyOwner = await db
       .select()
       .from(projectMembers)

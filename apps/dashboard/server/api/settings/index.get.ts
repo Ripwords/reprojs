@@ -1,4 +1,4 @@
-import { defineEventHandler } from "h3"
+import { createError, defineEventHandler } from "h3"
 import type { AppSettingsDTO } from "@feedback-tool/shared"
 import { db } from "../../db"
 import { appSettings } from "../../db/schema"
@@ -8,6 +8,9 @@ export default defineEventHandler(async (event): Promise<AppSettingsDTO> => {
   await requireInstallAdmin(event)
 
   const [settings] = await db.select().from(appSettings).limit(1)
+  if (!settings) {
+    throw createError({ statusCode: 500, statusMessage: "App settings row missing" })
+  }
 
   return {
     signupGated: settings.signupGated,

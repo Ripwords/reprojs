@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     .values({
       id: randomBytes(16).toString("hex"),
       email: body.email,
-      name: body.name ?? body.email.split("@")[0],
+      name: body.name ?? body.email.split("@")[0] ?? body.email,
       emailVerified: false,
       role: body.role,
       status: "invited",
@@ -36,6 +36,9 @@ export default defineEventHandler(async (event) => {
       updatedAt: new Date(),
     })
     .returning()
+  if (!invited) {
+    throw createError({ statusCode: 500, statusMessage: "Insert failed" })
+  }
 
   const acceptUrl = `${process.env.BETTER_AUTH_URL}/accept-invite?token=${token}`
   const html = await renderTemplate("invite", {

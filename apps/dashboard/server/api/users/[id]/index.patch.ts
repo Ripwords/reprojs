@@ -21,7 +21,8 @@ export default defineEventHandler(async (event) => {
     (body.role === "member" && target.role === "admin") ||
     (body.status === "disabled" && target.role === "admin" && target.status !== "disabled")
   if (wouldLoseAdmin) {
-    const [{ c }] = await db.select({ c: count() }).from(user).where(eq(user.role, "admin"))
+    const [countRow] = await db.select({ c: count() }).from(user).where(eq(user.role, "admin"))
+    const c = countRow?.c ?? 0
     if (c <= 1) {
       throw createError({
         statusCode: 409,
@@ -35,6 +36,9 @@ export default defineEventHandler(async (event) => {
   if (body.status !== undefined) updates.status = body.status
 
   const [updated] = await db.update(user).set(updates).where(eq(user.id, id)).returning()
+  if (!updated) {
+    throw createError({ statusCode: 500, statusMessage: "Insert failed" })
+  }
 
   return {
     id: updated.id,

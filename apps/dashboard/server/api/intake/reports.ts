@@ -137,10 +137,11 @@ export default defineEventHandler(async (event) => {
   const txResult = await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`intake:${project.id}:daily`}))`)
 
-    const [{ c: todayCount }] = await tx
+    const [countRow] = await tx
       .select({ c: count() })
       .from(reports)
       .where(and(eq(reports.projectId, project.id), gte(reports.createdAt, dayAgo)))
+    const todayCount = countRow?.c ?? 0
     if (todayCount >= project.dailyReportCap) {
       return { overCap: true as const }
     }
@@ -164,6 +165,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 429, statusMessage: "Daily report cap reached" })
   }
   const report = txResult.report
+  if (!report) {
+    throw createError({ statusCode: 500, statusMessage: "Insert failed" })
+  }
 
   // P3: Call getStorage() once and fan out attachment writes with Promise.all.
   // Screenshot and logs uploads no longer serialize.

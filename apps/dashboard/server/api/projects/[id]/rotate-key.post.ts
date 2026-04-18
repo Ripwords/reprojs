@@ -20,6 +20,9 @@ export default defineEventHandler(async (event) => {
     })
     .where(eq(projects.id, id))
     .returning()
+  if (!updated) {
+    throw createError({ statusCode: 404, statusMessage: "Project not found" })
+  }
 
   return { publicKey: updated.publicKey }
 })

@@ -1,4 +1,4 @@
-import { defineEventHandler, readValidatedBody } from "h3"
+import { createError, defineEventHandler, readValidatedBody } from "h3"
 import { CreateProjectInput } from "@feedback-tool/shared"
 import { db } from "../../db"
 import { projectMembers, projects } from "../../db/schema"
@@ -12,6 +12,9 @@ export default defineEventHandler(async (event) => {
     .insert(projects)
     .values({ name: body.name, createdBy: session.userId })
     .returning()
+  if (!created) {
+    throw createError({ statusCode: 500, statusMessage: "Insert failed" })
+  }
 
   // Admin implicit owner → no row. Non-admin creator gets an owner row.
   if (session.role !== "admin") {

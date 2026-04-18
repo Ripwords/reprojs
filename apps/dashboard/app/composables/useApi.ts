@@ -1,4 +1,7 @@
-export const useApi = <T>(path: string, opts: Parameters<typeof useFetch<T>>[1] = {}) => {
+export const useApi = <T>(
+  path: Parameters<typeof useFetch<T>>[0],
+  opts: Parameters<typeof useFetch<T>>[1] = {},
+) => {
   // Forward the incoming request's cookie during SSR so the API sees the
   // caller's session. Without this, protected endpoints return 401 on SSR
   // and the page hydrates in a broken state.

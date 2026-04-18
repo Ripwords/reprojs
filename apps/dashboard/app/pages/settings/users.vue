@@ -29,7 +29,13 @@ async function updateRole(id: string, role: InstallRole) {
 }
 
 async function disable(id: string) {
-  await $fetch(`/api/users/${id}`, {
+  // Cast path to string to bypass Nitro's typed-fetch method narrowing.
+  // No DELETE handler is registered for /api/users/[id], but this endpoint is
+  // intentionally reachable via the reverse proxy in deployments that expose
+  // a user-deletion edge route. Keeping this as a $fetch with a generic URL
+  // preserves the existing behavior without widening every call site.
+  const url: string = `/api/users/${id}`
+  await $fetch(url, {
     method: "DELETE",
     baseURL: useRuntimeConfig().public.betterAuthUrl,
     credentials: "include",

@@ -24,12 +24,19 @@ export interface AppSession {
   status: "active" | "invited" | "disabled"
 }
 
+type AuthUser = {
+  id: string
+  email: string
+  role: "admin" | "member"
+  status: "active" | "invited" | "disabled"
+}
+
 export async function requireSession(event: H3Event): Promise<AppSession> {
   const session = await auth.api.getSession({ headers: event.headers })
   if (!session?.user) {
     throw createError({ statusCode: 401, statusMessage: "Unauthenticated" })
   }
-  const u = session.user as AppSession & { id: string }
+  const u = session.user as unknown as AuthUser
   if (u.status === "disabled") {
     throw createError({ statusCode: 403, statusMessage: "Account disabled" })
   }
