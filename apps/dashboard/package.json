@@ -11,6 +11,7 @@
     "test:e2e": "concurrently --kill-others-on-fail --success first -n server,tests \"nuxt dev\" \"wait-on http://localhost:3000/api/me --timeout 60000 && bun test tests/\""
   },
   "dependencies": {
+    "@feedback-tool/integrations-github": "workspace:*",
     "@feedback-tool/shared": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",
     "better-auth": "^1.5.6",
