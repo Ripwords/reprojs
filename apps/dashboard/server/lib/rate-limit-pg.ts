@@ -35,15 +35,29 @@ export function createPgRateLimiter(opts: RateLimiterOptions) {
         if (!existing) {
           // First take for this key: write perMinute-1 (we just consumed one).
           // ON CONFLICT guards the race where two concurrent txs both miss the
-          // SELECT — later callers hit the UPDATE path on retry.
-          await tx
-            .insert(rateLimitBuckets)
-            .values({ key, tokens: perMinute - 1, lastRefillMs: t })
-            .onConflictDoUpdate({
-              target: rateLimitBuckets.key,
-              set: { tokens: sql`GREATEST(${rateLimitBuckets.tokens} - 1, 0)`, lastRefillMs: t },
-            })
-          return { allowed: true, retryAfterMs: 0 }
+          // SELECT — the conflicting writer does the decrement and we read back
+          // the actual resulting tokens so we don't over-issue.
+          // xmax = 0 in Postgres means the row was freshly INSERTed (not UPDATEd),
+          // letting us distinguish "consumed last token legitimately" from
+          // "UPDATE clamped to 0 because bucket was already exhausted".
+          const upserted = await tx.execute<{ tokens: number; inserted: boolean }>(sql`
+            INSERT INTO rate_limit_buckets (key, tokens, last_refill_ms)
+            VALUES (${key}, ${perMinute - 1}, ${t})
+            ON CONFLICT (key) DO UPDATE
+              SET tokens = GREATEST(rate_limit_buckets.tokens - 1, 0),
+                  last_refill_ms = ${t}
+            RETURNING tokens, (xmax = 0) AS inserted
+          `)
+          const row = upserted.rows[0]
+          const finalTokens = row?.tokens ?? perMinute - 1
+          const wasInserted = row?.inserted ?? true
+          // Allowed when: fresh insert (we legitimately consumed 1 token), or
+          // conflict-update that decremented to >= 0 without clamping
+          // (i.e. there was at least 1 token available).
+          const allowed = wasInserted || finalTokens >= 1
+          return allowed
+            ? { allowed: true, retryAfterMs: 0 }
+            : { allowed: false, retryAfterMs: Math.ceil(WINDOW_MS / perMinute) }
         }
 
         const elapsed = Math.max(0, t - existing.lastRefillMs)
