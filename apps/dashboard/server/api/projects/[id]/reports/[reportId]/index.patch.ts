@@ -5,6 +5,7 @@ import { TriagePatchInput } from "@feedback-tool/shared"
 import { db } from "../../../../../db"
 import { projectMembers, reportEvents, reports } from "../../../../../db/schema"
 import { buildReportEvents } from "../../../../../lib/report-events"
+import { enqueueSync } from "../../../../../lib/enqueue-sync"
 import { requireProjectRole } from "../../../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
@@ -85,6 +86,11 @@ export default defineEventHandler(async (event) => {
 
     const events = buildReportEvents(reportId, actorId, change)
     if (events.length > 0) await tx.insert(reportEvents).values(events)
+
+    // Enqueue a GitHub sync job if this report is linked AND fields actually changed.
+    if (events.length > 0 && current.githubIssueNumber != null) {
+      await enqueueSync(reportId, id)
+    }
 
     return { ok: true, updated: true }
   })

@@ -5,6 +5,7 @@ import { BulkUpdateInput } from "@feedback-tool/shared"
 import { db } from "../../../../db"
 import { projectMembers, reportEvents, reports } from "../../../../db/schema"
 import { buildReportEvents } from "../../../../lib/report-events"
+import { enqueueSync } from "../../../../lib/enqueue-sync"
 import { requireProjectRole } from "../../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
@@ -61,6 +62,9 @@ export default defineEventHandler(async (event) => {
       await tx.update(reports).set(patch).where(eq(reports.id, current.id))
       updated.push(current.id)
       allEvents.push(...buildReportEvents(current.id, actorId, change))
+      if (current.githubIssueNumber != null) {
+        await enqueueSync(current.id, id)
+      }
     }
 
     if (allEvents.length > 0) await tx.insert(reportEvents).values(allEvents)

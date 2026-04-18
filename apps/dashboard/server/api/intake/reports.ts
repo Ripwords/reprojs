@@ -4,6 +4,7 @@ import { LogsAttachment, ReportIntakeInput } from "@feedback-tool/shared"
 import { db } from "../../db"
 import { projects, reports, reportAttachments } from "../../db/schema"
 import { applyIntakeCors, isOriginAllowed } from "../../lib/intake-cors"
+import { enqueueSync } from "../../lib/enqueue-sync"
 import { getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
 import { getStorage } from "../../lib/storage"
 
@@ -122,6 +123,10 @@ export default defineEventHandler(async (event) => {
       sizeBytes: logsPart.data.length,
     })
   }
+
+  await enqueueSync(report.id, project.id).catch((err) => {
+    console.error("[github] enqueueSync failed on intake", err)
+  })
 
   event.node.res.statusCode = 201
   return { id: report.id }
