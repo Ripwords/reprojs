@@ -3,6 +3,9 @@
  * Checks that the Nuxt dev server is already running at TEST_BASE_URL.
  * Run tests with:   bun run test:e2e
  * which starts the dev server automatically.
+ *
+ * Set SKIP_SERVER_CHECK=1 (or run pure unit-test files that don't hit the API)
+ * to bypass the server readiness check.
  */
 const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
 
@@ -24,4 +27,6 @@ async function checkServer(retries = 30, delayMs = 1000): Promise<void> {
   )
 }
 
-await checkServer()
+if (!process.env.SKIP_SERVER_CHECK) {
+  await checkServer()
+}

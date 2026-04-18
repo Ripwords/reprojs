@@ -68,3 +68,15 @@ known tradeoffs, and the attacker capabilities we defend against.
 - **Event log integrity.** Mutation + event inserts share a single DB transaction. Either all events for a mutation land or none; no ghost events.
 - **Search performance.** ILIKE on title + description without a trigram index is acceptable up to ~10k reports per project. Follow-up: add `pg_trgm` + GIN on `lower(title || ' ' || coalesce(description, ''))` once real installs need it.
 - **DoS mitigation.** Query-param arrays capped at 10 values per key; `q` ≤200 chars; `reportIds` ≤100; `limit` ≤100.
+
+## Sub-project G — GitHub Issues sync
+
+- **App private key** lives only in `GITHUB_APP_PRIVATE_KEY` env. Never logged; never persisted in DB. Missing → install attempts return "GitHub not configured".
+- **Webhook HMAC verification** via `crypto.timingSafeEqual` on raw request bytes. Rejected 401 before any DB access.
+- **Install callback `state`** is HMAC-signed `{projectId, userId, exp}` with 10-minute TTL. Prevents install-redirect hijacking.
+- **Signed attachment URLs** use HMAC-SHA256 over `{projectId, reportId, kind, expiresAt}` with 7-day expiry. Separate `ATTACHMENT_URL_SECRET` env var, rotatable independently of the App private key.
+- **Installation token lifecycle** — requested via App JWT, cached in-process, refreshed lazily; never persisted.
+- **Mass-enqueue DoS** — bounded by intake's existing rate limits from B. Worker ceiling ~10 jobs/minute well below GitHub's 5000/hr per-installation.
+- **Stale sync jobs for deleted rows** — FK CASCADEs on `report_id` and `project_id`.
+- **GitHub-side label pollution** — `updateIssueLabels` is full-replacement; manual labels in GitHub get overwritten on next triage sync. Documented.
+- **Orphan issues from unlink** — intentional: dashboard explicitly abandons ownership.
