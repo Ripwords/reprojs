@@ -96,7 +96,7 @@ Automatically collected with each report:
 
 ### 3.5 Dashboard — Admin / Developer UI
 
-- **Auth**: better-auth (email + OAuth providers). Roles: `owner`, `admin`, `developer`, `viewer`.
+- **Auth**: better-auth with magic-link + GitHub/Google OAuth. Email+password explicitly removed. Roles: `owner`, `admin`, `developer`, `viewer`.
 - **Projects**: multiple projects per workspace. Each project has its own embed key, GitHub repo mapping, and settings.
 - **Ticket inbox**: list, filter, search, assign, tag, change status (open / in-progress / resolved / closed).
 - **Ticket detail**: render annotated screenshot, play back 30s session replay, browse console/network logs, inspect system info and cookies.
@@ -193,7 +193,7 @@ Mirrors the ai-trip stack:
 | Framework | **Nuxt 4** (Vue 3, Nitro server) |
 | Database | **PostgreSQL 17** via Docker (local dev) |
 | ORM | **Drizzle ORM** + `drizzle-kit` migrations |
-| Auth | **better-auth** (email + OAuth) via `@better-auth/cli` schema gen |
+| Auth | **better-auth** (magic-link + GitHub/Google OAuth) via `@better-auth/cli` schema gen |
 | Validation | **Zod** at API boundaries |
 | Styling | Tailwind CSS v4 |
 | Blob storage | Pluggable adapter — local-disk (default) + S3Adapter via @aws-sdk/client-s3 against any S3-compatible endpoint (AWS S3, Cloudflare R2, Backblaze B2, Hetzner, MinIO, etc.) |
