@@ -65,11 +65,21 @@ async function enforceDomainAndInviteGate(newUser: { id: string; email: string }
 }
 
 /**
- * First-sign-in promotion: when a pre-invited user row (status=`invited`)
- * successfully signs in for the first time, flip it to `active` and clear the
- * now-dead invite-token columns. Also promotes the very first account in the
- * workspace to `admin` so the bootstrapping sign-in doesn't leave the install
- * without an owner.
+ * First-sign-in promotion:
+ *   - Pre-invited user (status=`invited`) → flip to `active` and clear the
+ *     now-dead invite-token columns.
+ *   - Brand-new user who is also the only user in the install → promote to
+ *     `admin`. This is the bootstrapping rule that hands the first person
+ *     to sign in ownership of a fresh deployment.
+ *
+ * "Brand-new" is detected by the user row's `createdAt` being within a few
+ * seconds of its `updatedAt` — magic-link's `internalAdapter.createUser`
+ * emits identical timestamps for both, whereas a user returning for another
+ * sign-in will have `updatedAt > createdAt` by at least the gap between
+ * their first sign-in and this one. This disambiguation matters for tests
+ * (and any other path) that insert user rows directly with role=member:
+ * those rows must NOT get silently promoted to admin just because the row
+ * happens to be the only one in the table when that user signs in.
  */
 async function promoteInvitedOrFirstUser(userId: string): Promise<void> {
   const [existing] = await db.select().from(user).where(eq(user.id, userId))
@@ -78,13 +88,19 @@ async function promoteInvitedOrFirstUser(userId: string): Promise<void> {
   const [countRow] = await db.select({ c: count() }).from(user)
   const totalUsers = countRow?.c ?? 0
 
+  // Created-at and updated-at must be from the same request to be considered
+  // brand-new. 2s covers clock drift on the db-round-trip.
+  const createdAtMs = existing.createdAt.getTime()
+  const updatedAtMs = existing.updatedAt.getTime()
+  const wasJustCreated = Math.abs(updatedAtMs - createdAtMs) < 2_000
+
   const updates: Partial<typeof user.$inferInsert> = {}
   if (existing.status === "invited") {
     updates.status = "active"
     updates.inviteToken = null
     updates.inviteTokenExpiresAt = null
   }
-  if (totalUsers === 1 && existing.role !== "admin") {
+  if (wasJustCreated && totalUsers === 1 && existing.role !== "admin") {
     updates.role = "admin"
   }
   if (Object.keys(updates).length === 0) return
