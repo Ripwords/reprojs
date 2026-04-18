@@ -85,6 +85,13 @@
       "when": 1776523372026,
       "tag": "0011_fancy_garia",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1776523722235,
+      "tag": "0012_moaning_maverick",
+      "breakpoints": true
     }
   ]
 }

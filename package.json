@@ -15,7 +15,7 @@
     "sdk:build": "bun run packages/ui/build-css.ts && bun --filter @feedback-tool/sdk build",
     "sdk:watch": "bun --filter @feedback-tool/sdk dev",
     "demo": "bun run sdk:build && bun --filter @feedback-tool/ui demo",
-    "auth:gen": "cd apps/dashboard && bun --env-file=../../.env node_modules/@better-auth/cli/dist/index.mjs generate --config ./server/lib/auth.ts --output ./server/db/schema/auth-schema.ts -y",
+    "auth:gen": "cd apps/dashboard && bun --env-file=../../.env node_modules/@better-auth/cli/dist/index.mjs generate --config ./server/lib/auth.ts --output ./server/db/schema/auth-schema.ts -y && bun scripts/patch-auth-schema.ts",
     "db:gen": "bun run auth:gen && cd apps/dashboard && bun --env-file=../../.env node_modules/.bin/drizzle-kit generate",
     "db:push": "bun run auth:gen && cd apps/dashboard && bun --env-file=../../.env node_modules/.bin/drizzle-kit push",
     "db:migrate": "cd apps/dashboard && bun --env-file=../../.env node_modules/.bin/drizzle-kit migrate",
