@@ -1,6 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer"
 
-type MailProvider = "ethereal" | "smtp"
+type MailProvider = "console" | "ethereal" | "smtp"
 
 interface MailConfig {
   provider: MailProvider
@@ -15,12 +15,19 @@ interface MailConfig {
 
 let transporter: Transporter | null = null
 let resolvedFrom = ""
+let resolvedProvider: MailProvider = "console"
 
-async function getTransporter(): Promise<Transporter> {
+async function getTransporter(): Promise<Transporter | null> {
   if (transporter) return transporter
 
   const cfg = loadConfig()
   resolvedFrom = cfg.from
+  resolvedProvider = cfg.provider
+
+  if (cfg.provider === "console") {
+    // No transporter needed — we print to stdout in sendMail.
+    return null
+  }
 
   if (cfg.provider === "smtp") {
     if (!cfg.smtp) throw new Error("SMTP provider requires SMTP_* env vars")
@@ -33,6 +40,7 @@ async function getTransporter(): Promise<Transporter> {
     return transporter
   }
 
+  // ethereal
   try {
     const account = await nodemailer.createTestAccount()
     transporter = nodemailer.createTransport({
@@ -44,14 +52,16 @@ async function getTransporter(): Promise<Transporter> {
     console.info(`[email] Ethereal account created: ${account.user}`)
     return transporter
   } catch (err) {
-    console.warn(`[email] Ethereal unavailable, falling back to JSON transport:`, err)
-    transporter = nodemailer.createTransport({ jsonTransport: true })
-    return transporter
+    console.warn(`[email] Ethereal unavailable, falling back to console provider:`, err)
+    resolvedProvider = "console"
+    return null
   }
 }
 
 function loadConfig(): MailConfig {
-  const provider = (process.env.MAIL_PROVIDER ?? "ethereal") as MailProvider
+  // Default: `console` for dev (prints verification URL to stdout — no external
+  // network, no rate-limit friction). Set MAIL_PROVIDER=smtp for real email.
+  const provider = (process.env.MAIL_PROVIDER ?? "console") as MailProvider
   const from = process.env.SMTP_FROM ?? "Feedback Tool <no-reply@localhost>"
   if (provider === "smtp") {
     return {
@@ -65,7 +75,7 @@ function loadConfig(): MailConfig {
       },
     }
   }
-  return { provider: "ethereal", from }
+  return { provider, from }
 }
 
 export interface SendMailOpts {
@@ -77,6 +87,20 @@ export interface SendMailOpts {
 
 export async function sendMail(opts: SendMailOpts): Promise<void> {
   const t = await getTransporter()
+
+  // `console` provider: extract and print the first URL in the email. Keeps
+  // dev flow unblocked without SMTP; no leak to external services.
+  if (resolvedProvider === "console") {
+    const text = opts.text ?? stripHtml(opts.html)
+    const firstUrl = /https?:\/\/[^\s"'<>]+/.exec(opts.html)?.[0]
+    console.info(
+      `[email:console] to=${opts.to} subject="${opts.subject}"${firstUrl ? `\n  link: ${firstUrl}` : `\n  body: ${text.slice(0, 400)}`}`,
+    )
+    return
+  }
+
+  if (!t) throw new Error("Mail transporter not available")
+
   const info = await t.sendMail({
     from: resolvedFrom,
     to: opts.to,
