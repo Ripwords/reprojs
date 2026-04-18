@@ -30,7 +30,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return await db.transaction(async (tx) => {
+  const toEnqueue: string[] = []
+
+  const { updated } = await db.transaction(async (tx) => {
     const currents = await tx
       .select()
       .from(reports)
@@ -43,7 +45,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const updated: string[] = []
+    const updatedIds: string[] = []
     const allEvents = []
     for (const current of currents) {
       const patch: Partial<typeof reports.$inferInsert> = {}
@@ -61,14 +63,25 @@ export default defineEventHandler(async (event) => {
       patch.updatedAt = new Date()
       // eslint-disable-next-line no-await-in-loop -- sequential tx writes; each row depends on its own patch computed above
       await tx.update(reports).set(patch).where(eq(reports.id, current.id))
-      updated.push(current.id)
+      updatedIds.push(current.id)
       allEvents.push(...buildReportEvents(current.id, actorId, change))
-      // eslint-disable-next-line no-await-in-loop -- enqueue must follow the tx update for each report
-      await enqueueSync(current.id, id)
+      toEnqueue.push(current.id)
     }
 
     if (allEvents.length > 0) await tx.insert(reportEvents).values(allEvents)
 
-    return { updated }
+    return { updated: updatedIds }
   })
+
+  // Fan-out enqueueSync calls in parallel after the transaction commits.
+  // enqueueSync uses its own db handle (not the tx), so it must run outside.
+  await Promise.all(
+    toEnqueue.map((rid) =>
+      enqueueSync(rid, id).catch((err) =>
+        console.error(`[bulk] enqueueSync failed for ${rid}`, err),
+      ),
+    ),
+  )
+
+  return { updated }
 })

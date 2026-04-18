@@ -125,35 +125,37 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  // Facet counts — all use the same whereClause as the list.
-  const statusRows = await db
-    .select({ key: reports.status, c: count() })
-    .from(reports)
-    .where(whereClause)
-    .groupBy(reports.status)
-  const priorityRows = await db
-    .select({ key: reports.priority, c: count() })
-    .from(reports)
-    .where(whereClause)
-    .groupBy(reports.priority)
-  const assigneeRows = await db
-    .select({
-      id: reports.assigneeId,
-      name: userTable.name,
-      email: userTable.email,
-      c: count(),
-    })
-    .from(reports)
-    .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
-    .where(whereClause)
-    .groupBy(reports.assigneeId, userTable.name, userTable.email)
-  const tagRows = await db
-    .select({ name: sql<string>`unnest(${reports.tags})`.as("name"), c: count() })
-    .from(reports)
-    .where(whereClause)
-    .groupBy(sql`name`)
-    .orderBy(desc(count()))
-    .limit(20)
+  // Facet counts — all use the same whereClause as the list; run concurrently.
+  const [statusRows, priorityRows, assigneeRows, tagRows] = await Promise.all([
+    db
+      .select({ key: reports.status, c: count() })
+      .from(reports)
+      .where(whereClause)
+      .groupBy(reports.status),
+    db
+      .select({ key: reports.priority, c: count() })
+      .from(reports)
+      .where(whereClause)
+      .groupBy(reports.priority),
+    db
+      .select({
+        id: reports.assigneeId,
+        name: userTable.name,
+        email: userTable.email,
+        c: count(),
+      })
+      .from(reports)
+      .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
+      .where(whereClause)
+      .groupBy(reports.assigneeId, userTable.name, userTable.email),
+    db
+      .select({ name: sql<string>`unnest(${reports.tags})`.as("name"), c: count() })
+      .from(reports)
+      .where(whereClause)
+      .groupBy(sql`name`)
+      .orderBy(desc(count()))
+      .limit(20),
+  ])
 
   const statusFacet: Record<string, number> = { open: 0, in_progress: 0, resolved: 0, closed: 0 }
   for (const r of statusRows) statusFacet[r.key] = r.c
