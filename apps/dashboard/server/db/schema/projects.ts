@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm"
-import { integer, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core"
+import {
+  boolean,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core"
 
 export const projects = pgTable(
   "projects",
@@ -15,6 +24,7 @@ export const projects = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     dailyReportCap: integer("daily_report_cap").notNull().default(1000),
+    replayEnabled: boolean("replay_enabled").notNull().default(true),
     publicKeyRegeneratedAt: timestamp("public_key_regenerated_at").defaultNow().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

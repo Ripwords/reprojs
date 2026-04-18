@@ -73,6 +73,10 @@ const Schema = z.object({
   INTAKE_REQUIRE_DWELL: boolString.default(true),
   INTAKE_MIN_DWELL_MS: intString(1_500),
 
+  // Session replay
+  REPLAY_FEATURE_ENABLED: boolString.default(true),
+  INTAKE_REPLAY_MAX_BYTES: intString(1_048_576),
+
   // Auth rate limit — tri-state: explicit true/false overrides the
   // production-default. Represented as optional so the derived
   // `authRateLimitEnabled` export can distinguish "unset" from "false".
