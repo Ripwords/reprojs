@@ -51,6 +51,10 @@ export const reports = pgTable(
     githubIssueNumberIdx: index("reports_github_issue_number_idx")
       .on(table.githubIssueNumber)
       .where(sql`${table.githubIssueNumber} IS NOT NULL`),
+    projectUpdatedAtIdx: index("reports_project_updated_at_idx").on(
+      table.projectId,
+      sql`${table.updatedAt} DESC`,
+    ),
   }),
 )
 

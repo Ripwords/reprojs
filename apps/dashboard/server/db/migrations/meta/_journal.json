@@ -64,6 +64,13 @@
       "when": 1776520757718,
       "tag": "0008_silent_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776522648754,
+      "tag": "0009_same_puppet_master",
+      "breakpoints": true
     }
   ]
 }

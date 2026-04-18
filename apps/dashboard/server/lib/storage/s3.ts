@@ -13,6 +13,39 @@ function resolveCredentials(): { accessKeyId: string; secretAccessKey: string } 
   throw new Error("S3 credentials missing. Set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY.")
 }
 
+const BLOCKED_HOSTS = new Set([
+  // AWS EC2 IMDS (IPv4)
+  "169.254.169.254",
+  // AWS EC2 IMDS — IPv6-mapped IPv4 forms that reach the same endpoint on dual-stack hosts
+  "::ffff:169.254.169.254",
+  "::ffff:a9fe:a9fe",
+  // AWS Nitro IPv6 IMDS
+  "fd00:ec2::254",
+  // AWS documented IMDS hostname aliases (with search-domain set)
+  "instance-data",
+  "instance-data.ec2.internal",
+  // GCP metadata
+  "metadata.google.internal",
+  "metadata",
+  // Azure / Alibaba / DigitalOcean / Hetzner all use 169.254.169.254 — covered above
+])
+
+/**
+ * Normalizes a hostname for blocklist comparison and checks it against known
+ * cloud-metadata endpoints and the full link-local /16 range.
+ */
+function isBlockedMetadataHost(hostname: string): boolean {
+  const h = hostname
+    .toLowerCase()
+    .replace(/\.$/, "") // strip trailing dot (FQDN)
+    .replace(/^\[|\]$/g, "") // defensive: strip IPv6 brackets if somehow present
+  if (BLOCKED_HOSTS.has(h)) return true
+  // Full AWS/Azure/Alibaba/DO/Hetzner link-local /16 — covers arbitrary probes
+  // like 169.254.42.1 that an attacker could use to reach internal services.
+  if (h.startsWith("169.254.")) return true
+  return false
+}
+
 /**
  * Validates S3_ENDPOINT to prevent SSRF via cloud instance-metadata services.
  * Enforces http/https protocol and blocks known metadata IP/hostnames.
@@ -27,9 +60,10 @@ function validateS3Endpoint(raw: string): string {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(`S3_ENDPOINT protocol must be http/https, got ${url.protocol}`)
   }
-  // Block AWS / GCP instance metadata services regardless of DNS tricks.
-  const host = url.hostname.toLowerCase()
-  if (host === "169.254.169.254" || host === "metadata.google.internal" || host === "metadata") {
+  // Block AWS / GCP / Azure / etc. instance metadata services regardless of DNS tricks,
+  // IPv6-mapped bypasses, or alternate link-local probes.
+  const host = url.hostname
+  if (isBlockedMetadataHost(host)) {
     throw new Error(`S3_ENDPOINT points at instance metadata (${host}); refusing.`)
   }
   return url.toString().replace(/\/$/, "") // drop trailing slash for consistency
