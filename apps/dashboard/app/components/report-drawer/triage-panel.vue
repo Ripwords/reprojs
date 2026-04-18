@@ -1,6 +1,7 @@
 <!-- apps/dashboard/app/components/report-drawer/triage-panel.vue -->
 <script setup lang="ts">
 import type { ReportPriority, ReportStatus, ReportSummaryDTO } from "@feedback-tool/shared"
+import UnlinkDialog from "~/components/integrations/github/unlink-dialog.vue"
 
 interface Member {
   userId: string
@@ -36,6 +37,37 @@ const { data: members } = useApi<Member[]>(
 
 const tagDraft = ref("")
 const posting = ref(false)
+const unlinkOpen = ref(false)
+const ghSubmitting = ref(false)
+
+async function createIssue() {
+  ghSubmitting.value = true
+  try {
+    await $fetch(`/api/projects/${props.projectId}/reports/${props.report.id}/github-sync`, {
+      method: "POST",
+      credentials: "include",
+    })
+    emit("patched")
+  } finally {
+    ghSubmitting.value = false
+  }
+}
+
+async function unlink() {
+  await $fetch(`/api/projects/${props.projectId}/reports/${props.report.id}/github-unlink`, {
+    method: "POST",
+    credentials: "include",
+  })
+  unlinkOpen.value = false
+  emit("patched")
+}
+
+function ghRepoFullName(url: string | null): string {
+  if (!url) return ""
+  // Extracts "acme/frontend" from "https://github.com/acme/frontend/issues/42"
+  const match = /github\.com\/([^/]+\/[^/]+)\/issues\//.exec(url)
+  return match?.[1] ?? ""
+}
 
 async function patch(body: Record<string, unknown>) {
   posting.value = true
@@ -133,5 +165,44 @@ async function removeTag(name: string) {
         @keydown.enter.prevent="addTag"
       />
     </div>
+
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+      <span class="text-xs uppercase text-neutral-500">GitHub</span>
+      <template v-if="report.githubIssueNumber && report.githubIssueUrl">
+        <a
+          :href="report.githubIssueUrl"
+          target="_blank"
+          rel="noopener"
+          class="underline text-neutral-700"
+          >#{{ report.githubIssueNumber }}</a
+        >
+        <button
+          v-if="canEdit"
+          type="button"
+          class="text-neutral-400 hover:text-neutral-900 text-xs"
+          @click="unlinkOpen = true"
+        >
+          Unlink
+        </button>
+      </template>
+      <button
+        v-else-if="canEdit"
+        type="button"
+        class="border rounded px-2 py-0.5 text-xs"
+        :disabled="ghSubmitting"
+        @click="createIssue"
+      >
+        {{ ghSubmitting ? "Creating…" : "Create GitHub issue" }}
+      </button>
+      <span v-else class="text-neutral-400 text-xs">—</span>
+    </div>
+    <UnlinkDialog
+      v-if="report.githubIssueNumber && report.githubIssueUrl"
+      :issue-number="report.githubIssueNumber"
+      :repo-full-name="ghRepoFullName(report.githubIssueUrl)"
+      :open="unlinkOpen"
+      @cancel="unlinkOpen = false"
+      @confirm="unlink"
+    />
   </div>
 </template>

@@ -80,6 +80,8 @@ export default defineEventHandler(async (event) => {
       assigneeName: userTable.name,
       assigneeEmail: userTable.email,
       attachmentId: reportAttachments.id,
+      githubIssueNumber: reports.githubIssueNumber,
+      githubIssueUrl: reports.githubIssueUrl,
     })
     .from(reports)
     .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
@@ -113,6 +115,8 @@ export default defineEventHandler(async (event) => {
       status: r.status,
       priority: r.priority,
       tags: r.tags,
+      githubIssueNumber: r.githubIssueNumber ?? null,
+      githubIssueUrl: r.githubIssueUrl ?? null,
       assignee,
     }
   })

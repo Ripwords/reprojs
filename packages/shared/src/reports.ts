@@ -194,6 +194,8 @@ export const ReportSummaryDTO = z.object({
   status: ReportStatus,
   priority: ReportPriority,
   tags: z.array(z.string()),
+  githubIssueNumber: z.number().int().nullable(),
+  githubIssueUrl: z.string().nullable(),
   assignee: ReportAssigneeDTO.nullable(),
 })
 export type ReportSummaryDTO = z.infer<typeof ReportSummaryDTO>
