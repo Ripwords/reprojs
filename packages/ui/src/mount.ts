@@ -68,7 +68,7 @@ export function mount(opts: MountOptions) {
   _capture = opts.capture
   _onSubmit = opts.onSubmit
   _root = createShadowHost()
-  injectStyles(_root, cssText as unknown as string)
+  injectStyles(_root, cssText)
   _container = document.createElement("div")
   _root.appendChild(_container)
   render(h(App, null), _container)

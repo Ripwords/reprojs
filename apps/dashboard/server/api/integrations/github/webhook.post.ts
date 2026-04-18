@@ -55,10 +55,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const kind = getHeader(event, "x-github-event")
-  const payload = JSON.parse(raw) as Record<string, unknown>
+  const payload: unknown = JSON.parse(raw)
 
   if (kind === "installation") {
-    const p = payload as unknown as InstallationPayload
+    const p = payload as InstallationPayload
     if (p.action === "deleted" || p.action === "suspend") {
       await db
         .update(githubIntegrations)
@@ -66,7 +66,7 @@ export default defineEventHandler(async (event) => {
         .where(eq(githubIntegrations.installationId, p.installation.id))
     }
   } else if (kind === "installation_repositories") {
-    const p = payload as unknown as InstallationReposPayload
+    const p = payload as InstallationReposPayload
     if (p.action === "removed" && p.repositories_removed?.length) {
       const removedNames = new Set(p.repositories_removed.map((r) => r.full_name))
       const rows = await db
@@ -85,7 +85,7 @@ export default defineEventHandler(async (event) => {
       )
     }
   } else if (kind === "issues") {
-    const p = payload as unknown as IssuesPayload
+    const p = payload as IssuesPayload
     if (p.action === "closed" || p.action === "reopened") {
       const desired =
         p.action === "reopened"

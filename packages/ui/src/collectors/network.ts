@@ -93,6 +93,7 @@ function describeBody(
     return `[ArrayBuffer: ${body.byteLength} bytes]`
   }
   if (ArrayBuffer.isView(body)) {
+    // ArrayBufferView in lib.dom doesn't expose .length/.byteLength directly; cast is required.
     const v = body as unknown as { byteLength: number; constructor: { name: string } }
     return `[${v.constructor.name}: ${v.byteLength} bytes]`
   }
