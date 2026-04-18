@@ -8,6 +8,8 @@ export interface IntakeInput {
   metadata?: Record<string, string | number | boolean>
   screenshot: Blob | null
   logs?: LogsAttachment | null
+  dwellMs?: number
+  honeypot?: string
 }
 
 export interface IntakeResult {
@@ -36,6 +38,8 @@ export async function postReport(
           description: input.description,
           context: input.context,
           ...(input.metadata ? { metadata: input.metadata } : {}),
+          ...(input.dwellMs !== undefined ? { _dwellMs: input.dwellMs } : {}),
+          ...(input.honeypot !== undefined ? { _hp: input.honeypot } : {}),
         }),
       ],
       { type: "application/json" },

@@ -17,10 +17,13 @@ interface ReporterProps {
     title: string
     description: string
     screenshot: Blob | null
+    dwellMs: number
+    honeypot: string
   }) => Promise<ReporterSubmitResult>
+  openedAt: number
 }
 
-export function Reporter({ onClose, onCapture, onSubmit }: ReporterProps) {
+export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterProps) {
   const [bg, setBg] = useState<HTMLImageElement | null>(null)
   const [annotatedBlob, setAnnotatedBlob] = useState<Blob | null>(null)
   const [step, setStep] = useState<"annotate" | "describe">("annotate")
@@ -76,7 +79,12 @@ export function Reporter({ onClose, onCapture, onSubmit }: ReporterProps) {
     setStep("annotate")
   }
 
-  async function handleSubmit(payload: { title: string; description: string }) {
+  async function handleSubmit(payload: {
+    title: string
+    description: string
+    dwellMs: number
+    honeypot: string
+  }) {
     const result = await onSubmit({ ...payload, screenshot: annotatedBlob })
     if (result.ok) {
       setTimeout(onClose, 1500)
@@ -89,7 +97,9 @@ export function Reporter({ onClose, onCapture, onSubmit }: ReporterProps) {
       annotatedBlob: null,
       onBack: handleCancel,
       onCancel: handleCancel,
-      onSubmit: async ({ title, description }) => handleSubmit({ title, description }),
+      openedAt,
+      onSubmit: async ({ title, description, dwellMs, honeypot }) =>
+        handleSubmit({ title, description, dwellMs, honeypot }),
     })
   }
 
@@ -110,6 +120,8 @@ export function Reporter({ onClose, onCapture, onSubmit }: ReporterProps) {
     annotatedBlob,
     onBack: handleBack,
     onCancel: handleCancel,
-    onSubmit: async ({ title, description }) => handleSubmit({ title, description }),
+    openedAt,
+    onSubmit: async ({ title, description, dwellMs, honeypot }) =>
+      handleSubmit({ title, description, dwellMs, honeypot }),
   })
 }

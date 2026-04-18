@@ -16,10 +16,14 @@ export interface MountOptions {
     title: string
     description: string
     screenshot: Blob | null
+    dwellMs: number
+    honeypot: string
   }) => Promise<ReporterSubmitResult>
 }
 
 let _setOpenExternal: ((v: boolean) => void) | null = null
+let _setOpenedAtExternal: ((v: number) => void) | null = null
+let _openedAt = 0
 let _capture: () => Promise<Blob | null> = async () => null
 let _onSubmit: MountOptions["onSubmit"] = async () => ({
   ok: false,
@@ -32,16 +36,27 @@ let _container: HTMLElement | null = null
 
 function App() {
   const [isOpen, setOpen] = useState(false)
+  const [openedAt, setOpenedAt] = useState(0)
   _setOpenExternal = setOpen
+  _setOpenedAtExternal = setOpenedAt
+
+  function handleLauncherClick() {
+    const now = performance.now()
+    _openedAt = now
+    setOpenedAt(now)
+    setOpen(true)
+  }
+
   return h(
     "div",
     null,
-    _launcher ? h(Launcher, { position: _position, onClick: () => setOpen(true) }) : null,
+    _launcher ? h(Launcher, { position: _position, onClick: handleLauncherClick }) : null,
     isOpen
       ? h(Reporter, {
           onClose: () => setOpen(false),
           onCapture: _capture,
           onSubmit: _onSubmit,
+          openedAt,
         })
       : null,
   )
@@ -60,6 +75,8 @@ export function mount(opts: MountOptions) {
 }
 
 export function open() {
+  _openedAt = performance.now()
+  _setOpenedAtExternal?.(_openedAt)
   _setOpenExternal?.(true)
 }
 
@@ -73,4 +90,5 @@ export function unmount() {
   _container = null
   _root = null
   _setOpenExternal = null
+  _setOpenedAtExternal = null
 }

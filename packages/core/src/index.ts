@@ -27,7 +27,7 @@ export function init(options: InitOptions): void {
   mount({
     config: { position: cfg.position, launcher: cfg.launcher },
     capture,
-    onSubmit: async ({ title, description, screenshot }) => {
+    onSubmit: async ({ title, description, screenshot, dwellMs, honeypot }) => {
       if (!_config || !_collectors) return { ok: false, message: "Not initialized" }
       const snap = _collectors.snapshotAll()
       const context = gatherContext(_reporter, _config.metadata, {
@@ -50,6 +50,8 @@ export function init(options: InitOptions): void {
         metadata: _config.metadata,
         screenshot: final.screenshot,
         logs: final.logs,
+        dwellMs,
+        honeypot,
       })
       return result.ok ? { ok: true } : { ok: false, message: result.message }
     },

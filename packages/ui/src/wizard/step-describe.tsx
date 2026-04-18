@@ -1,21 +1,28 @@
 // packages/ui/src/wizard/step-describe.tsx
 import { h } from "preact"
-import { useState } from "preact/hooks"
+import { useRef, useState } from "preact/hooks"
 import type { ReporterSubmitResult } from "../reporter"
 
 interface Props {
   annotatedBlob: Blob | null
   onBack: () => void
   onCancel: () => void
-  onSubmit: (payload: { title: string; description: string }) => Promise<ReporterSubmitResult>
+  openedAt: number
+  onSubmit: (payload: {
+    title: string
+    description: string
+    dwellMs: number
+    honeypot: string
+  }) => Promise<ReporterSubmitResult>
 }
 
-export function StepDescribe({ annotatedBlob, onBack, onCancel, onSubmit }: Props) {
+export function StepDescribe({ annotatedBlob, onBack, onCancel, openedAt, onSubmit }: Props) {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const hpRef = useRef<HTMLInputElement>(null)
 
   const previewUrl = annotatedBlob ? URL.createObjectURL(annotatedBlob) : null
 
@@ -28,7 +35,12 @@ export function StepDescribe({ annotatedBlob, onBack, onCancel, onSubmit }: Prop
     if (!title.trim() || submitting || success) return
     setSubmitting(true)
     setError(null)
-    const res = await onSubmit({ title: title.trim(), description: description.trim() })
+    const res = await onSubmit({
+      title: title.trim(),
+      description: description.trim(),
+      dwellMs: Math.max(0, Math.round(performance.now() - openedAt)),
+      honeypot: hpRef.current?.value ?? "",
+    })
     setSubmitting(false)
     if (res.ok) {
       setSuccess(true)
@@ -113,6 +125,23 @@ export function StepDescribe({ annotatedBlob, onBack, onCancel, onSubmit }: Prop
             disabled: submitting || success,
           }),
         ),
+        h("input", {
+          ref: hpRef,
+          name: "website",
+          type: "text",
+          tabIndex: -1,
+          autoComplete: "off",
+          "aria-hidden": "true",
+          style: {
+            position: "absolute",
+            left: "-9999px",
+            top: "-9999px",
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+          },
+        }),
         error ? h("div", { class: "ft-msg err" }, error) : null,
         success ? h("div", { class: "ft-msg ok" }, "Thanks! Report sent.") : null,
         h(
