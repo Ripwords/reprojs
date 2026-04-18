@@ -31,6 +31,9 @@ export const reports = pgTable(
       .default(sql`'{}'::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    githubIssueNumber: integer("github_issue_number"),
+    githubIssueNodeId: text("github_issue_node_id"),
+    githubIssueUrl: text("github_issue_url"),
   },
   (table) => ({
     projectCreatedIdx: index("reports_project_created_idx").on(

@@ -13,7 +13,14 @@ export const reportEvents = pgTable(
       .references(() => reports.id, { onDelete: "cascade" }),
     actorId: text("actor_id"),
     kind: text("kind", {
-      enum: ["status_changed", "assignee_changed", "priority_changed", "tag_added", "tag_removed"],
+      enum: [
+        "status_changed",
+        "assignee_changed",
+        "priority_changed",
+        "tag_added",
+        "tag_removed",
+        "github_unlinked",
+      ],
     }).notNull(),
     payload: jsonb("payload")
       .notNull()

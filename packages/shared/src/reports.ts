@@ -119,6 +119,7 @@ export const ReportEventKind = z.enum([
   "priority_changed",
   "tag_added",
   "tag_removed",
+  "github_unlinked",
 ])
 export type ReportEventKind = z.infer<typeof ReportEventKind>
 
