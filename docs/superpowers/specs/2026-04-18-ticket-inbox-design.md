@@ -11,7 +11,7 @@ Turn the dashboard's current "plain table of reports" into a working triage inbo
 | Decision | Choice | Rationale |
 |---|---|---|
 | **Status states** | Fixed 4: `open` / `in_progress` / `resolved` / `closed` | Matches CLAUDE.md §3.5; covers "someone's on it" signal without per-project config overhead. |
-| **Assignment** | `assigneeId` FK to user. Picker scoped to `developer` / `admin` / `owner` members of the project. Viewers cannot be assignees. | Viewers are read-only triagers; no point assigning work they can't action. |
+| **Assignment** | `assignee_id` FK to `user.id` (`text`, better-auth convention). Picker scoped to `developer` / `owner` members of the project. Viewers cannot be assignees. | Viewers are read-only triagers; no point assigning work they can't action. |
 | **Categorization** | Both `priority` (fixed enum `low` / `normal` / `high` / `urgent`) AND `tags` (`text[]`, free-form, DISTINCT-unnest derives project's tag list). | Priority is the "what do I work on next" signal. Tags are the "which system is this" signal. Both fit naturally into the report row. |
 | **Filter/search UX** | Status tabs across the top + text search + sort dropdown + collapsible faceted sidebar (Assignee / Priority / Tags). Filter state in URL query string. | Covers real triage workflows. Filter state in URL = free "saved views" via bookmarks. |
 | **Collaboration** | Activity log only (auto-recorded events from every mutation). No user comments in v1. | 80% of "why was this closed?" answered without building a comments editor, mention resolution, or email. |
@@ -81,7 +81,7 @@ Add four columns to the existing table. All have defaults so existing rows remai
 | column | type | default | notes |
 |---|---|---|---|
 | `status` | `text` check-constrained to `open` / `in_progress` / `resolved` / `closed` | `'open'` | |
-| `assignee_id` | `uuid` nullable, FK → `user.id` ON DELETE SET NULL | `null` | |
+| `assignee_id` | `text` nullable, FK → `user.id` ON DELETE SET NULL | `null` | better-auth user IDs are text, not uuid |
 | `priority` | `text` check-constrained to `low` / `normal` / `high` / `urgent` | `'normal'` | |
 | `tags` | `text[]` | `'{}'` | DISTINCT-unnest derives project-level tag suggestion list |
 | `updated_at` | `timestamptz` | `now()` | bumped on every triage mutation; enables "recently triaged" sort |
@@ -94,7 +94,7 @@ Check constraints live on the column (`CHECK (status IN (...))`), not via native
 |---|---|---|
 | `id` | `uuid` pk default `gen_random_uuid()` | |
 | `report_id` | `uuid` FK → `reports.id` ON DELETE CASCADE | cascade with the report |
-| `actor_id` | `uuid` nullable FK → `user.id` ON DELETE SET NULL | `null` = system-emitted event |
+| `actor_id` | `text` nullable FK → `user.id` ON DELETE SET NULL | `null` = system-emitted event |
 | `kind` | `text` check-constrained to `status_changed` / `assignee_changed` / `priority_changed` / `tag_added` / `tag_removed` | |
 | `payload` | `jsonb` | `{ from, to }` for scalar changes; `{ name }` for tag events |
 | `created_at` | `timestamptz` default `now()` | |
@@ -244,7 +244,7 @@ Events carry the actor embedded at request time — if the user has since been d
 
 ### 6.5 Extend `GET /api/projects/:id/members` (viewer+)
 
-Add optional query param `role` = CSV of `owner` / `admin` / `developer` / `viewer`. Used by the assignee picker to show only developer+ members. Already role-scoped at the route — just a projection.
+Add optional query param `role` = CSV of `owner` / `developer` / `viewer`. Used by the assignee picker to show only developer+ members. Already role-scoped at the route — just a projection.
 
 ## 7. UI
 
@@ -310,7 +310,7 @@ Building on D's `Overview / Console / Network / Cookies` tab shell:
 ### 7.3 Permissions
 
 - `viewer`: list + drawer read-only. Triage pills are rendered as disabled badges (not buttons). Bulk checkboxes hidden.
-- `developer` / `admin` / `owner`: full mutate.
+- `developer` / `owner`: full mutate.
 
 ### 7.4 Live refresh
 
