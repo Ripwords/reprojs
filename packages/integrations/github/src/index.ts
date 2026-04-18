@@ -1,2 +1,4 @@
 // packages/integrations/github/src/index.ts
-export {}
+export * from "./signature"
+export * from "./types"
+export * from "./client"
