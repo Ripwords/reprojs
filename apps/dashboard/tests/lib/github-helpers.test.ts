@@ -1,6 +1,6 @@
 // apps/dashboard/tests/lib/github-helpers.test.ts
 import { describe, expect, test } from "bun:test"
-import { computeBackoff, labelsFor } from "../../server/lib/github-helpers"
+import { buildIssueBody, computeBackoff, labelsFor } from "../../server/lib/github-helpers"
 
 describe("computeBackoff", () => {
   test("attempt 1 → 10 seconds", () => {
@@ -43,5 +43,46 @@ describe("labelsFor", () => {
     expect(labelsFor({ priority: "low", tags: [] }, { defaultLabels: [] })).toEqual([
       "priority:low",
     ])
+  })
+})
+
+describe("buildIssueBody", () => {
+  const minimal = {
+    id: "rid1",
+    title: "Checkout crash",
+    description: "it crashed on pay",
+    pageUrl: "https://app.example.com/checkout",
+    reporterEmail: "reporter@example.com",
+    createdAt: new Date("2026-04-18T10:42:00Z"),
+    screenshotUrl:
+      "https://dash.example.com/api/projects/p1/reports/rid1/attachment?kind=screenshot&token=abc&expires=1",
+    dashboardUrl: "https://dash.example.com/projects/p1/reports/rid1",
+  }
+
+  test("full body contains reporter, page, description, screenshot, footer", () => {
+    const body = buildIssueBody(minimal)
+    expect(body).toContain("reporter@example.com")
+    expect(body).toContain("https://app.example.com/checkout")
+    expect(body).toContain("it crashed on pay")
+    expect(body).toContain("![Screenshot]")
+    expect(body).toContain(minimal.screenshotUrl)
+    expect(body).toContain(minimal.dashboardUrl)
+  })
+  test("no reporter → 'anonymous'", () => {
+    const body = buildIssueBody({ ...minimal, reporterEmail: null })
+    expect(body).toContain("anonymous")
+    expect(body).not.toContain("**anonymous**")
+  })
+  test("no screenshot → no img tag", () => {
+    const body = buildIssueBody({ ...minimal, screenshotUrl: null })
+    expect(body).not.toContain("![Screenshot]")
+  })
+  test("no pageUrl → page line omitted", () => {
+    const body = buildIssueBody({ ...minimal, pageUrl: "" })
+    expect(body).not.toContain("Page:")
+  })
+  test("description empty string renders empty description section header", () => {
+    const body = buildIssueBody({ ...minimal, description: "" })
+    expect(body).toContain("## Description")
   })
 })
