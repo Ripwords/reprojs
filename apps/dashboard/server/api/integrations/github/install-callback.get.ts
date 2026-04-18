@@ -6,8 +6,6 @@ import { env } from "../../../lib/env"
 import { verifyInstallState } from "../../../lib/github"
 import { requireProjectRole } from "../../../lib/permissions"
 
-const dashboardBaseUrl = env.BETTER_AUTH_URL
-
 function errorStatus(err: unknown): number | null {
   if (err && typeof err === "object" && "statusCode" in err) {
     const code = (err as { statusCode: unknown }).statusCode
@@ -66,7 +64,7 @@ export default defineEventHandler(async (event) => {
     }
     return sendRedirect(
       event,
-      `${dashboardBaseUrl}/projects/${existing.projectId}/settings?tab=github&updated=1`,
+      `${env.BETTER_AUTH_URL}/projects/${existing.projectId}/settings?tab=github&updated=1`,
       302,
     )
   }
@@ -111,7 +109,7 @@ export default defineEventHandler(async (event) => {
 
   return sendRedirect(
     event,
-    `${dashboardBaseUrl}/projects/${claims.projectId}/settings?tab=github&installed=1`,
+    `${env.BETTER_AUTH_URL}/projects/${claims.projectId}/settings?tab=github&installed=1`,
     302,
   )
 })

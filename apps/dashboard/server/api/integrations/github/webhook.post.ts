@@ -7,12 +7,6 @@ import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
 import { env } from "../../../lib/env"
 import { getWebhookSecret } from "../../../lib/github"
 
-// GitHub's own webhook deliveries are bounded by their 25 MB delivery cap, but
-// a direct attacker posting to this URL could otherwise stream an arbitrary
-// amount into memory before the HMAC check rejects them. 1 MB comfortably fits
-// any real Issues / Installation event payload.
-const MAX_BYTES = env.GITHUB_WEBHOOK_MAX_BYTES
-
 interface IssuesPayload {
   action: "opened" | "closed" | "reopened" | "edited" | "deleted" | string
   issue: {
@@ -36,7 +30,7 @@ interface InstallationReposPayload {
 
 export default defineEventHandler(async (event) => {
   const contentLength = Number(getHeader(event, "content-length") ?? 0)
-  if (contentLength > MAX_BYTES) {
+  if (contentLength > env.GITHUB_WEBHOOK_MAX_BYTES) {
     throw createError({ statusCode: 413, statusMessage: "Payload too large" })
   }
   const raw = await readRawBody(event)
@@ -44,7 +38,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "invalid body" })
   }
   // Fallback guard when Content-Length is missing or understated (chunked).
-  if (Buffer.byteLength(raw, "utf8") > MAX_BYTES) {
+  if (Buffer.byteLength(raw, "utf8") > env.GITHUB_WEBHOOK_MAX_BYTES) {
     throw createError({ statusCode: 413, statusMessage: "Payload too large" })
   }
   const sig = getHeader(event, "x-hub-signature-256")

@@ -14,14 +14,6 @@ import { env } from "../../lib/env"
 import { getAnonKeyLimiter, getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
 import { getStorage } from "../../lib/storage"
 
-const MAX_BYTES = env.INTAKE_MAX_BYTES
-// Only trust X-Forwarded-For when the deployment is behind a reverse proxy the
-// operator controls. Default OFF so a public deployment can't be trivially
-// rate-limit bypassed by spoofing the header.
-const TRUST_XFF = env.TRUST_XFF
-const MIN_DWELL_MS = env.INTAKE_MIN_DWELL_MS
-const REQUIRE_DWELL = env.INTAKE_REQUIRE_DWELL
-
 export default defineEventHandler(async (event) => {
   // Preflight reflects Origin so browsers can proceed with the real POST.
   // No response body reads happen on preflight, so this is safe.
@@ -36,7 +28,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const origin = getHeader(event, "origin") ?? ""
-  const ip = getRequestIP(event, { xForwardedFor: TRUST_XFF }) ?? "unknown"
+  // TRUST_XFF is OFF by default — a public deployment must not be trivially
+  // rate-limit-bypassed via a spoofed X-Forwarded-For header.
+  const ip = getRequestIP(event, { xForwardedFor: env.TRUST_XFF }) ?? "unknown"
 
   let parts: Awaited<ReturnType<typeof readMultipartFormData>>
   try {
@@ -48,7 +42,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Expected multipart/form-data" })
   }
   const totalBytes = parts.reduce((n, p) => n + (p.data?.length ?? 0), 0)
-  if (totalBytes > MAX_BYTES) {
+  if (totalBytes > env.INTAKE_MAX_BYTES) {
     throw createError({ statusCode: 413, statusMessage: "Payload too large" })
   }
 
@@ -98,7 +92,10 @@ export default defineEventHandler(async (event) => {
   // S2: Require _dwellMs to be present and above the minimum. Bots that omit
   // the field entirely are now rejected. Opt-out via INTAKE_REQUIRE_DWELL=false
   // during SDK rollout to avoid breaking older SDK versions.
-  if (REQUIRE_DWELL && (parsed._dwellMs === undefined || parsed._dwellMs < MIN_DWELL_MS)) {
+  if (
+    env.INTAKE_REQUIRE_DWELL &&
+    (parsed._dwellMs === undefined || parsed._dwellMs < env.INTAKE_MIN_DWELL_MS)
+  ) {
     throw createError({ statusCode: 400, statusMessage: "Submission too fast" })
   }
 
