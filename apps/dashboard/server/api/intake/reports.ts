@@ -1,5 +1,5 @@
 import { createError, defineEventHandler, getHeader, getRequestIP, readMultipartFormData } from "h3"
-import { and, count, eq, gte } from "drizzle-orm"
+import { and, count, eq, gte, sql } from "drizzle-orm"
 import { randomUUID } from "node:crypto"
 import { LogsAttachment, ReportIntakeInput } from "@feedback-tool/shared"
 import { db } from "../../db"
@@ -111,18 +111,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 429, statusMessage: message })
   }
 
-  // Daily ceiling — hard cap on reports per project per rolling 24h window.
-  // Cheap count backed by the existing (project_id, created_at) index.
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-  const [{ c: todayCount }] = await db
-    .select({ c: count() })
-    .from(reports)
-    .where(and(eq(reports.projectId, project.id), gte(reports.createdAt, dayAgo)))
-  if (todayCount >= project.dailyReportCap) {
-    event.node.res.setHeader("Retry-After", "3600")
-    throw createError({ statusCode: 429, statusMessage: "Daily report cap reached" })
-  }
-
   const logsPart = parts.find((p) => p.name === "logs")
   let parsedLogs: ReturnType<typeof LogsAttachment.parse> | null = null
   if (logsPart?.data && logsPart.data.length > 0) {
@@ -134,17 +122,48 @@ export default defineEventHandler(async (event) => {
   }
 
   const screenshotPart = parts.find((p) => p.name === "screenshot")
-  const [report] = await db
-    .insert(reports)
-    .values({
-      projectId: project.id,
-      title: parsed.title,
-      description: parsed.description ?? null,
-      context: { ...parsed.context, ...(parsed.metadata ? { metadata: parsed.metadata } : {}) },
-      origin,
-      ip,
-    })
-    .returning()
+
+  // SEC2: Daily ceiling — hard cap on reports per project per rolling 24h
+  // window. Previously the COUNT and INSERT ran in separate statements which
+  // allowed concurrent requests to all observe count = cap-1 and each commit
+  // an insert, breaching the cap by up to (concurrency - 1) per burst.
+  //
+  // Fix: wrap the count-check + insert in a single transaction guarded by a
+  // pg_advisory_xact_lock keyed on (project_id, rolling window start). The
+  // lock serializes only intakes for the same project — other projects are
+  // unaffected, and readers outside this path are never blocked. Advisory
+  // locks avoid the retry storms a full SERIALIZABLE isolation would produce.
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const txResult = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`intake:${project.id}:daily`}))`)
+
+    const [{ c: todayCount }] = await tx
+      .select({ c: count() })
+      .from(reports)
+      .where(and(eq(reports.projectId, project.id), gte(reports.createdAt, dayAgo)))
+    if (todayCount >= project.dailyReportCap) {
+      return { overCap: true as const }
+    }
+
+    const [inserted] = await tx
+      .insert(reports)
+      .values({
+        projectId: project.id,
+        title: parsed.title,
+        description: parsed.description ?? null,
+        context: { ...parsed.context, ...(parsed.metadata ? { metadata: parsed.metadata } : {}) },
+        origin,
+        ip,
+      })
+      .returning()
+    return { overCap: false as const, report: inserted }
+  })
+
+  if (txResult.overCap) {
+    event.node.res.setHeader("Retry-After", "3600")
+    throw createError({ statusCode: 429, statusMessage: "Daily report cap reached" })
+  }
+  const report = txResult.report
 
   // P3: Call getStorage() once and fan out attachment writes with Promise.all.
   // Screenshot and logs uploads no longer serialize.
