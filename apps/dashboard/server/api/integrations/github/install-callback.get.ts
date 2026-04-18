@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   // ID (public sequential integers).
   if (setupAction === "update" && typeof stateRaw !== "string") {
     const [existing] = await db
-      .select()
+      .select({ projectId: githubIntegrations.projectId })
       .from(githubIntegrations)
       .where(eq(githubIntegrations.installationId, installationId))
       .limit(1)
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const [existing] = await db
-    .select()
+    .select({ projectId: githubIntegrations.projectId })
     .from(githubIntegrations)
     .where(eq(githubIntegrations.projectId, claims.projectId))
     .limit(1)
