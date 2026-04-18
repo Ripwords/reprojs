@@ -1,1 +1,0 @@
-ALTER TABLE "projects" ADD COLUMN "daily_report_cap" integer DEFAULT 1000 NOT NULL;
