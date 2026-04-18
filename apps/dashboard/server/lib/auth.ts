@@ -7,20 +7,6 @@ import { appSettings, user } from "../db/schema"
 import { renderTemplate } from "./render-template"
 import { sendMail } from "./email"
 
-const socialProviders: Record<string, unknown> = {}
-if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-  socialProviders.github = {
-    clientId: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-  }
-}
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  socialProviders.google = {
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  }
-}
-
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
@@ -44,7 +30,24 @@ export const auth = betterAuth({
       })
     },
   },
-  socialProviders,
+  socialProviders: {
+    ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+      ? {
+          github: {
+            clientId: process.env.GITHUB_CLIENT_ID,
+            clientSecret: process.env.GITHUB_CLIENT_SECRET,
+          },
+        }
+      : {}),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? {
+          google: {
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          },
+        }
+      : {}),
+  },
   user: {
     additionalFields: {
       role: { type: "string", defaultValue: "member", input: false },
@@ -58,6 +61,7 @@ export const auth = betterAuth({
       if (ctx.path !== "/sign-up/email") return
       const email = ctx.body?.email as string | undefined
       if (!email) return
+      const emailLower = email.toLowerCase()
       const [settings] = await db.select().from(appSettings).limit(1)
       if (!settings) return
 
@@ -65,7 +69,7 @@ export const auth = betterAuth({
       // email domain must match one of the entries. Runs before the invite
       // gate so domain-mismatched emails are rejected even when invited.
       if (settings.allowedEmailDomains.length > 0) {
-        const domain = email.split("@")[1]?.toLowerCase() ?? ""
+        const domain = emailLower.split("@")[1] ?? ""
         if (!settings.allowedEmailDomains.includes(domain)) {
           throw new APIError("FORBIDDEN", { message: "Email domain not allowed" })
         }
@@ -75,7 +79,7 @@ export const auth = betterAuth({
       const [invited] = await db
         .select()
         .from(user)
-        .where(and(eq(user.email, email), eq(user.status, "invited")))
+        .where(and(eq(user.email, emailLower), eq(user.status, "invited")))
       if (!invited) {
         throw new APIError("FORBIDDEN", { message: "Signup is invite-only" })
       }
@@ -87,8 +91,9 @@ export const auth = betterAuth({
       const returned = ctx.context.returned as { user?: { id?: string } } | undefined
       const newUserId = returned?.user?.id
       if (!newUserId) return
-      const [{ c }] = await db.select({ c: count() }).from(user)
-      const updates: Record<string, unknown> = {
+      const [countRow] = await db.select({ c: count() }).from(user)
+      const c = countRow?.c ?? 0
+      const updates: Partial<typeof user.$inferInsert> = {
         status: "active",
         inviteToken: null,
         inviteTokenExpiresAt: null,
