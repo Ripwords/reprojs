@@ -13,7 +13,13 @@ export default defineEventHandler(async (event) => {
 
   const [updated] = await db
     .update(projects)
-    .set({ ...body, updatedAt: new Date() })
+    .set({
+      ...(body.name !== undefined ? { name: body.name } : {}),
+      ...(body.allowedOrigins !== undefined ? { allowedOrigins: body.allowedOrigins } : {}),
+      ...(body.dailyReportCap !== undefined ? { dailyReportCap: body.dailyReportCap } : {}),
+      ...(body.replayEnabled !== undefined ? { replayEnabled: body.replayEnabled } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(projects.id, id))
     .returning()
 
@@ -29,5 +35,6 @@ export default defineEventHandler(async (event) => {
     publicKey: updated.publicKey,
     allowedOrigins: updated.allowedOrigins,
     dailyReportCap: updated.dailyReportCap,
+    replayEnabled: updated.replayEnabled,
   }
 })

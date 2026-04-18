@@ -25,6 +25,7 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
       publicKey: r.publicKey,
       allowedOrigins: r.allowedOrigins,
       dailyReportCap: r.dailyReportCap,
+      replayEnabled: r.replayEnabled,
     }))
   }
 
@@ -39,6 +40,7 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
       publicKey: projects.publicKey,
       allowedOrigins: projects.allowedOrigins,
       dailyReportCap: projects.dailyReportCap,
+      replayEnabled: projects.replayEnabled,
     })
     .from(projects)
     .innerJoin(projectMembers, eq(projectMembers.projectId, projects.id))
@@ -55,5 +57,6 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
     publicKey: r.publicKey,
     allowedOrigins: r.allowedOrigins,
     dailyReportCap: r.dailyReportCap,
+    replayEnabled: r.replayEnabled,
   }))
 })

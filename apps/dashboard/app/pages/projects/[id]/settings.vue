@@ -13,6 +13,7 @@ const dailyReportCap = ref(project.value?.dailyReportCap ?? 1000)
 const rotating = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
+const replayUpdating = ref(false)
 
 async function save() {
   saving.value = true
@@ -54,6 +55,21 @@ async function rotateKey() {
     await refresh()
   } finally {
     rotating.value = false
+  }
+}
+
+async function updateReplayEnabled(enabled: boolean) {
+  replayUpdating.value = true
+  try {
+    await $fetch(`/api/projects/${route.params.id}`, {
+      method: "PATCH",
+      baseURL: dashboardUrl,
+      credentials: "include",
+      body: { replayEnabled: enabled },
+    })
+    await refresh()
+  } finally {
+    replayUpdating.value = false
   }
 }
 
@@ -116,6 +132,23 @@ async function softDelete() {
         </button>
         <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
       </form>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="text-sm font-semibold text-neutral-600">Session replay</h2>
+      <label class="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          :checked="project?.replayEnabled ?? false"
+          :disabled="replayUpdating || !project"
+          @change="updateReplayEnabled(($event.target as HTMLInputElement).checked)"
+        />
+        <span>Enable session replay for this project</span>
+      </label>
+      <p class="text-xs text-neutral-500">
+        When off, the intake API silently drops incoming replay payloads. Reports are still
+        accepted.
+      </p>
     </section>
 
     <section class="space-y-3">

@@ -14,6 +14,7 @@ export const ProjectDTO = z.object({
   publicKey: z.string().nullable(),
   allowedOrigins: z.array(z.string()),
   dailyReportCap: z.number().int().min(1).max(1_000_000),
+  replayEnabled: z.boolean(),
 })
 export type ProjectDTO = z.infer<typeof ProjectDTO>
 
@@ -26,6 +27,7 @@ export const UpdateProjectInput = z.object({
   name: z.string().min(1).max(80).optional(),
   allowedOrigins: z.array(z.string().url()).max(20).optional(),
   dailyReportCap: z.number().int().min(1).max(1_000_000).optional(),
+  replayEnabled: z.boolean().optional(),
 })
 export type UpdateProjectInput = z.infer<typeof UpdateProjectInput>
 
