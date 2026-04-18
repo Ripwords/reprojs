@@ -153,7 +153,7 @@ feedback-tool/
 │   │   └── src/
 │   │       ├── annotation/     # annotation canvas (pen, arrow, text, etc.) — was packages/annotator
 │   │       └── collectors/     # console, network, cookies, system-info — was packages/collectors
-│   ├── recorder/               # 30s rolling DOM replay buffer (pending — sub-project E)
+│   ├── recorder/               # 30s rolling DOM replay buffer (v0.7.x)
 │   ├── integrations/
 │   │   └── github/             # GitHub Issues adapter (runs server-side)
 │   └── shared/                 # shared types: Report, Attachment, API contracts
@@ -312,7 +312,7 @@ Pulled from the global CLAUDE.md and the ai-trip reference project.
 
 ### SDK
 1. **Preact vs Solid vs vanilla** — leaning Preact for DX. Lock it?
-2. **Recorder format** — rrweb events, custom schema, or raw WebM via `MediaRecorder`?
+2. **Recorder format** — **Resolved:** hand-written rrweb-compatible event subset in `packages/recorder`; dashboard replay uses `rrweb-player` against the same schema. See `docs/superpowers/specs/2026-04-18-session-replay-design.md`.
 3. **Bundle target** — does the 50kb gzipped goal hold once annotation + recorder ship?
 
 ### Dashboard
