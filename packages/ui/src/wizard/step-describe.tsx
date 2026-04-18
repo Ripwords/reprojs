@@ -56,8 +56,16 @@ export function StepDescribe({ annotatedBlob, onBack, onCancel, onSubmit }: Prop
       ),
     ),
     h(
-      "form",
-      { class: "ft-wizard-body ft-wizard-describe", onSubmit: handleSubmit },
+      // Deliberately a <div>, not a <form>. A <form> in the describe step has
+      // caused a full-page navigation-to-current-URL on submit — Preact's
+      // onSubmit binding inside an open Shadow DOM does not reliably prevent
+      // the browser's default submission, and implicit Enter-to-submit in the
+      // title <input> takes the same path. Navigation tears down the shadow
+      // host, the mount root, and every collector ring buffer (console,
+      // network, breadcrumbs), which means the very logs we're trying to
+      // submit get wiped milliseconds before snapshotAll() runs.
+      "div",
+      { class: "ft-wizard-body ft-wizard-describe" },
       h(
         "div",
         { class: "ft-preview-wrap" },
@@ -83,8 +91,13 @@ export function StepDescribe({ annotatedBlob, onBack, onCancel, onSubmit }: Prop
           h("input", {
             value: title,
             onInput: (e: Event) => setTitle((e.target as HTMLInputElement).value),
+            onKeyDown: (e: KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                void handleSubmit()
+              }
+            },
             maxLength: 120,
-            required: true,
             disabled: submitting || success,
           }),
         ),
