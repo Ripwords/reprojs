@@ -1,12 +1,12 @@
-# Garage S3 Storage Implementation Plan
+# Storage Adapter Finalization Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Small scope. Inline execution is appropriate; no need for subagent-per-task ceremony. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Replace local-disk attachment storage with a Garage S3-compatible service shipped in docker-compose, so users don't manage their own S3.
+**Goal:** Finalize the storage-adapter layer with two first-class options (local-disk default, S3-compatible via env) and document both. No bundled S3 service.
 
-**Architecture:** Add `garage` + one-shot `garage-init` services to docker-compose. Init sidecar bootstraps the single-node cluster, creates a bucket, mints an S3 access key, and writes creds to a gitignored bind-mounted directory (`apps/dashboard/.garage-creds/`). Rewrite the existing `S3Adapter` stub using `@aws-sdk/client-s3` with `forcePathStyle: true`. Flip `STORAGE_DRIVER` default from `local` to `s3`; local-disk remains available as an opt-in escape hatch. Ship a parallel `docker-compose.prod.yml` for production.
+**Architecture:** Replace the `S3Adapter` throw-stub with a real `@aws-sdk/client-s3` implementation that works against any S3-compatible endpoint. Keep `local-disk` as the default. Wire env vars + ship deployment docs.
 
-**Tech Stack:** Docker Compose v2, Garage v1.0.1 (`dxflrs/garage`), `@aws-sdk/client-s3` v3, Nuxt 4 + Nitro (host runtime), Bun test for integration.
+**Tech Stack:** `@aws-sdk/client-s3` v3, Nuxt 4 + Nitro (host runtime).
 
 **Spec:** [docs/superpowers/specs/2026-04-18-garage-s3-storage-design.md](../specs/2026-04-18-garage-s3-storage-design.md)
 
@@ -16,440 +16,52 @@
 
 | File | Action | Responsibility |
 | --- | --- | --- |
-| `apps/dashboard/docker/docker-compose.dev.yml` | MODIFY | Add `garage` + `garage-init` services + volumes |
-| `apps/dashboard/docker/docker-compose.prod.yml` | CREATE | Prod variant (persistent volumes, pinned tags, admin port unpublished) |
-| `apps/dashboard/docker/garage.toml` | CREATE | Committed dev-only Garage config (known dev secrets + warning) |
-| `apps/dashboard/docker/garage.prod.toml.example` | CREATE | Prod config template with `<SET_ME>` placeholders + rotation guidance |
-| `apps/dashboard/docker/garage-init.sh` | CREATE | Idempotent bootstrap script (cluster layout, bucket create, key mint, creds write) |
-| `.gitignore` | MODIFY | Ignore `apps/dashboard/.garage-creds/` + `docker/garage.prod.toml` |
-| `apps/dashboard/server/lib/storage/s3.ts` | MODIFY | Replace throw-stub with real `@aws-sdk/client-s3` implementation |
-| `apps/dashboard/server/lib/storage/index.ts` | MODIFY | Default `STORAGE_DRIVER` from `"local"` → `"s3"` |
-| `apps/dashboard/server/lib/storage/s3.test.ts` | CREATE | Integration test against live local Garage (put/get/delete roundtrip) |
-| `apps/dashboard/package.json` | MODIFY | Add `@aws-sdk/client-s3@^3.700.0` to dependencies |
-| `package.json` (root) | MODIFY | Add `dev:docker:prod`, `dev:docker:logs`, `dev:docker:reset` scripts |
-| `.env.example` | MODIFY | Document `STORAGE_DRIVER`, `S3_ENDPOINT`, etc. |
+| `apps/dashboard/package.json` | MODIFY | Add `@aws-sdk/client-s3@^3.700.0` |
+| `apps/dashboard/server/lib/storage/s3.ts` | MODIFY | Replace throw-stub with real implementation |
+| `.env.example` | MODIFY | Document `STORAGE_DRIVER` + all `S3_*` env vars with per-provider recipes |
+| `docs/deployment.md` | CREATE | Deployment guide: local vs S3 decision, setup for each major provider |
 
-No changes to: intake handlers, attachment serve route, signed-attachment-url, reports schema.
+Four files. No compose changes, no new services, no new scripts.
 
 ---
 
-## Task 1: Docker dev infrastructure (compose + garage config + init script)
+## Task 1: Add `@aws-sdk/client-s3` dependency
 
-**Files:**
-- Modify: `apps/dashboard/docker/docker-compose.dev.yml`
-- Create: `apps/dashboard/docker/garage.toml`
-- Create: `apps/dashboard/docker/garage-init.sh`
-- Modify: `.gitignore`
-
-- [ ] **Step 1: Write `garage.toml` (dev-only committed config)**
-
-Create `apps/dashboard/docker/garage.toml`:
-
-```toml
-# DEV-ONLY CONFIG. DO NOT REUSE SECRETS IN PRODUCTION.
-# For prod, copy garage.prod.toml.example → garage.prod.toml, fill in
-# real rpc_secret + admin_token, and mount via docker-compose.prod.yml.
-
-metadata_dir = "/var/lib/garage/meta"
-data_dir = "/var/lib/garage/data"
-replication_mode = "none"
-
-rpc_secret = "a7c9e3f1b2d4e6a8c0e2f4a6b8d0e2f4a6c8e0b2d4f6a8c0e2f4b6d8a0c2e4f6"
-rpc_bind_addr = "[::]:3901"
-rpc_public_addr = "127.0.0.1:3901"
-
-[s3_api]
-s3_region = "garage"
-api_bind_addr = "[::]:3900"
-root_domain = ".s3.garage.localhost"
-
-[admin]
-api_bind_addr = "[::]:3903"
-admin_token = "feedback-tool-dev-admin-token"
-metrics_token = "feedback-tool-dev-metrics-token"
-```
-
-- [ ] **Step 2: Write `garage-init.sh` (idempotent bootstrap)**
-
-Create `apps/dashboard/docker/garage-init.sh`:
-
-```sh
-#!/bin/sh
-set -e
-
-# Idempotency guard — if creds file already exists, the cluster is provisioned.
-if [ -f /creds/s3-access-key-id ] && [ -f /creds/s3-secret-access-key ]; then
-  echo "[garage-init] credentials already exist at /creds — skipping bootstrap"
-  exit 0
-fi
-
-GARAGE="garage -c /etc/garage.toml"
-
-echo "[garage-init] waiting for garage to respond..."
-until $GARAGE status >/dev/null 2>&1; do
-  sleep 1
-done
-
-echo "[garage-init] assigning single-node layout..."
-NODE_ID=$($GARAGE status | awk 'NR==3 {print $1}')
-$GARAGE layout assign "$NODE_ID" -z dc1 -c 1G -t node1 || true
-$GARAGE layout apply --version 1 || true
-
-echo "[garage-init] creating bucket..."
-$GARAGE bucket create feedback-tool-attachments 2>&1 | grep -v "already exists" || true
-
-echo "[garage-init] minting S3 access key..."
-KEY_JSON=$($GARAGE key create feedback-tool-dev --output-json 2>/dev/null || echo "")
-if [ -z "$KEY_JSON" ]; then
-  echo "[garage-init] key create returned empty — the key may already exist."
-  echo "[garage-init] if you need fresh credentials, wipe volumes and .garage-creds/ and retry."
-  exit 1
-fi
-
-# Parse with busybox sed (no jq in alpine garage image).
-# Verify against `garage key create --output-json` output format of the pinned
-# image. If the field names differ, adjust the regex.
-echo "$KEY_JSON" | sed -n 's/.*"keyId":"\([^"]*\)".*/\1/p' > /creds/s3-access-key-id
-echo "$KEY_JSON" | sed -n 's/.*"secretAccessKey":"\([^"]*\)".*/\1/p' > /creds/s3-secret-access-key
-
-if [ ! -s /creds/s3-access-key-id ] || [ ! -s /creds/s3-secret-access-key ]; then
-  echo "[garage-init] ERROR: failed to extract credentials. Raw output:"
-  echo "$KEY_JSON"
-  rm -f /creds/s3-access-key-id /creds/s3-secret-access-key
-  exit 1
-fi
-
-echo "[garage-init] granting bucket access..."
-$GARAGE bucket allow feedback-tool-attachments \
-  --key feedback-tool-dev --read --write
-
-echo "[garage-init] done. creds written to /creds/"
-```
-
-Then make it executable:
-
-```bash
-chmod +x apps/dashboard/docker/garage-init.sh
-```
-
-- [ ] **Step 3: Replace `apps/dashboard/docker/docker-compose.dev.yml`**
-
-Overwrite the file with:
-
-```yaml
-name: feedback_tool
-services:
-  postgres:
-    image: postgres:17
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: feedback_tool
-    ports:
-      - "5436:5432"
-    volumes:
-      - feedback_tool_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  garage:
-    image: dxflrs/garage:v1.0.1
-    ports:
-      - "3900:3900"
-      - "3903:3903"
-    volumes:
-      - garage_meta:/var/lib/garage/meta
-      - garage_data:/var/lib/garage/data
-      - ./garage.toml:/etc/garage.toml:ro
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3903/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  garage-init:
-    image: dxflrs/garage:v1.0.1
-    depends_on:
-      garage:
-        condition: service_healthy
-    volumes:
-      - ../.garage-creds:/creds
-      - ./garage.toml:/etc/garage.toml:ro
-      - ./garage-init.sh:/init.sh:ro
-    entrypoint: ["/bin/sh", "/init.sh"]
-    restart: "no"
-
-volumes:
-  feedback_tool_data:
-  garage_meta:
-  garage_data:
-```
-
-- [ ] **Step 4: Update `.gitignore`**
-
-Append to `.gitignore`:
-
-```
-apps/dashboard/.garage-creds/
-apps/dashboard/docker/garage.prod.toml
-```
-
-- [ ] **Step 5: Smoke-test the bootstrap**
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool
-# Nuke any prior state
-docker compose -f apps/dashboard/docker/docker-compose.dev.yml down -v 2>/dev/null
-rm -rf apps/dashboard/.garage-creds
-# Bring up
-bun run dev:docker
-# Wait for init to finish, then check
-sleep 15
-docker compose -f apps/dashboard/docker/docker-compose.dev.yml logs garage-init | tail -20
-```
-
-Expected: logs show `[garage-init] done. creds written to /creds/`.
-
-```bash
-ls -la apps/dashboard/.garage-creds/
-```
-
-Expected: two files, `s3-access-key-id` and `s3-secret-access-key`, each one line, non-empty.
-
-```bash
-cat apps/dashboard/.garage-creds/s3-access-key-id | head -c 8
-```
-
-Expected: starts with `GK` (Garage S3 key prefix).
-
-If any check fails, debug by inspecting `docker compose logs garage garage-init` and iterating on `garage-init.sh`.
-
-- [ ] **Step 6: Restart Postgres after Garage bring-up (drizzle journal already applied)**
-
-`bun run dev:docker` already ran `postgres` — nothing else needed, but verify it's still healthy:
-
-```bash
-docker compose -f apps/dashboard/docker/docker-compose.dev.yml ps
-```
-
-Expected: `postgres` and `garage` both healthy; `garage-init` `Exited (0)`.
-
-- [ ] **Step 7: Commit**
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool
-git add apps/dashboard/docker/docker-compose.dev.yml apps/dashboard/docker/garage.toml apps/dashboard/docker/garage-init.sh .gitignore
-git commit -m "$(cat <<'EOF'
-feat(docker): Garage S3 service + init sidecar in dev compose
-
-Adds garage (dxflrs/garage:v1.0.1, single-node no-replication) and a
-garage-init one-shot that bootstraps the cluster layout, creates the
-feedback-tool-attachments bucket, mints an S3 key, and writes creds to
-the host at apps/dashboard/.garage-creds/ (gitignored, bind-mounted
-via ../.garage-creds:/creds).
-
-The init script is idempotent — skips if creds file exists. Dev-only
-secrets in garage.toml (rpc_secret, admin_token) are committed with a
-warning banner. Prod uses a separate gitignored config.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
-
----
-
-## Task 2: Docker prod compose + config template
-
-**Files:**
-- Create: `apps/dashboard/docker/docker-compose.prod.yml`
-- Create: `apps/dashboard/docker/garage.prod.toml.example`
-
-- [ ] **Step 1: Write `garage.prod.toml.example`**
-
-Create `apps/dashboard/docker/garage.prod.toml.example`:
-
-```toml
-# Production Garage config template.
-#
-# Usage:
-#   1. Copy to `garage.prod.toml` (gitignored).
-#   2. Generate strong secrets:
-#      openssl rand -hex 32                # for rpc_secret
-#      openssl rand -base64 32             # for admin_token + metrics_token
-#   3. Mount via docker-compose.prod.yml.
-#
-# Rotation: changing rpc_secret requires restarting all Garage nodes in
-# lockstep. admin_token can be rotated independently — update this file
-# and restart just the garage service.
-
-metadata_dir = "/var/lib/garage/meta"
-data_dir = "/var/lib/garage/data"
-replication_mode = "none"
-
-rpc_secret = "<SET_ME_openssl_rand_hex_32>"
-rpc_bind_addr = "[::]:3901"
-rpc_public_addr = "127.0.0.1:3901"
-
-[s3_api]
-s3_region = "garage"
-api_bind_addr = "[::]:3900"
-root_domain = ".s3.garage.localhost"
-
-[admin]
-api_bind_addr = "[::]:3903"
-admin_token = "<SET_ME_openssl_rand_base64_32>"
-metrics_token = "<SET_ME_openssl_rand_base64_32>"
-```
-
-- [ ] **Step 2: Write `docker-compose.prod.yml`**
-
-Create `apps/dashboard/docker/docker-compose.prod.yml`:
-
-```yaml
-name: feedback_tool_prod
-services:
-  postgres:
-    image: postgres:17.2
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
-      POSTGRES_DB: ${POSTGRES_DB:-feedback_tool}
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - feedback_tool_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  garage:
-    image: dxflrs/garage:v1.0.1
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3900:3900"   # S3 API — bind localhost only; front with reverse proxy
-    volumes:
-      - garage_meta:/var/lib/garage/meta
-      - garage_data:/var/lib/garage/data
-      - ./garage.prod.toml:/etc/garage.toml:ro
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3903/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  garage-init:
-    image: dxflrs/garage:v1.0.1
-    depends_on:
-      garage:
-        condition: service_healthy
-    volumes:
-      - ../.garage-creds:/creds
-      - ./garage.prod.toml:/etc/garage.toml:ro
-      - ./garage-init.sh:/init.sh:ro
-    entrypoint: ["/bin/sh", "/init.sh"]
-    restart: "no"
-
-volumes:
-  feedback_tool_data:
-    driver: local
-  garage_meta:
-    driver: local
-  garage_data:
-    driver: local
-```
-
-Notes on prod diffs vs dev (for the implementer):
-- Image tags explicitly pinned (postgres:17.2 not 17; garage:v1.0.1 same as dev)
-- Ports bound to `127.0.0.1:` — operators front with a reverse proxy if exposing publicly
-- Port 3903 (admin) NOT published in prod
-- `restart: unless-stopped` on long-running services
-- Secrets sourced from env vars with fail-fast defaults (`${POSTGRES_PASSWORD:?...}`)
-- `replication_mode = "none"` stays — clustering is a future sub-project
-
-- [ ] **Step 3: Commit**
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool
-git add apps/dashboard/docker/docker-compose.prod.yml apps/dashboard/docker/garage.prod.toml.example
-git commit -m "$(cat <<'EOF'
-feat(docker): prod compose + Garage config template
-
-Ships a production docker-compose that runs Postgres and Garage with
-persistent named volumes, pinned image tags, restart policies, and
-the admin port unpublished. Dashboard itself is NOT containerized
-(operator runs it separately) — that's a future sub-project.
-
-garage.prod.toml.example is a committed template; operators copy to
-garage.prod.toml (gitignored), substitute real secrets generated via
-openssl, and mount.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
-
----
-
-## Task 3: Install `@aws-sdk/client-s3` dependency
-
-**Files:**
-- Modify: `apps/dashboard/package.json`
-- Modify: `bun.lock` (updated automatically)
-
-- [ ] **Step 1: Add the dependency**
+- [ ] **Step 1: Install**
 
 ```bash
 cd /Users/jiajingteoh/Documents/feedback-tool/apps/dashboard
 bun add @aws-sdk/client-s3@^3.700.0
 ```
 
-Expected output: installs with some transitive deps.
-
-- [ ] **Step 2: Verify the install**
+- [ ] **Step 2: Verify**
 
 ```bash
 grep "@aws-sdk/client-s3" apps/dashboard/package.json
 ```
 
-Expected: a line like `"@aws-sdk/client-s3": "^3.700.0"` under `dependencies`.
+Expected: one line under `"dependencies"`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 cd /Users/jiajingteoh/Documents/feedback-tool
 git add apps/dashboard/package.json bun.lock
-git commit -m "$(cat <<'EOF'
-chore(deps): add @aws-sdk/client-s3 for Garage adapter
-
-Server-side dependency only; no impact on the SDK bundle (packages/core,
-packages/ui are unchanged).
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
+git commit -m "chore(deps): add @aws-sdk/client-s3 for S3 storage adapter"
 ```
 
 ---
 
-## Task 4: Implement `S3Adapter` (replace the throw-stub)
+## Task 2: Implement S3Adapter
 
 **Files:**
 - Modify: `apps/dashboard/server/lib/storage/s3.ts`
 
-- [ ] **Step 1: Write the new `s3.ts`**
+- [ ] **Step 1: Replace the file**
 
-Overwrite `apps/dashboard/server/lib/storage/s3.ts`:
+Overwrite `apps/dashboard/server/lib/storage/s3.ts` with:
 
 ```ts
-import { existsSync, readFileSync } from "node:fs"
-import { resolve } from "node:path"
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -458,24 +70,11 @@ import {
 } from "@aws-sdk/client-s3"
 import type { StorageAdapter } from "./index"
 
-const CREDS_DIR = resolve(process.cwd(), ".garage-creds")
-
 function resolveCredentials(): { accessKeyId: string; secretAccessKey: string } {
   const envId = process.env.S3_ACCESS_KEY_ID
   const envSecret = process.env.S3_SECRET_ACCESS_KEY
   if (envId && envSecret) return { accessKeyId: envId, secretAccessKey: envSecret }
-  const idPath = `${CREDS_DIR}/s3-access-key-id`
-  const secretPath = `${CREDS_DIR}/s3-secret-access-key`
-  if (existsSync(idPath) && existsSync(secretPath)) {
-    return {
-      accessKeyId: readFileSync(idPath, "utf8").trim(),
-      secretAccessKey: readFileSync(secretPath, "utf8").trim(),
-    }
-  }
-  throw new Error(
-    "S3 credentials not found. Run `bun run dev:docker` first, or set " +
-      "S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY env vars.",
-  )
+  throw new Error("S3 credentials missing. Set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY.")
 }
 
 export class S3Adapter implements StorageAdapter {
@@ -484,10 +83,11 @@ export class S3Adapter implements StorageAdapter {
 
   constructor() {
     this.bucket = process.env.S3_BUCKET ?? "feedback-tool-attachments"
+    const endpoint = process.env.S3_ENDPOINT
     this.client = new S3Client({
-      endpoint: process.env.S3_ENDPOINT ?? "http://localhost:3900",
-      region: process.env.S3_REGION ?? "garage",
-      forcePathStyle: true,
+      ...(endpoint ? { endpoint } : {}),
+      region: process.env.S3_REGION ?? "us-east-1",
+      forcePathStyle: process.env.S3_VIRTUAL_HOSTED !== "true",
       credentials: resolveCredentials(),
     })
   }
@@ -533,7 +133,7 @@ cd /Users/jiajingteoh/Documents/feedback-tool/apps/dashboard
 bunx --bun vue-tsc --noEmit --project .nuxt/tsconfig.server.json 2>&1 | grep "storage/s3"
 ```
 
-Expected: no output (no errors on this file).
+Expected: no output (no errors).
 
 - [ ] **Step 3: Lint + format**
 
@@ -543,7 +143,7 @@ bun run fmt
 bunx oxlint apps/dashboard/server/lib/storage/s3.ts
 ```
 
-Expected: 0 errors.
+0 errors.
 
 - [ ] **Step 4: Commit**
 
@@ -551,111 +151,16 @@ Expected: 0 errors.
 cd /Users/jiajingteoh/Documents/feedback-tool
 git add apps/dashboard/server/lib/storage/s3.ts
 git commit -m "$(cat <<'EOF'
-feat(storage): implement S3Adapter against @aws-sdk/client-s3
+feat(storage): real S3Adapter using @aws-sdk/client-s3
 
-Replaces the throw-stub with a real S3 adapter configured for Garage
-(or any S3-compatible store):
+Replaces the throw-stub with a working adapter that targets any
+S3-compatible endpoint (AWS S3, Cloudflare R2, Backblaze B2, Hetzner,
+or self-run MinIO / Garage / SeaweedFS). Configured entirely via env:
+S3_ENDPOINT (optional for AWS), S3_REGION, S3_BUCKET,
+S3_VIRTUAL_HOSTED, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY.
 
-- forcePathStyle: true (required for non-AWS S3 — Garage, MinIO, etc.)
-- Credential resolution: env vars first, then ./garage-creds/ files,
-  else a clear error pointing the user at bun run dev:docker.
-- Content-Type uses native S3 object metadata (no sidecar file like
-  local-disk).
-- Endpoint, region, bucket all env-configurable.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
-
----
-
-## Task 5: S3Adapter integration test
-
-**Files:**
-- Create: `apps/dashboard/server/lib/storage/s3.test.ts`
-
-**Pre-req:** Garage must be running (from Task 1 smoke test). Verify with:
-
-```bash
-curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:3900/
-```
-
-Expected: `403` or `400` (Garage responds but needs auth for /). NOT `000` (unreachable).
-
-- [ ] **Step 1: Write `s3.test.ts`**
-
-Create `apps/dashboard/server/lib/storage/s3.test.ts`:
-
-```ts
-import { afterAll, describe, expect, test } from "bun:test"
-import { S3Adapter } from "./s3"
-
-describe("S3Adapter (against local Garage)", () => {
-  const adapter = new S3Adapter()
-  const testKey = `test-${crypto.randomUUID()}/sample.bin`
-  const bytes = new Uint8Array([0x01, 0x02, 0x03, 0xff])
-
-  afterAll(async () => {
-    // Best-effort cleanup
-    try {
-      await adapter.delete(testKey)
-    } catch {
-      // ignore — test may have already cleaned up
-    }
-  })
-
-  test("put → get roundtrip preserves bytes + content type", async () => {
-    await adapter.put(testKey, bytes, "application/octet-stream")
-    const out = await adapter.get(testKey)
-    expect(Array.from(out.bytes)).toEqual([0x01, 0x02, 0x03, 0xff])
-    expect(out.contentType).toBe("application/octet-stream")
-  })
-
-  test("content-type is preserved across kinds", async () => {
-    const k = `test-${crypto.randomUUID()}/screenshot.png`
-    await adapter.put(k, bytes, "image/png")
-    const out = await adapter.get(k)
-    expect(out.contentType).toBe("image/png")
-    await adapter.delete(k)
-  })
-
-  test("delete removes the object", async () => {
-    const k = `test-${crypto.randomUUID()}/tmp.bin`
-    await adapter.put(k, bytes, "application/octet-stream")
-    await adapter.delete(k)
-    await expect(adapter.get(k)).rejects.toThrow()
-  })
-})
-```
-
-- [ ] **Step 2: Run the test**
-
-The test needs to run with `cwd=apps/dashboard/` (so `.garage-creds/` resolves correctly). Bun's `setDefaultTimeout` isn't needed — these are quick local calls.
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool/apps/dashboard
-SKIP_SERVER_CHECK=1 bun test ./server/lib/storage/s3.test.ts
-```
-
-Expected: `3 pass, 0 fail`.
-
-If the test fails with "S3 credentials not found", verify `apps/dashboard/.garage-creds/s3-access-key-id` exists. If it doesn't, re-run Task 1 Step 5.
-
-If the test fails with connection refused on 3900, Garage isn't running — `bun run dev:docker`.
-
-- [ ] **Step 3: Commit**
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool
-git add apps/dashboard/server/lib/storage/s3.test.ts
-git commit -m "$(cat <<'EOF'
-test(storage): S3Adapter integration test against local Garage
-
-Three tests: put/get byte roundtrip with content-type preservation,
-content-type preservation across different MIME kinds, and delete.
-Requires Garage running (same implicit dependency as Postgres for the
-existing integration tests). No mocking — real store, real client.
+Path-style addressing by default (works for non-AWS providers);
+operators on AWS can opt into virtual-hosted via S3_VIRTUAL_HOSTED=true.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -664,240 +169,245 @@ EOF
 
 ---
 
-## Task 6: Flip default `STORAGE_DRIVER` from `local` → `s3`
-
-**Files:**
-- Modify: `apps/dashboard/server/lib/storage/index.ts`
-
-- [ ] **Step 1: Change the default**
-
-In `apps/dashboard/server/lib/storage/index.ts`, find:
-
-```ts
-  const driver = process.env.STORAGE_DRIVER ?? "local"
-```
-
-Change to:
-
-```ts
-  const driver = process.env.STORAGE_DRIVER ?? "s3"
-```
-
-The full function block for clarity (replace only the one line):
-
-```ts
-export async function getStorage(): Promise<StorageAdapter> {
-  if (_adapter) return _adapter
-  const driver = process.env.STORAGE_DRIVER ?? "s3"
-  if (driver === "s3") {
-    const { S3Adapter } = await import("./s3")
-    _adapter = new S3Adapter()
-    return _adapter
-  }
-  const { LocalDiskAdapter } = await import("./local-disk")
-  const root = process.env.STORAGE_LOCAL_ROOT ?? "./.data/attachments"
-  _adapter = new LocalDiskAdapter(root)
-  return _adapter
-}
-```
-
-- [ ] **Step 2: Run existing dashboard intake tests with default driver**
-
-Full suite run with a clean DB:
-
-```bash
-PG=$(docker ps --format '{{.Names}} {{.Ports}}' | awk '/0\.0\.0\.0:5436->/{print $1; exit}')
-docker exec "$PG" psql -U postgres -d feedback_tool -c "TRUNCATE report_sync_jobs, github_integrations, report_events, report_attachments, reports, project_members, projects, \"account\", \"session\", \"verification\", \"user\" RESTART IDENTITY CASCADE; UPDATE app_settings SET signup_gated = false, allowed_email_domains = '{}'::text[] WHERE id = 1"
-cd /Users/jiajingteoh/Documents/feedback-tool/apps/dashboard
-bun test 2>&1 | tail -5
-```
-
-Expected: `120 pass, 0 fail` (or whatever the current baseline is). Intake tests that write attachments will now hit Garage. Any S3Adapter bug surfaces here.
-
-If any test fails with "S3 credentials not found" or connection errors, Garage is down or `.garage-creds/` is missing — remediate per Task 1 Step 5.
-
-- [ ] **Step 3: Lint**
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool
-bun run fmt
-bunx oxlint apps/dashboard/server/lib/storage/index.ts
-```
-
-0 errors.
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool
-git add apps/dashboard/server/lib/storage/index.ts
-git commit -m "$(cat <<'EOF'
-feat(storage): default STORAGE_DRIVER to s3 (was local)
-
-With the Garage service shipped in docker-compose, s3 is now the
-first-class path. Local-disk remains reachable via STORAGE_DRIVER=local
-for no-docker dev scenarios.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
-
----
-
-## Task 7: `.env.example` + root package.json scripts
+## Task 3: `.env.example` additions
 
 **Files:**
 - Modify: `.env.example`
-- Modify: `package.json` (root)
 
-- [ ] **Step 1: Append to `.env.example`**
+- [ ] **Step 1: Append the storage block**
 
-Read the current `.env.example` first, then append:
+Append to `.env.example` (keep existing content intact):
 
 ```
 # ─────────────────────────────────────────────────────────────────
-# Object storage (S3-compatible).
-# Default: s3, pointing at the local Garage container from
-# `bun run dev:docker`. Set STORAGE_DRIVER=local to use on-disk
-# storage without docker.
+# Storage — attachments (screenshots, logs)
 # ─────────────────────────────────────────────────────────────────
-STORAGE_DRIVER=s3
-S3_ENDPOINT=http://localhost:3900
-S3_REGION=garage
-S3_BUCKET=feedback-tool-attachments
-# Credentials are auto-provisioned by the garage-init container and
-# written to apps/dashboard/.garage-creds/. Override here only for
-# prod or custom setups:
-# S3_ACCESS_KEY_ID=<set-me>
-# S3_SECRET_ACCESS_KEY=<set-me>
+# `local` writes to STORAGE_LOCAL_ROOT (Docker volume or mounted dir).
+# `s3` writes to any S3-compatible endpoint (see recipes below).
+STORAGE_DRIVER=local
+STORAGE_LOCAL_ROOT=./.data/attachments
+
+# --- When STORAGE_DRIVER=s3 ---
+# S3_BUCKET=feedback-tool-attachments
+# S3_REGION=us-east-1
+# S3_ACCESS_KEY_ID=<required>
+# S3_SECRET_ACCESS_KEY=<required>
+#
+# For AWS S3 (virtual-hosted addressing):
+#   S3_VIRTUAL_HOSTED=true
+#   # S3_ENDPOINT left empty — defaults to AWS
+#
+# For Cloudflare R2:
+#   S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+#   S3_REGION=auto
+#
+# For Backblaze B2:
+#   S3_ENDPOINT=https://s3.<region>.backblazeb2.com
+#   S3_REGION=<region>  # e.g. us-west-002
+#
+# For Hetzner Object Storage:
+#   S3_ENDPOINT=https://<region>.your-objectstorage.com
+#   S3_REGION=<region>  # e.g. nbg1
+#
+# For self-run MinIO / Garage / SeaweedFS:
+#   S3_ENDPOINT=http://<host>:<port>
+#   S3_REGION=<anything>  # most self-hosted stores ignore this
 ```
 
-- [ ] **Step 2: Add scripts to root `package.json`**
-
-Read the root `package.json`. Find the `"scripts"` block. Add these entries (keep existing scripts intact; add alongside the existing `dev:docker` / `dev:stop`):
-
-```json
-    "dev:docker:prod": "docker compose -f apps/dashboard/docker/docker-compose.prod.yml up -d",
-    "dev:docker:logs": "docker compose -f apps/dashboard/docker/docker-compose.dev.yml logs -f garage garage-init",
-    "dev:docker:reset": "docker compose -f apps/dashboard/docker/docker-compose.dev.yml down -v && rm -rf apps/dashboard/.garage-creds",
-```
-
-Place them alphabetically-ish within the scripts block (near the existing `dev:*` entries).
-
-- [ ] **Step 3: Smoke-test the new `reset` script path**
+- [ ] **Step 2: Commit**
 
 ```bash
 cd /Users/jiajingteoh/Documents/feedback-tool
-bun run dev:docker:reset
-ls apps/dashboard/.garage-creds 2>&1
-```
-
-Expected: `ls: ...: No such file or directory` — confirms the reset wiped the creds directory.
-
-Now bring back up to restore state for later tasks:
-
-```bash
-bun run dev:docker
-sleep 15
-ls apps/dashboard/.garage-creds/
-```
-
-Expected: `s3-access-key-id` and `s3-secret-access-key` both present again (re-provisioned from scratch).
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /Users/jiajingteoh/Documents/feedback-tool
-git add .env.example package.json
-git commit -m "$(cat <<'EOF'
-chore(docs): env.example + docker helper scripts
-
-- .env.example documents the four S3_* vars with defaults pointing at
-  the local Garage container; credentials-from-file explained.
-- New scripts: dev:docker:prod, dev:docker:logs, dev:docker:reset.
-  reset is the nuclear option — wipes volumes + .garage-creds/ for a
-  clean bootstrap.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
+git add .env.example
+git commit -m "docs(env): storage env vars with per-provider S3 recipes"
 ```
 
 ---
 
-## Task 8: Full gate + tag v0.6.4-garage-storage
+## Task 4: Deployment guide
 
 **Files:**
-- None (verification + tag only)
+- Create: `docs/deployment.md`
 
-- [ ] **Step 1: Full lint**
+- [ ] **Step 1: Write the doc**
+
+Create `docs/deployment.md`:
+
+```markdown
+# Deployment Guide
+
+Feedback Tool is built to self-host. This document covers what operators
+need to configure.
+
+## Prerequisites
+
+- Docker + docker-compose (for Postgres; the dashboard itself runs on the
+  host or in your own container)
+- Bun 1.3+ for running the dashboard
+- Postgres 17 (provided by `docker-compose.dev.yml`)
+
+## Env vars
+
+See `.env.example` for the full list. Required:
+
+- `BETTER_AUTH_SECRET` — generate with `openssl rand -hex 32`
+- `BETTER_AUTH_URL` — base URL of the dashboard (e.g. `https://feedback.example.com`)
+- `DATABASE_URL` — standard Postgres URL
+- `GITHUB_APP_*` — required only if GitHub integration is used (see
+  `docs/superpowers/specs/2026-04-18-github-sync-design.md`)
+- `ATTACHMENT_URL_SECRET` — generate with `openssl rand -hex 32`
+
+## Storage — two paths
+
+Attachments (screenshots, logs) are stored via the `StorageAdapter`
+interface. Pick ONE at deploy time; don't switch after writes have landed.
+
+### Path A: local filesystem (simple, single-host)
+
+```env
+STORAGE_DRIVER=local
+STORAGE_LOCAL_ROOT=/data/attachments
+```
+
+Mount `/data/attachments` as a Docker volume or bind-mount. Back up with
+file-level tooling (rsync, snapshots, etc.). Fine for:
+
+- Single VM / single-host deployments
+- Homelabs, small teams
+- Expected data size below a few GB
+
+Restore = copy the files back, restart the dashboard.
+
+### Path B: S3-compatible (cloud, multi-host, managed durability)
+
+```env
+STORAGE_DRIVER=s3
+S3_BUCKET=your-bucket-name
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+# plus S3_ENDPOINT / S3_REGION / S3_VIRTUAL_HOSTED per provider
+```
+
+Any S3 API works. Common choices:
+
+| Provider | Pros | Notes |
+|---|---|---|
+| **Cloudflare R2** | $0 egress, free tier | Set `S3_REGION=auto` |
+| **Backblaze B2** | Cheap storage | Region-specific endpoint URL |
+| **Hetzner Object Storage** | EU pricing, regional | Region-specific endpoint URL |
+| **AWS S3** | Most compatible, paid egress | Set `S3_VIRTUAL_HOSTED=true` |
+| **Self-run MinIO / Garage / SeaweedFS** | Full control | Run separately; we don't bundle |
+
+Create the bucket, create an access key with `read/write` on that bucket,
+paste into `.env`. No CORS configuration needed — the dashboard is the
+only client that reads/writes.
+
+### Not supported in v1
+
+- Automatic failover between local and S3
+- Mixed writes (some attachments local, others S3)
+- Migration tooling between the two
+
+If you need to migrate, back up old attachments, switch `STORAGE_DRIVER`,
+restart, and re-upload historical attachments manually (or write a
+one-off script; the `StorageAdapter` interface is small).
+
+## Database
+
+```bash
+bun run dev:docker   # starts Postgres
+bun run db:migrate   # applies committed migrations
+```
+
+For production, substitute your own Postgres (managed RDS / DigitalOcean /
+Supabase / etc.) and set `DATABASE_URL` accordingly.
+
+## Running the dashboard
+
+```bash
+bun install
+bun run build
+bun run preview       # or use your own process manager (PM2, systemd, etc.)
+```
+
+The dashboard is a Nuxt 4 app — it builds to a Node.js server under
+`.output/`. Deploy with any Node-compatible runtime.
+
+## Smoke test checklist
+
+After first deploy:
+
+- [ ] Sign in (admin account)
+- [ ] Create a project
+- [ ] Install the SDK on a test page; file a report
+- [ ] Confirm the report lands in the inbox with the screenshot
+- [ ] Open the screenshot — confirms storage is wired correctly
+- [ ] (If using GitHub integration) install the App, verify issue creates
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+cd /Users/jiajingteoh/Documents/feedback-tool
+git add docs/deployment.md
+git commit -m "docs(deployment): storage + database + runtime guide"
+```
+
+---
+
+## Task 5: Full gate + tag v0.6.4-storage
+
+- [ ] **Step 1: Lint**
 
 ```bash
 cd /Users/jiajingteoh/Documents/feedback-tool
 bun run check 2>&1 | tail -3
 ```
 
-Expected: 0 errors. Warnings are pre-existing.
+Expected: 0 errors.
 
-- [ ] **Step 2: S3Adapter unit test**
+- [ ] **Step 2: Full test suite (with STORAGE_DRIVER=local default)**
+
+The dev dashboard should already be running. Restore DB schema first (previous teardown wiped it):
 
 ```bash
-cd /Users/jiajingteoh/Documents/feedback-tool/apps/dashboard
-SKIP_SERVER_CHECK=1 bun test ./server/lib/storage/s3.test.ts 2>&1 | tail -5
+bun run db:migrate
 ```
 
-Expected: 3/3 pass.
-
-- [ ] **Step 3: Full dashboard integration suite (with s3 default)**
+Then:
 
 ```bash
 PG=$(docker ps --format '{{.Names}} {{.Ports}}' | awk '/0\.0\.0\.0:5436->/{print $1; exit}')
 docker exec "$PG" psql -U postgres -d feedback_tool -c "TRUNCATE report_sync_jobs, github_integrations, report_events, report_attachments, reports, project_members, projects, \"account\", \"session\", \"verification\", \"user\" RESTART IDENTITY CASCADE; UPDATE app_settings SET signup_gated = false, allowed_email_domains = '{}'::text[] WHERE id = 1"
-cd /Users/jiajingteoh/Documents/feedback-tool/apps/dashboard
-bun test 2>&1 | tail -8
+cd apps/dashboard
+bun test 2>&1 | tail -5
 ```
 
-Expected: all tests pass (120+ tests). No new failures. Intake + attachment-serve tests now exercise Garage end-to-end.
+Expected: 120/120 pass (or current baseline) — all tests run with local-disk.
 
-If any test fails specifically related to storage, debug via:
-```bash
-docker compose -f apps/dashboard/docker/docker-compose.dev.yml logs garage | tail -40
-```
-
-- [ ] **Step 4: Tag**
+- [ ] **Step 3: Tag**
 
 ```bash
 cd /Users/jiajingteoh/Documents/feedback-tool
-git tag -a v0.6.4-garage-storage -m "$(cat <<'EOF'
-v0.6.4 — Garage S3 storage (sub-project I)
+git tag -a v0.6.4-storage -m "$(cat <<'EOF'
+v0.6.4 — storage adapter finalization
 
-Replaces local-disk attachment storage with a Garage-based S3 store
-shipped in docker-compose. Users no longer manage external S3.
+Replaces the S3Adapter throw-stub with a real @aws-sdk/client-s3
+implementation that targets any S3-compatible endpoint. Keeps
+local-disk as the default for zero-config dev and simple single-host
+prod. Deployment guide documents both paths with per-provider recipes.
 
-- Dev compose adds garage + one-shot garage-init sidecar. Init
-  bootstraps the cluster, creates feedback-tool-attachments bucket,
-  mints an S3 access key, writes creds to gitignored
-  apps/dashboard/.garage-creds/ (bind-mounted).
-- Prod compose (docker-compose.prod.yml) mirrors dev with pinned tags,
-  persistent volumes, localhost-only port binding, and a gitignored
-  garage.prod.toml (template committed).
-- S3Adapter reimplemented with @aws-sdk/client-s3 (forcePathStyle,
-  region=garage sentinel, native Content-Type metadata — no sidecar).
-- Default STORAGE_DRIVER flipped from local to s3. Local-disk remains
-  via STORAGE_DRIVER=local for no-docker dev.
-- New scripts: dev:docker:prod, dev:docker:logs, dev:docker:reset.
+Sub-project I was originally scoped as "Garage in docker-compose" —
+pivoted after hitting operational complexity that didn't serve users.
+Self-hosters now BYO-S3 (same model as Gitea, Mattermost, Plausible).
 
-Dashboard is NOT containerized in this iteration — operator runs it
-how they like. That Dockerfile is a future sub-project.
-
-Tests: 120 integration + 3 new S3Adapter unit. All green.
+- apps/dashboard/server/lib/storage/s3.ts: real adapter
+- .env.example: storage vars documented with R2/B2/Hetzner/AWS recipes
+- docs/deployment.md: storage decision tree + smoke checklist
+- @aws-sdk/client-s3@^3.700.0: added
 EOF
 )"
-git tag | tail -6
 ```
-
-Expected: tag list ends with `v0.6.4-garage-storage`.
 
 ---
 
@@ -906,34 +416,23 @@ Expected: tag list ends with `v0.6.4-garage-storage`.
 ### Spec coverage
 
 | Spec section | Task(s) |
-| --- | --- |
-| §Goal, §Non-Goals | Plan preamble + Task 8 tag message |
-| §Deployment Assumption (dashboard on host) | Implicit throughout; Task 2 prod compose explicitly excludes dashboard |
-| §Architecture Summary | Tasks 1–7 |
-| §Components — Compose topology (dev) | Task 1 (all) |
-| §Components — Prod compose | Task 2 |
-| §Components — garage.toml | Task 1 Step 1 |
-| §Components — garage.prod.toml.example | Task 2 Step 1 |
-| §Components — garage-init.sh with idempotency | Task 1 Step 2 |
-| §Components — Runtime adapter (S3Adapter) | Task 4 |
-| §Components — Storage factory update | Task 6 |
-| §Configuration — env vars | Task 7 Step 1 |
-| §Configuration — Filesystem paths | Task 1 Step 4 (.gitignore), Tasks 1/2/4 (files) |
-| §Configuration — package.json changes | Tasks 3 + 7 |
-| §Data Flow — Write / Read / GitHub | Covered by existing code (intake, attachment-serve, reconcile). No changes required — Task 6 flip makes them use s3 transparently |
-| §Testing | Task 5 (new integration test), Tasks 6/8 (full suite regression) |
-| §Failure Modes | Covered by Task 1 idempotency script + Task 4 credential resolver error |
-
-All spec items have a mapped task.
+|---|---|
+| §Goal (two paths, no fallback) | Covered by the composition — local stays default, S3 is opt-in |
+| §Architecture Summary | Tasks 1, 2 |
+| §S3Adapter full implementation | Task 2 |
+| §Storage factory — no change | Confirmed; no task needed |
+| §Env vars table | Task 3 (.env.example) |
+| §Package.json | Task 1 |
+| §Deployment Guide | Task 4 |
+| §Testing — no unit tests, existing integration suite covers | Task 5 (full-suite gate) |
+| §Failure modes | S3Adapter throws on missing creds at construction — Task 2 |
+| §Out of scope | Respected |
 
 ### Placeholder scan
 
-No "TBD" / "implement later" / "handle edge cases" — every step has concrete code, concrete commands, or concrete expected output. The `<SET_ME_...>` placeholders in the prod TOML template are INTENTIONAL — they're template placeholders for operator substitution, not plan gaps.
+No TBDs. `<required>` and `<region>` markers in `.env.example` are intentional operator-fill fields (not plan gaps).
 
 ### Type consistency
 
-- `S3Adapter` class signature matches `StorageAdapter` interface (3 methods: put/get/delete). Checked against `apps/dashboard/server/lib/storage/index.ts`.
-- Wire key conventions: bucket name `feedback-tool-attachments`, region sentinel `"garage"` — consistent between Task 1 (bucket create), Task 4 (adapter config), Task 5 (tests), Task 7 (env defaults).
-- Credential file names `s3-access-key-id` and `s3-secret-access-key` — consistent between Task 1 (write), Task 4 (read), Task 7 (reset path).
-- Env var names `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` — consistent between Task 4 (adapter), Task 7 (.env.example).
-- `STORAGE_DRIVER` default `"s3"` consistent in Task 6 (code) and Task 7 (.env.example).
+- `StorageAdapter` interface methods (`put`, `get`, `delete`) — S3Adapter implements exactly those signatures. Matches `server/lib/storage/index.ts`.
+- Env var names (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_VIRTUAL_HOSTED`) — consistent between Task 2 (code), Task 3 (.env.example), Task 4 (deployment docs).
