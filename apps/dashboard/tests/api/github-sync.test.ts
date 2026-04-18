@@ -16,7 +16,9 @@ import {
   truncateReports,
 } from "../helpers"
 import { db } from "../../server/db"
-import { githubIntegrations, projectMembers } from "../../server/db/schema"
+import { githubIntegrations, projectMembers, reports, reportEvents } from "../../server/db/schema"
+import { createHmac } from "node:crypto"
+import { reconcileReport } from "../../server/lib/github-reconcile"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
@@ -218,5 +220,235 @@ describe("github integration — install + config", () => {
       headers: { cookie },
     })
     expect(r2.status).toBe(403)
+  })
+})
+
+function sign(secret: string, payload: string): string {
+  const h = createHmac("sha256", secret)
+  h.update(payload)
+  return `sha256=${h.digest("hex")}`
+}
+
+describe("worker reconcile", () => {
+  afterEach(async () => {
+    __setClientOverride(null)
+    await truncateGithub()
+    await truncateReports()
+    await truncateDomain()
+  })
+
+  async function seedConnectedProject() {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    await db.insert(githubIntegrations).values({
+      projectId: pid,
+      installationId: 10,
+      repoOwner: "acme",
+      repoName: "frontend",
+      defaultLabels: ["feedback"],
+    })
+    const [r] = await db
+      .insert(reports)
+      .values({
+        projectId: pid,
+        title: "Crash",
+        description: "it crashed",
+        context: {
+          pageUrl: "https://app.example.com",
+          userAgent: "UA",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+          reporter: { email: "r@e.com" },
+        },
+      })
+      .returning({ id: reports.id })
+    return { pid, reportId: r!.id }
+  }
+
+  test("first reconcile creates issue + writes github columns", async () => {
+    const { reportId } = await seedConnectedProject()
+    const { client, calls } = makeMock()
+    __setClientOverride(() => client)
+    await reconcileReport(reportId)
+    expect(calls.createIssue.length).toBe(1)
+    const [row] = await db.select().from(reports).where(eq(reports.id, reportId))
+    expect(row?.githubIssueNumber).toBe(42)
+  })
+
+  test("reconcile closes issue when status=resolved", async () => {
+    const { reportId } = await seedConnectedProject()
+    await db
+      .update(reports)
+      .set({
+        status: "resolved",
+        githubIssueNumber: 42,
+        githubIssueNodeId: "NODE_42",
+        githubIssueUrl: "https://github.com/acme/frontend/issues/42",
+      })
+      .where(eq(reports.id, reportId))
+    const { client, calls } = makeMock()
+    __setClientOverride(() => client)
+    await reconcileReport(reportId)
+    expect(calls.closeIssue.length).toBe(1)
+    expect(calls.closeIssue[0]?.reason).toBe("completed")
+  })
+
+  test("reconcile updates labels when priority changes", async () => {
+    const { reportId } = await seedConnectedProject()
+    await db
+      .update(reports)
+      .set({
+        priority: "urgent",
+        githubIssueNumber: 42,
+        githubIssueNodeId: "NODE_42",
+        githubIssueUrl: "https://github.com/acme/frontend/issues/42",
+      })
+      .where(eq(reports.id, reportId))
+    const { client, calls } = makeMock({
+      getIssue: async () => ({ state: "open", labels: ["priority:normal"] }),
+    })
+    __setClientOverride(() => client)
+    await reconcileReport(reportId)
+    expect(calls.updateIssueLabels.length).toBe(1)
+    const newLabels = calls.updateIssueLabels[0]?.labels as string[]
+    expect(newLabels).toContain("priority:urgent")
+    expect(newLabels).not.toContain("priority:normal")
+  })
+
+  test("reconcile echo-suppresses when remote already matches", async () => {
+    const { reportId } = await seedConnectedProject()
+    await db
+      .update(reports)
+      .set({
+        priority: "normal",
+        status: "open",
+        githubIssueNumber: 42,
+        githubIssueNodeId: "NODE_42",
+        githubIssueUrl: "https://github.com/acme/frontend/issues/42",
+      })
+      .where(eq(reports.id, reportId))
+    const { client, calls } = makeMock({
+      getIssue: async () => ({ state: "open", labels: ["feedback", "priority:normal"] }),
+    })
+    __setClientOverride(() => client)
+    await reconcileReport(reportId)
+    expect(calls.closeIssue.length).toBe(0)
+    expect(calls.reopenIssue.length).toBe(0)
+    expect(calls.updateIssueLabels.length).toBe(0)
+  })
+})
+
+describe("webhook", () => {
+  afterEach(async () => {
+    await truncateGithub()
+    await truncateReports()
+    await truncateDomain()
+  })
+
+  test("invalid signature → 401", async () => {
+    const body = JSON.stringify({ action: "closed" })
+    const res = await fetch("http://localhost:3000/api/integrations/github/webhook", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-hub-signature-256": "sha256=bad" },
+      body,
+    })
+    expect(res.status).toBe(401)
+  })
+
+  test("issues.closed updates dashboard + inserts event", async () => {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    await db.insert(githubIntegrations).values({
+      projectId: pid,
+      installationId: 10,
+      repoOwner: "acme",
+      repoName: "frontend",
+    })
+    const [r] = await db
+      .insert(reports)
+      .values({
+        projectId: pid,
+        title: "Crash",
+        description: "x",
+        context: {
+          pageUrl: "x",
+          userAgent: "x",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+        githubIssueNumber: 42,
+        githubIssueNodeId: "NODE_42",
+        githubIssueUrl: "https://github.com/acme/frontend/issues/42",
+      })
+      .returning({ id: reports.id })
+    const body = JSON.stringify({
+      action: "closed",
+      issue: { number: 42, state: "closed", state_reason: "completed" },
+      repository: { name: "frontend", owner: { login: "acme" } },
+    })
+    const res = await fetch("http://localhost:3000/api/integrations/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "issues",
+        "x-hub-signature-256": sign(
+          process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret",
+          body,
+        ),
+      },
+      body,
+    })
+    expect(res.status).toBe(202)
+    const [updated] = await db.select().from(reports).where(eq(reports.id, r!.id))
+    expect(updated?.status).toBe("resolved")
+    const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, r!.id))
+    expect(evs.length).toBe(1)
+    expect(evs[0]?.kind).toBe("status_changed")
+    expect(evs[0]?.actorId).toBeNull()
+  })
+
+  test("installation.deleted flips all matching integrations", async () => {
+    const ownerId = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: ownerId,
+    })
+    await db.insert(githubIntegrations).values({
+      projectId: pid,
+      installationId: 555,
+      repoOwner: "acme",
+      repoName: "frontend",
+    })
+    const body = JSON.stringify({ action: "deleted", installation: { id: 555 } })
+    const res = await fetch("http://localhost:3000/api/integrations/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "installation",
+        "x-hub-signature-256": sign(
+          process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret",
+          body,
+        ),
+      },
+      body,
+    })
+    expect(res.status).toBe(202)
+    const [row] = await db
+      .select()
+      .from(githubIntegrations)
+      .where(eq(githubIntegrations.projectId, pid))
+    expect(row?.status).toBe("disconnected")
   })
 })
