@@ -105,10 +105,14 @@
         <p><a href="/does-not-exist">Learn more →</a></p>
       </section>
 
-      <form class="card">
+      <form class="card" id="demo-form">
         <h3>Fill out a form</h3>
-        <label>Email<input type="email" placeholder="you@example.com" /></label>
-        <label>Name<input type="text" placeholder="Your name" /></label>
+        <p>
+          Submitting fires a <code>fetch()</code> and drops a breadcrumb — use it to populate the
+          Network + Console tabs before opening the widget.
+        </p>
+        <label>Email<input type="email" name="email" placeholder="you@example.com" /></label>
+        <label>Name<input type="text" name="name" placeholder="Your name" /></label>
         <button type="submit" class="broken-btn">Submit</button>
       </form>
 
@@ -120,6 +124,28 @@
 
     <script>
       setInterval(() => console.warn("[demo] intentionally noisy log"), 2000)
+
+      // Wire the demo form up to a real fetch + breadcrumb so the Network and
+      // Console tabs have something to show. The form has no action/method
+      // attributes, but without preventDefault the browser still navigates to
+      // the current URL on submit — which wipes DevTools and every collector
+      // buffer right as you'd want to inspect them.
+      document.getElementById("demo-form").addEventListener("submit", (e) => {
+        e.preventDefault()
+        const fd = new FormData(e.target)
+        const email = fd.get("email") || ""
+        const name = fd.get("name") || ""
+        if (window.FeedbackTool && typeof window.FeedbackTool.log === "function") {
+          window.FeedbackTool.log("demo.form.submit", { hasEmail: !!email, hasName: !!name })
+        }
+        fetch("https://httpbin.org/post?api_key=secret&debug=1", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email, name }),
+        })
+          .then((r) => console.log("[demo] form submit fetch →", r.status))
+          .catch((err) => console.error("[demo] form submit fetch failed", err))
+      })
     </script>
 
     <!-- Load the SDK (served by Bun at /sdk.iife.js) -->
