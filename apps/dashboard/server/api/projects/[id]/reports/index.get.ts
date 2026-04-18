@@ -66,67 +66,37 @@ export default defineEventHandler(async (event) => {
 
   const whereClause = and(...whereParts)
 
-  const countResult = await db.select({ total: count() }).from(reports).where(whereClause)
-  const total = countResult[0]?.total ?? 0
-
-  const rows = await db
-    .select({
-      id: reports.id,
-      title: reports.title,
-      description: reports.description,
-      context: reports.context,
-      createdAt: reports.createdAt,
-      updatedAt: reports.updatedAt,
-      status: reports.status,
-      priority: reports.priority,
-      tags: reports.tags,
-      assigneeId: reports.assigneeId,
-      assigneeName: userTable.name,
-      assigneeEmail: userTable.email,
-      attachmentId: reportAttachments.id,
-      githubIssueNumber: reports.githubIssueNumber,
-      githubIssueUrl: reports.githubIssueUrl,
-    })
-    .from(reports)
-    .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
-    .leftJoin(
-      reportAttachments,
-      and(eq(reportAttachments.reportId, reports.id), eq(reportAttachments.kind, "screenshot")),
-    )
-    .where(whereClause)
-    .orderBy(sql.raw(sortClause))
-    .limit(limit)
-    .offset(offset)
-
-  const items: ReportSummaryDTO[] = rows.map((r) => {
-    const ctx = r.context as ReportContext
-    const assignee: ReportAssigneeDTO | null =
-      r.assigneeId && r.assigneeEmail
-        ? { id: r.assigneeId, name: r.assigneeName ?? null, email: r.assigneeEmail }
-        : null
-    return {
-      id: r.id,
-      title: r.title,
-      description: r.description ?? null,
-      context: ctx,
-      reporterEmail: ctx.reporter?.email ?? null,
-      pageUrl: ctx.pageUrl,
-      receivedAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString(),
-      thumbnailUrl: r.attachmentId
-        ? `/api/projects/${id}/reports/${r.id}/attachment?kind=screenshot`
-        : null,
-      status: r.status,
-      priority: r.priority,
-      tags: r.tags,
-      githubIssueNumber: r.githubIssueNumber ?? null,
-      githubIssueUrl: r.githubIssueUrl ?? null,
-      assignee,
-    }
-  })
-
-  // Facet counts — all use the same whereClause as the list; run concurrently.
-  const [statusRows, priorityRows, assigneeRows, tagRows] = await Promise.all([
+  // Count, main fetch, and facets all use the same whereClause — run concurrently.
+  const [countResult, rows, statusRows, priorityRows, assigneeRows, tagRows] = await Promise.all([
+    db.select({ total: count() }).from(reports).where(whereClause),
+    db
+      .select({
+        id: reports.id,
+        title: reports.title,
+        description: reports.description,
+        context: reports.context,
+        createdAt: reports.createdAt,
+        updatedAt: reports.updatedAt,
+        status: reports.status,
+        priority: reports.priority,
+        tags: reports.tags,
+        assigneeId: reports.assigneeId,
+        assigneeName: userTable.name,
+        assigneeEmail: userTable.email,
+        attachmentId: reportAttachments.id,
+        githubIssueNumber: reports.githubIssueNumber,
+        githubIssueUrl: reports.githubIssueUrl,
+      })
+      .from(reports)
+      .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
+      .leftJoin(
+        reportAttachments,
+        and(eq(reportAttachments.reportId, reports.id), eq(reportAttachments.kind, "screenshot")),
+      )
+      .where(whereClause)
+      .orderBy(sql.raw(sortClause))
+      .limit(limit)
+      .offset(offset),
     db
       .select({ key: reports.status, c: count() })
       .from(reports)
@@ -156,6 +126,34 @@ export default defineEventHandler(async (event) => {
       .orderBy(desc(count()))
       .limit(20),
   ])
+  const total = countResult[0]?.total ?? 0
+
+  const items: ReportSummaryDTO[] = rows.map((r) => {
+    const ctx = r.context as ReportContext
+    const assignee: ReportAssigneeDTO | null =
+      r.assigneeId && r.assigneeEmail
+        ? { id: r.assigneeId, name: r.assigneeName ?? null, email: r.assigneeEmail }
+        : null
+    return {
+      id: r.id,
+      title: r.title,
+      description: r.description ?? null,
+      context: ctx,
+      reporterEmail: ctx.reporter?.email ?? null,
+      pageUrl: ctx.pageUrl,
+      receivedAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      thumbnailUrl: r.attachmentId
+        ? `/api/projects/${id}/reports/${r.id}/attachment?kind=screenshot`
+        : null,
+      status: r.status,
+      priority: r.priority,
+      tags: r.tags,
+      githubIssueNumber: r.githubIssueNumber ?? null,
+      githubIssueUrl: r.githubIssueUrl ?? null,
+      assignee,
+    }
+  })
 
   const statusFacet: Record<string, number> = { open: 0, in_progress: 0, resolved: 0, closed: 0 }
   for (const r of statusRows) statusFacet[r.key] = r.c
