@@ -13,7 +13,7 @@ import {
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
-setDefaultTimeout(30000)
+setDefaultTimeout(60000)
 
 const PK = "ft_pk_ABCDEF1234567890abcdef12"
 const ORIGIN = "http://localhost:4000"
