@@ -1,6 +1,6 @@
 // apps/dashboard/tests/lib/github-helpers.test.ts
 import { describe, expect, test } from "bun:test"
-import { computeBackoff } from "../../server/lib/github-helpers"
+import { computeBackoff, labelsFor } from "../../server/lib/github-helpers"
 
 describe("computeBackoff", () => {
   test("attempt 1 → 10 seconds", () => {
@@ -23,5 +23,25 @@ describe("computeBackoff", () => {
   })
   test("attempts < 1 treated as 1", () => {
     expect(computeBackoff(0)).toBe(10_000)
+  })
+})
+
+describe("labelsFor", () => {
+  test("combines defaults + priority prefix + tags verbatim, sorted", () => {
+    const result = labelsFor(
+      { priority: "urgent", tags: ["mobile", "checkout"] },
+      { defaultLabels: ["feedback", "needs-triage"] },
+    )
+    expect(result).toEqual(["checkout", "feedback", "mobile", "needs-triage", "priority:urgent"])
+  })
+  test("dedupes when a tag clashes with a default label", () => {
+    expect(
+      labelsFor({ priority: "normal", tags: ["feedback"] }, { defaultLabels: ["feedback"] }),
+    ).toEqual(["feedback", "priority:normal"])
+  })
+  test("empty tags + empty defaults still includes priority", () => {
+    expect(labelsFor({ priority: "low", tags: [] }, { defaultLabels: [] })).toEqual([
+      "priority:low",
+    ])
   })
 })
