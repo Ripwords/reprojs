@@ -19,9 +19,13 @@ export function StepDescribe({ annotatedBlob, onBack, onCancel, onSubmit }: Prop
 
   const previewUrl = annotatedBlob ? URL.createObjectURL(annotatedBlob) : null
 
-  async function handleSubmit(e: Event) {
-    e.preventDefault()
-    if (!title.trim()) return
+  async function handleSubmit(e?: Event) {
+    // Belt + suspenders: stop any native form submission. The form below has no
+    // action/method set, but without preventDefault the browser will navigate
+    // to the current URL on submit — which tears down the SDK, the shadow DOM,
+    // and every collector buffer along with it.
+    e?.preventDefault()
+    if (!title.trim() || submitting || success) return
     setSubmitting(true)
     setError(null)
     const res = await onSubmit({ title: title.trim(), description: description.trim() })
@@ -114,8 +118,11 @@ export function StepDescribe({ annotatedBlob, onBack, onCancel, onSubmit }: Prop
           h(
             "button",
             {
-              type: "submit",
+              type: "button",
               class: "ft-btn primary",
+              onClick: () => {
+                void handleSubmit()
+              },
               disabled: submitting || success || !title.trim(),
             },
             submitting ? "Sending…" : "Send report",
