@@ -51,6 +51,20 @@ function relTime(iso: string): string {
       >
     </td>
     <td class="p-2 font-medium truncate max-w-md">{{ report.title }}</td>
+    <td class="p-2 text-xs">
+      <a
+        v-if="report.githubIssueNumber && report.githubIssueUrl"
+        :href="report.githubIssueUrl"
+        target="_blank"
+        rel="noopener"
+        class="text-neutral-500 hover:text-neutral-900"
+        :title="`GitHub issue #${report.githubIssueNumber}`"
+        @click.stop
+      >
+        🐙#{{ report.githubIssueNumber }}
+      </a>
+      <span v-else class="text-neutral-300">—</span>
+    </td>
     <td class="p-2">
       <span v-if="report.assignee" class="inline-flex items-center gap-1 text-xs">
         <span
