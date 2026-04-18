@@ -18,13 +18,33 @@ export const reports = pgTable(
       .default(sql`'{}'::jsonb`),
     origin: text("origin"),
     ip: text("ip"),
+    status: text("status", { enum: ["open", "in_progress", "resolved", "closed"] })
+      .notNull()
+      .default("open"),
+    assigneeId: text("assignee_id"),
+    priority: text("priority", { enum: ["low", "normal", "high", "urgent"] })
+      .notNull()
+      .default("normal"),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     projectCreatedIdx: index("reports_project_created_idx").on(
       table.projectId,
       sql`${table.createdAt} DESC`,
     ),
+    projectStatusCreatedIdx: index("reports_project_status_created_idx").on(
+      table.projectId,
+      table.status,
+      sql`${table.createdAt} DESC`,
+    ),
+    projectAssigneeIdx: index("reports_project_assignee_idx").on(table.projectId, table.assigneeId),
+    projectPriorityIdx: index("reports_project_priority_idx").on(table.projectId, table.priority),
+    tagsGinIdx: index("reports_tags_gin_idx").using("gin", table.tags),
   }),
 )
 
