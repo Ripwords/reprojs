@@ -8,7 +8,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "bun test tests/",
-    "test:e2e": "concurrently --kill-others-on-fail --success first -n server,tests \"nuxt dev\" \"wait-on http://localhost:3000/api/me --timeout 60000 && bun test tests/\""
+    "test:e2e": "concurrently --kill-others-on-fail --success first -n server,tests \"nuxt dev\" \"wait-on http://localhost:3000/api/me --timeout 60000 && bun test tests/\"",
+    "icons": "bun scripts/generate-icons.ts"
   },
   "dependencies": {
     "@feedback-tool/integrations-github": "workspace:*",
@@ -31,6 +32,7 @@
     "@types/nodemailer": "^6.4.15",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.0",
-    "playwright-core": "^1.47.0"
+    "playwright-core": "^1.47.0",
+    "sharp": "^0.34.0"
   }
 }

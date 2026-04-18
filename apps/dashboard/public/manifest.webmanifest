@@ -1,0 +1,46 @@
+{
+  "name": "Feedback Tool",
+  "short_name": "Feedback",
+  "description": "Self-hostable bug reporter + GitHub-synced triage dashboard.",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#f5f5f7",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    {
+      "src": "/icon-light.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "media": "(prefers-color-scheme: light)"
+    },
+    {
+      "src": "/icon-dark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "media": "(prefers-color-scheme: dark)"
+    },
+    {
+      "src": "/icon-light.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "media": "(prefers-color-scheme: light)"
+    },
+    {
+      "src": "/icon-dark.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "media": "(prefers-color-scheme: dark)"
+    },
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
