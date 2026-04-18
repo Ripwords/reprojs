@@ -1,17 +1,10 @@
 <script setup lang="ts">
-import type { ReportSummaryDTO, ReportContext } from "@feedback-tool/shared"
+import type { ReportSummaryDTO } from "@feedback-tool/shared"
 import { safeHref } from "~/composables/use-safe-href"
 
 const props = defineProps<{ projectId: string; report: ReportSummaryDTO }>()
 
-const { data: details } = await useApi<{
-  items: Array<ReportSummaryDTO & { description?: string | null; context?: ReportContext }>
-}>(`/api/projects/${props.projectId}/reports?limit=50`)
-
-const thisReport = computed(
-  () => details.value?.items.find((r) => r.id === props.report.id) ?? null,
-)
-const ctx = computed(() => thisReport.value?.context as ReportContext | undefined)
+const ctx = computed(() => props.report.context)
 const sys = computed(() => ctx.value?.systemInfo)
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleString()
