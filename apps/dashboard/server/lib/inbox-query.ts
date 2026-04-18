@@ -1,3 +1,6 @@
+import { asc, desc, sql, type SQL } from "drizzle-orm"
+import { reports } from "../db/schema"
+
 export interface TagDiff {
   added: string[]
   removed: string[]
@@ -38,15 +41,24 @@ export function resolveAssigneeFilter(
 
 export type SortKey = "newest" | "oldest" | "priority" | "updated"
 
-export function buildSortClause(sort: string): string {
+export function buildSortClause(sort: string): SQL[] {
   switch (sort) {
     case "oldest":
-      return `"created_at" ASC`
+      return [asc(reports.createdAt)]
     case "updated":
-      return `"updated_at" DESC`
+      return [desc(reports.updatedAt)]
     case "priority":
-      return `CASE "priority" WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END ASC, "created_at" DESC`
+      return [
+        sql`case ${reports.priority}
+              when 'urgent' then 0
+              when 'high' then 1
+              when 'normal' then 2
+              when 'low' then 3
+            end asc`,
+        desc(reports.createdAt),
+      ]
+    case "newest":
     default:
-      return `"created_at" DESC`
+      return [desc(reports.createdAt)]
   }
 }

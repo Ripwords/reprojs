@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
   const limit = Math.min(100, Math.max(1, Number(q.limit ?? 50)))
   const offset = Math.max(0, Number(q.offset ?? 0))
   const searchRaw = typeof q.q === "string" ? q.q.slice(0, 200).trim() : ""
-  const sortClause = buildSortClause(typeof q.sort === "string" ? q.sort : "newest")
+  const orderBy = buildSortClause(typeof q.sort === "string" ? q.sort : "newest")
 
   const statusTokens = parseCsv(q.status).filter((v) => ReportStatus.safeParse(v).success)
   const priorityTokens = parseCsv(q.priority).filter((v) => ReportPriority.safeParse(v).success)
@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
         and(eq(reportAttachments.reportId, reports.id), eq(reportAttachments.kind, "screenshot")),
       )
       .where(whereClause)
-      .orderBy(sql.raw(sortClause))
+      .orderBy(...orderBy)
       .limit(limit)
       .offset(offset),
     db

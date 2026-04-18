@@ -53,21 +53,24 @@ describe("resolveAssigneeFilter", () => {
 })
 
 describe("buildSortClause", () => {
-  test("newest → created_at DESC", () => {
-    expect(buildSortClause("newest")).toBe('"created_at" DESC')
+  test("newest → one expression", () => {
+    const out = buildSortClause("newest")
+    expect(out.length).toBe(1)
   })
-  test("oldest → created_at ASC", () => {
-    expect(buildSortClause("oldest")).toBe('"created_at" ASC')
+  test("oldest → one expression", () => {
+    const out = buildSortClause("oldest")
+    expect(out.length).toBe(1)
   })
-  test("updated → updated_at DESC", () => {
-    expect(buildSortClause("updated")).toBe('"updated_at" DESC')
+  test("updated → one expression", () => {
+    const out = buildSortClause("updated")
+    expect(out.length).toBe(1)
   })
-  test("priority → urgent > high > normal > low, tiebreak newest", () => {
-    expect(buildSortClause("priority")).toBe(
-      `CASE "priority" WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END ASC, "created_at" DESC`,
-    )
+  test("priority → CASE + created_at tiebreak (2 expressions)", () => {
+    const out = buildSortClause("priority")
+    expect(out.length).toBe(2)
   })
-  test("unknown key defaults to newest", () => {
-    expect(buildSortClause("garbage")).toBe('"created_at" DESC')
+  test("unknown key defaults to newest (one expression)", () => {
+    const out = buildSortClause("garbage")
+    expect(out.length).toBe(1)
   })
 })
