@@ -1,15 +1,26 @@
 // packages/ui/src/shadow.ts
+//
+// The widget mounts inside a ShadowRoot with mode: "closed" so host-page
+// scripts cannot reach into the widget via `hostEl.shadowRoot` and read or
+// mutate the annotation canvas, in-flight report contents, or form fields.
+// Closed mode causes `host.shadowRoot` to resolve to null from outside, so
+// we track our own ShadowRoot references in a module-private WeakMap keyed
+// by the host element. The returned ShadowRoot reference remains usable by
+// internal callers (e.g. mount.ts) exactly as before.
+const attachedRoots = new WeakMap<HTMLElement, ShadowRoot>()
+
 export function createShadowHost(): ShadowRoot {
-  let host = document.getElementById("feedback-tool-host")
+  let host = document.getElementById("feedback-tool-host") as HTMLElement | null
   if (!host) {
     host = document.createElement("div")
     host.id = "feedback-tool-host"
     document.body.appendChild(host)
   }
-  if ((host as HTMLElement).shadowRoot) {
-    return (host as HTMLElement).shadowRoot as ShadowRoot
-  }
-  return (host as HTMLElement).attachShadow({ mode: "open" })
+  const existing = attachedRoots.get(host)
+  if (existing) return existing
+  const root = host.attachShadow({ mode: "closed" })
+  attachedRoots.set(host, root)
+  return root
 }
 
 export function injectStyles(root: ShadowRoot, css: string) {
@@ -19,6 +30,9 @@ export function injectStyles(root: ShadowRoot, css: string) {
 }
 
 export function unmountShadowHost() {
-  const host = document.getElementById("feedback-tool-host")
-  host?.remove()
+  const host = document.getElementById("feedback-tool-host") as HTMLElement | null
+  if (host) {
+    attachedRoots.delete(host)
+    host.remove()
+  }
 }
