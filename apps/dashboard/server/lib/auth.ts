@@ -7,10 +7,58 @@ import { appSettings, user } from "../db/schema"
 import { renderTemplate } from "./render-template"
 import { sendMail } from "./email"
 
+// H2: auth endpoint rate limiting. Sign-in, forget-password, reset-password,
+// and verify-email are credential-guessing oracles — without a cap an attacker
+// brute-forces at database speed. 5 attempts per 15 minutes per IP is the
+// industry-standard login cap (permissive enough for humans retrying a typo).
+//
+// Deliberately NOT rate-limited:
+//   - /session (read-only, not brute-forceable)
+//   - /sign-out (not brute-forceable)
+//   - /callback/* (OAuth provider callbacks — capping breaks real login flows)
+//   - /sign-up/email (has its own abuse vectors handled elsewhere — email
+//     verification + invite gate — and the existing better-auth defaults cover
+//     it at 3 per 10s)
+const AUTH_RATE_PER_IP_PER_15MIN = Number(process.env.AUTH_RATE_PER_IP_PER_15MIN ?? 5)
+const AUTH_RATE_WINDOW_SEC = 15 * 60
+// Enable in production by default (matches better-auth's own default).
+// `AUTH_RATE_LIMIT_ENABLED=true` force-enables in dev/test so the dedicated
+// test suite (and local smoke tests) can exercise the 429 path.
+// `AUTH_RATE_LIMIT_ENABLED=false` disables even in production (escape hatch).
+const AUTH_RATE_LIMIT_ENABLED =
+  process.env.AUTH_RATE_LIMIT_ENABLED === "true" ||
+  (process.env.AUTH_RATE_LIMIT_ENABLED !== "false" && process.env.NODE_ENV === "production")
+
+const strictAuthRule = { window: AUTH_RATE_WINDOW_SEC, max: AUTH_RATE_PER_IP_PER_15MIN }
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: "pg" }),
+  rateLimit: {
+    enabled: AUTH_RATE_LIMIT_ENABLED,
+    // In-process memory store. Fine for single-process self-host (our default
+    // deployment target). Multi-worker setups should flip to `database` or wire
+    // `customStorage` into the same Postgres bucket table the intake uses.
+    storage: "memory",
+    customRules: {
+      // Strict caps on credential-guessing endpoints. The primary endpoint in
+      // better-auth 1.5.x is `/request-password-reset`; `/forget-password` is
+      // the legacy alias. We cover both so older clients stay guarded.
+      "/sign-in/email": strictAuthRule,
+      "/sign-in/*": strictAuthRule,
+      "/request-password-reset": strictAuthRule,
+      "/forget-password": strictAuthRule,
+      "/reset-password": strictAuthRule,
+      "/reset-password/*": strictAuthRule,
+      "/verify-email": strictAuthRule,
+      // Explicitly opt OUT of rate limiting for these — `false` bypasses the
+      // limiter entirely (see better-auth/api/rate-limiter resolveRateLimitConfig).
+      "/get-session": false,
+      "/sign-out": false,
+      "/callback/*": false,
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
