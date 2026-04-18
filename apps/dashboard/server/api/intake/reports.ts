@@ -178,6 +178,33 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: "Insert failed" })
   }
 
+  const replayPart = parts.find((p) => p.name === "replay")
+  const replayFeatureOn = env.REPLAY_FEATURE_ENABLED
+  const projectAllowsReplay = project.replayEnabled
+  const replayDisabled = !replayFeatureOn || !projectAllowsReplay
+  let replayStored = false
+
+  if (replayPart?.data && replayPart.data.length > 0) {
+    if (replayPart.data.length > env.INTAKE_REPLAY_MAX_BYTES) {
+      throw createError({ statusCode: 413, statusMessage: "Replay payload too large" })
+    }
+    if (replayDisabled) {
+      // Silently drop — success-with-signal semantics (see spec §6).
+    } else {
+      const storage = await getStorage()
+      const key = `${report.id}/replay.json.gz`
+      await storage.put(key, new Uint8Array(replayPart.data), "application/gzip")
+      await db.insert(reportAttachments).values({
+        reportId: report.id,
+        kind: "replay",
+        storageKey: key,
+        contentType: "application/gzip",
+        sizeBytes: replayPart.data.length,
+      })
+      replayStored = true
+    }
+  }
+
   // P3: Call getStorage() once and fan out attachment writes with Promise.all.
   // Screenshot and logs uploads no longer serialize.
   const screenshotData =
@@ -228,5 +255,8 @@ export default defineEventHandler(async (event) => {
   })
 
   event.node.res.statusCode = 201
-  return { id: report.id }
+  return {
+    id: report.id,
+    ...(replayPart ? { replayStored, replayDisabled } : {}),
+  }
 })
