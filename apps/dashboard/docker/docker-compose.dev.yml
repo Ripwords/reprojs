@@ -19,10 +19,37 @@ services:
     volumes:
       - feedback_tool_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d feedback_tool"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  # Runs drizzle-kit migrate, then exits 0. Any service that needs a migrated
+  # schema should depend on this with `condition: service_completed_successfully`.
+  # First run is slow (`bun install` populates the named volume); subsequent
+  # runs reuse the volume and are fast.
+  migrator:
+    image: oven/bun:1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /repo
+    volumes:
+      # Mount the monorepo root so drizzle.config.ts + migrations are reachable.
+      - ../../../:/repo
+      # Named volume shadows the host's node_modules so macOS binaries don't
+      # leak into a Linux container (and vice versa). Per-workspace since Bun's
+      # workspace resolution may populate package-level dirs.
+      - migrator_node_modules:/repo/node_modules
+      - migrator_dashboard_node_modules:/repo/apps/dashboard/node_modules
+    environment:
+      # Container-internal hostname: 'postgres' resolves to the service above.
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/feedback_tool
+    command: >
+      sh -c "bun install --frozen-lockfile && bun run db:migrate"
+    restart: "no"
 
 volumes:
   feedback_tool_data:
+  migrator_node_modules:
+  migrator_dashboard_node_modules:
