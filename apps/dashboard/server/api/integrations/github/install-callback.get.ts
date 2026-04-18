@@ -5,6 +5,14 @@ import { githubIntegrations } from "../../../db/schema"
 import { getDashboardBaseUrl, verifyInstallState } from "../../../lib/github"
 import { requireProjectRole } from "../../../lib/permissions"
 
+function errorStatus(err: unknown): number | null {
+  if (err && typeof err === "object" && "statusCode" in err) {
+    const code = (err as { statusCode: unknown }).statusCode
+    return typeof code === "number" ? code : null
+  }
+  return null
+}
+
 export default defineEventHandler(async (event) => {
   const q = getQuery(event)
   const installationIdRaw = q.installation_id
@@ -32,9 +40,27 @@ export default defineEventHandler(async (event) => {
       .where(eq(githubIntegrations.installationId, installationId))
       .limit(1)
     if (!existing) {
+      // Collapse "not found" and "wrong project" into the same response so an
+      // attacker can't probe installation_id → project membership.
       throw createError({ statusCode: 404, statusMessage: "installation not found" })
     }
-    await requireProjectRole(event, existing.projectId, "developer")
+    // This is a GET redirect target from GitHub. If the user isn't signed in,
+    // bounce them to sign-in (preserving `next`) instead of returning a raw
+    // JSON 401. If they're signed in but lack access to this project, 404 —
+    // same response shape as the "no such installation" branch above so the
+    // endpoint doesn't leak the installation → project mapping.
+    try {
+      await requireProjectRole(event, existing.projectId, "developer")
+    } catch (err) {
+      const status = errorStatus(err)
+      if (status === 401) {
+        return sendRedirect(event, `/auth/sign-in?next=${encodeURIComponent(event.path)}`, 302)
+      }
+      if (status === 403) {
+        throw createError({ statusCode: 404, statusMessage: "installation not found" })
+      }
+      throw err
+    }
     return sendRedirect(
       event,
       `${getDashboardBaseUrl()}/projects/${existing.projectId}/settings?tab=github&updated=1`,
