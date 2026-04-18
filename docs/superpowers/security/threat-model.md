@@ -59,3 +59,12 @@ known tradeoffs, and the attacker capabilities we defend against.
 - Per-end-user PII deletion UI — future compliance sub-project.
 - Server-side replay integrity checks (E) — tracked in sub-project E design.
 - Attachment retention policy — admin-configurable via a future sub-project.
+
+## Sub-project F — Ticket inbox
+
+- **Mutation authorization.** Every `PATCH /reports/:id` and `POST /reports/bulk-update` calls `requireProjectRole(event, id, 'developer')`. Viewers get 403. Tested.
+- **Assignee scoping.** The picker + validation constrain assignees to `developer` / `owner` members of the same project. Assigning to a viewer (or a user from another project) returns 400. Tested.
+- **Concurrent writes.** Last-write-wins on `PATCH`. Two admins racing to change status = whichever hits the DB second wins. The events log records both transitions in order, so the history is intact even if the final state reflects only the last writer.
+- **Event log integrity.** Mutation + event inserts share a single DB transaction. Either all events for a mutation land or none; no ghost events.
+- **Search performance.** ILIKE on title + description without a trigram index is acceptable up to ~10k reports per project. Follow-up: add `pg_trgm` + GIN on `lower(title || ' ' || coalesce(description, ''))` once real installs need it.
+- **DoS mitigation.** Query-param arrays capped at 10 values per key; `q` ≤200 chars; `reportIds` ≤100; `limit` ≤100.
