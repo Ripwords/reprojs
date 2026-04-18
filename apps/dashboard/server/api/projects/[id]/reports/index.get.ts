@@ -1,23 +1,69 @@
+// apps/dashboard/server/api/projects/[id]/reports/index.get.ts
 import { defineEventHandler, getQuery, getRouterParam } from "h3"
-import { and, count, desc, eq } from "drizzle-orm"
-import type { ReportContext } from "@feedback-tool/shared"
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import {
+  ReportPriority,
+  ReportStatus,
+  type ReportAssigneeDTO,
+  type ReportContext,
+  type ReportSummaryDTO,
+} from "@feedback-tool/shared"
 import { db } from "../../../../db"
-import { reports, reportAttachments } from "../../../../db/schema"
+import { reportAttachments, reports } from "../../../../db/schema"
+import { user as userTable } from "../../../../db/schema/auth-schema"
+import { buildSortClause, resolveAssigneeFilter } from "../../../../lib/inbox-query"
 import { requireProjectRole } from "../../../../lib/permissions"
+
+function parseCsv(v: unknown): string[] {
+  if (typeof v !== "string") return []
+  return v
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .slice(0, 10)
+}
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id")
   if (!id) throw new Error("missing project id")
-  await requireProjectRole(event, id, "viewer")
+  const { session } = await requireProjectRole(event, id, "viewer")
+  const sessionUserId = session.userId
 
   const q = getQuery(event)
   const limit = Math.min(100, Math.max(1, Number(q.limit ?? 50)))
   const offset = Math.max(0, Number(q.offset ?? 0))
+  const searchRaw = typeof q.q === "string" ? q.q.slice(0, 200).trim() : ""
+  const sortClause = buildSortClause(typeof q.sort === "string" ? q.sort : "newest")
 
-  const [{ total }] = await db
-    .select({ total: count() })
-    .from(reports)
-    .where(eq(reports.projectId, id))
+  const statusTokens = parseCsv(q.status).filter((v) => ReportStatus.safeParse(v).success)
+  const priorityTokens = parseCsv(q.priority).filter((v) => ReportPriority.safeParse(v).success)
+  const tagTokens = parseCsv(q.tag)
+  const assigneeTokens = parseCsv(q.assignee)
+  const assigneeFilters = resolveAssigneeFilter(assigneeTokens, sessionUserId)
+
+  const whereParts: ReturnType<typeof eq>[] = [eq(reports.projectId, id)]
+  if (statusTokens.length) whereParts.push(inArray(reports.status, statusTokens as ReportStatus[]))
+  if (priorityTokens.length)
+    whereParts.push(inArray(reports.priority, priorityTokens as ReportPriority[]))
+  if (tagTokens.length) whereParts.push(sql`${reports.tags} @> ${tagTokens}::text[]`)
+  if (assigneeFilters.length) {
+    const userIds = assigneeFilters.filter((f) => f.type === "user").map((f) => f.userId)
+    const wantUnassigned = assigneeFilters.some((f) => f.type === "null")
+    const parts: ReturnType<typeof eq>[] = []
+    if (userIds.length) parts.push(sql`${reports.assigneeId} = ANY(${userIds})`)
+    if (wantUnassigned) parts.push(isNull(reports.assigneeId))
+    if (parts.length === 1) whereParts.push(parts[0]!)
+    else if (parts.length > 1) whereParts.push(or(...parts)!)
+  }
+  if (searchRaw) {
+    const pat = `%${searchRaw}%`
+    whereParts.push(or(ilike(reports.title, pat), ilike(reports.description, pat))!)
+  }
+
+  const whereClause = and(...whereParts)
+
+  const countResult = await db.select({ total: count() }).from(reports).where(whereClause)
+  const total = countResult[0]!.total
 
   const rows = await db
     .select({
@@ -26,20 +72,32 @@ export default defineEventHandler(async (event) => {
       description: reports.description,
       context: reports.context,
       createdAt: reports.createdAt,
+      updatedAt: reports.updatedAt,
+      status: reports.status,
+      priority: reports.priority,
+      tags: reports.tags,
+      assigneeId: reports.assigneeId,
+      assigneeName: userTable.name,
+      assigneeEmail: userTable.email,
       attachmentId: reportAttachments.id,
     })
     .from(reports)
+    .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
     .leftJoin(
       reportAttachments,
       and(eq(reportAttachments.reportId, reports.id), eq(reportAttachments.kind, "screenshot")),
     )
-    .where(eq(reports.projectId, id))
-    .orderBy(desc(reports.createdAt))
+    .where(whereClause)
+    .orderBy(sql.raw(sortClause))
     .limit(limit)
     .offset(offset)
 
-  const items = rows.map((r) => {
+  const items: ReportSummaryDTO[] = rows.map((r) => {
     const ctx = r.context as ReportContext
+    const assignee: ReportAssigneeDTO | null =
+      r.assigneeId && r.assigneeEmail
+        ? { id: r.assigneeId, name: r.assigneeName ?? null, email: r.assigneeEmail }
+        : null
     return {
       id: r.id,
       title: r.title,
@@ -48,11 +106,65 @@ export default defineEventHandler(async (event) => {
       reporterEmail: ctx.reporter?.email ?? null,
       pageUrl: ctx.pageUrl,
       receivedAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
       thumbnailUrl: r.attachmentId
         ? `/api/projects/${id}/reports/${r.id}/attachment?kind=screenshot`
         : null,
+      status: r.status,
+      priority: r.priority,
+      tags: r.tags,
+      assignee,
     }
   })
 
-  return { items, total }
+  // Facet counts — all use the same whereClause as the list.
+  const statusRows = await db
+    .select({ key: reports.status, c: count() })
+    .from(reports)
+    .where(whereClause)
+    .groupBy(reports.status)
+  const priorityRows = await db
+    .select({ key: reports.priority, c: count() })
+    .from(reports)
+    .where(whereClause)
+    .groupBy(reports.priority)
+  const assigneeRows = await db
+    .select({
+      id: reports.assigneeId,
+      name: userTable.name,
+      email: userTable.email,
+      c: count(),
+    })
+    .from(reports)
+    .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
+    .where(whereClause)
+    .groupBy(reports.assigneeId, userTable.name, userTable.email)
+  const tagRows = await db
+    .select({ name: sql<string>`unnest(${reports.tags})`.as("name"), c: count() })
+    .from(reports)
+    .where(whereClause)
+    .groupBy(sql`name`)
+    .orderBy(desc(count()))
+    .limit(20)
+
+  const statusFacet: Record<string, number> = { open: 0, in_progress: 0, resolved: 0, closed: 0 }
+  for (const r of statusRows) statusFacet[r.key] = r.c
+  const priorityFacet: Record<string, number> = { low: 0, normal: 0, high: 0, urgent: 0 }
+  for (const r of priorityRows) priorityFacet[r.key] = r.c
+
+  return {
+    items,
+    total,
+    facets: {
+      status: statusFacet,
+      priority: priorityFacet,
+      assignees: assigneeRows.map((r) => ({
+        id: r.id,
+        name: r.name ?? null,
+        email: r.email ?? null,
+        count: r.c,
+      })),
+      tags: tagRows.map((r) => ({ name: r.name, count: r.c })),
+    },
+  }
 })
