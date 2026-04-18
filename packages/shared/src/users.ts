@@ -29,9 +29,3 @@ export const UpdateUserInput = z.object({
   status: UserStatus.optional(),
 })
 export type UpdateUserInput = z.infer<typeof UpdateUserInput>
-
-export const AcceptInviteInput = z.object({
-  token: z.string().min(10),
-  password: z.string().min(8).max(120),
-})
-export type AcceptInviteInput = z.infer<typeof AcceptInviteInput>

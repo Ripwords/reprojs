@@ -17,10 +17,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: "User already exists" })
   }
 
-  const token = randomBytes(32).toString("hex")
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-
-  // Insert a placeholder user row in "invited" status
+  // Magic-link / OAuth refactor: the invite is now purely a gate flag on the
+  // user row. No token is generated — the admin's email tells the invitee to
+  // go to /auth/sign-in and request a magic link (or use matching OAuth).
+  // Promotion from `invited` → `active` happens in the better-auth after hook
+  // on the first successful sign-in (see server/lib/auth.ts).
   const [invited] = await db
     .insert(user)
     .values({
@@ -30,8 +31,6 @@ export default defineEventHandler(async (event) => {
       emailVerified: false,
       role: body.role,
       status: "invited",
-      inviteToken: token,
-      inviteTokenExpiresAt: expiresAt,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -40,10 +39,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: "Insert failed" })
   }
 
-  const acceptUrl = `${process.env.BETTER_AUTH_URL}/accept-invite?token=${token}`
+  const signInUrl = `${process.env.BETTER_AUTH_URL}/auth/sign-in`
   const html = await renderTemplate("invite", {
-    name: invited.name ?? invited.email,
-    url: acceptUrl,
+    email: invited.email,
+    url: signInUrl,
   })
   // Fire-and-forget: Ethereal/SMTP I/O can take 5-15s, which would otherwise
   // block the HTTP response and cause better-auth's client session heartbeat
