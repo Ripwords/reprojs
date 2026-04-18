@@ -85,21 +85,59 @@ export const auth = betterAuth({
       }
     }),
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-up/email") return
-      // ctx.context.returned contains the response from the sign-up endpoint:
-      // { token: null|string, user: { id: string, ... } }
-      const returned = ctx.context.returned as { user?: { id?: string } } | undefined
-      const newUserId = returned?.user?.id
-      if (!newUserId) return
-      const [countRow] = await db.select({ c: count() }).from(user)
-      const c = countRow?.c ?? 0
-      const updates: Partial<typeof user.$inferInsert> = {
-        status: "active",
-        inviteToken: null,
-        inviteTokenExpiresAt: null,
+      if (ctx.path === "/sign-up/email") {
+        // ctx.context.returned contains the response from the sign-up endpoint:
+        // { token: null|string, user: { id: string, ... } }
+        const returned = ctx.context.returned as { user?: { id?: string } } | undefined
+        const newUserId = returned?.user?.id
+        if (!newUserId) return
+        const [countRow] = await db.select({ c: count() }).from(user)
+        const c = countRow?.c ?? 0
+        const updates: Partial<typeof user.$inferInsert> = {
+          status: "active",
+          inviteToken: null,
+          inviteTokenExpiresAt: null,
+        }
+        if (c === 1) updates.role = "admin"
+        await db.update(user).set(updates).where(eq(user.id, newUserId))
+        return
       }
-      if (c === 1) updates.role = "admin"
-      await db.update(user).set(updates).where(eq(user.id, newUserId))
+
+      // SEC1: guard social OAuth sign-ins against the same domain + invite gates.
+      // The email isn't known until after the provider callback completes, so
+      // this check must live in the `after` hook rather than `before`.
+      if (ctx.path.startsWith("/callback/")) {
+        const returned = ctx.context.returned as
+          | { user?: { id?: string; email?: string } }
+          | undefined
+        const newUser = returned?.user
+        if (!newUser?.id || !newUser.email) return
+
+        const emailLower = newUser.email.toLowerCase()
+        const [settings] = await db.select().from(appSettings).limit(1)
+        if (!settings) return
+
+        if (settings.allowedEmailDomains.length > 0) {
+          const domain = emailLower.split("@")[1] ?? ""
+          if (!settings.allowedEmailDomains.includes(domain)) {
+            // Delete the just-created user row so the attacker doesn't end up
+            // with an orphan account that bypassed the domain allowlist.
+            await db.delete(user).where(eq(user.id, newUser.id))
+            throw new APIError("FORBIDDEN", { message: "Email domain not allowed" })
+          }
+        }
+
+        if (settings.signupGated) {
+          const [invited] = await db
+            .select()
+            .from(user)
+            .where(and(eq(user.email, emailLower), eq(user.status, "invited")))
+          if (!invited) {
+            await db.delete(user).where(eq(user.id, newUser.id))
+            throw new APIError("FORBIDDEN", { message: "Signup is invite-only" })
+          }
+        }
+      }
     }),
   },
 })
