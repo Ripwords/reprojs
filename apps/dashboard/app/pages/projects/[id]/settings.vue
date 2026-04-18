@@ -9,6 +9,7 @@ const dashboardUrl = runtime.public.betterAuthUrl
 const { data: project, refresh } = await useApi<ProjectDTO>(`/api/projects/${route.params.id}`)
 const name = ref(project.value?.name ?? "")
 const originsText = ref((project.value?.allowedOrigins ?? []).join("\n"))
+const dailyReportCap = ref(project.value?.dailyReportCap ?? 1000)
 const rotating = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
@@ -25,7 +26,7 @@ async function save() {
       method: "PATCH",
       baseURL: dashboardUrl,
       credentials: "include",
-      body: { name: name.value, allowedOrigins },
+      body: { name: name.value, allowedOrigins, dailyReportCap: dailyReportCap.value },
     })
     await refresh()
   } catch (e: unknown) {
@@ -89,6 +90,21 @@ async function softDelete() {
             v-model="originsText"
             rows="4"
             class="w-full border rounded px-3 py-2 font-mono text-xs"
+          />
+        </label>
+        <label class="block">
+          <span class="text-sm">
+            Daily report limit
+            <span class="text-neutral-500">
+              (hard cap on reports created per 24h; protects against runaway spam)
+            </span>
+          </span>
+          <input
+            v-model.number="dailyReportCap"
+            type="number"
+            min="1"
+            max="1000000"
+            class="w-full border rounded px-3 py-2"
           />
         </label>
         <button
