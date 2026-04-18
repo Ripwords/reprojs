@@ -30,8 +30,8 @@ export const reports = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
     githubIssueNumber: integer("github_issue_number"),
     githubIssueNodeId: text("github_issue_node_id"),
     githubIssueUrl: text("github_issue_url"),
@@ -74,7 +74,7 @@ export const reportAttachments = pgTable(
     storageKey: text("storage_key").notNull(),
     contentType: text("content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
     kindCheck: check(

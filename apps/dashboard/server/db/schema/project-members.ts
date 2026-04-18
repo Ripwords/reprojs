@@ -10,7 +10,7 @@ export const projectMembers = pgTable(
     userId: text("user_id").notNull(),
     role: text("role", { enum: ["owner", "developer", "viewer"] }).notNull(),
     invitedBy: text("invited_by"),
-    joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+    joinedAt: timestamp("joined_at").defaultNow().notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.projectId, table.userId] }),

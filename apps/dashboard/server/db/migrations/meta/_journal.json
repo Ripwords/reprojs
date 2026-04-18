@@ -99,6 +99,20 @@
       "when": 1776525900059,
       "tag": "0013_spicy_star_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1776529175870,
+      "tag": "0014_great_shocker",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1776529368361,
+      "tag": "0015_concerned_nova",
+      "breakpoints": true
     }
   ]
 }

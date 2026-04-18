@@ -120,8 +120,6 @@ describe("magic-link auth", () => {
 
     const [row] = await db.select().from(user).where(eq(user.id, id))
     expect(row?.status).toBe("active")
-    expect(row?.inviteToken).toBeNull()
-    expect(row?.inviteTokenExpiresAt).toBeNull()
   })
 
   test("domain allowlist blocks magic-link sign-in for a non-allowed domain", async () => {

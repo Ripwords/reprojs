@@ -29,7 +29,7 @@ export const reportEvents = pgTable(
     payload: jsonb("payload")
       .notNull()
       .default(sql`'{}'::jsonb`),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
     reportCreatedIdx: index("report_events_report_created_idx").on(

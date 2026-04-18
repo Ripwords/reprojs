@@ -76,8 +76,7 @@ async function enforceDomainAndInviteGate(newUser: {
 
 /**
  * First-sign-in promotion:
- *   - Pre-invited user (status=`invited`) → flip to `active` and clear the
- *     now-dead invite-token columns.
+ *   - Pre-invited user (status=`invited`) → flip to `active`.
  *   - Brand-new user who is also the only user in the install → promote to
  *     `admin`. This is the bootstrapping rule that hands the first person
  *     to sign in ownership of a fresh deployment.
@@ -107,8 +106,6 @@ async function promoteInvitedOrFirstUser(userId: string): Promise<void> {
   const updates: Partial<typeof user.$inferInsert> = {}
   if (existing.status === "invited") {
     updates.status = "active"
-    updates.inviteToken = null
-    updates.inviteTokenExpiresAt = null
   }
   if (wasJustCreated && totalUsers === 1 && existing.role !== "admin") {
     updates.role = "admin"
@@ -176,11 +173,6 @@ export const auth = betterAuth({
     additionalFields: {
       role: { type: "string", defaultValue: "member", input: false },
       status: { type: "string", defaultValue: "active", input: false },
-      // Deprecated: retained for schema back-compat. The magic-link + OAuth
-      // refactor removed the accept-invite flow; nothing writes these
-      // columns anymore. Kept on the table to avoid a destructive migration.
-      inviteToken: { type: "string", defaultValue: null, input: false },
-      inviteTokenExpiresAt: { type: "date", defaultValue: null, input: false },
     },
   },
   hooks: {

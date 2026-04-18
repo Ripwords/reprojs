@@ -10,7 +10,7 @@ export const appSettings = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     singleton: check("app_settings_singleton", sql`${table.id} = 1`),

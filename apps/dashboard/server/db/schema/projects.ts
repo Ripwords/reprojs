@@ -15,12 +15,10 @@ export const projects = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     dailyReportCap: integer("daily_report_cap").notNull().default(1000),
-    publicKeyRegeneratedAt: timestamp("public_key_regenerated_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    publicKeyRegeneratedAt: timestamp("public_key_regenerated_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
   },
   (table) => ({
     publicKeyUnique: uniqueIndex("projects_public_key_idx").on(table.publicKey),

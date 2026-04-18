@@ -25,8 +25,8 @@ export const githubIntegrations = pgTable(
       .default("connected"),
     lastError: text("last_error"),
     connectedBy: text("connected_by"),
-    connectedAt: timestamp("connected_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    connectedAt: timestamp("connected_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     installationIdIdx: index("github_integrations_installation_id_idx").on(table.installationId),
@@ -44,9 +44,9 @@ export const reportSyncJobs = pgTable(
       .default("pending"),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
-    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     pendingIdx: index("report_sync_jobs_pending_idx")
