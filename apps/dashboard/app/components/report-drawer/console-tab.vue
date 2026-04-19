@@ -1,3 +1,4 @@
+<!-- apps/dashboard/app/components/report-drawer/console-tab.vue -->
 <script setup lang="ts">
 import type { LogsAttachment } from "@feedback-tool/shared"
 
@@ -14,19 +15,13 @@ const filtered = computed(() => {
   )
 })
 
-const levelColor: Record<string, string> = {
-  log: "text-neutral-700",
-  info: "text-neutral-700",
-  debug: "text-neutral-500",
-  warn: "text-yellow-700 bg-yellow-50",
-  error: "text-red-700 bg-red-50",
-}
-const levelStripe: Record<string, string> = {
-  warn: "border-l-4 border-yellow-400",
-  error: "border-l-4 border-red-500",
-  log: "",
-  info: "",
-  debug: "",
+type BadgeColor = "error" | "warning" | "neutral" | "primary" | "info"
+const levelBadge: Record<string, BadgeColor> = {
+  log: "neutral",
+  info: "info",
+  debug: "neutral",
+  warn: "warning",
+  error: "error",
 }
 
 const fmtTs = (ts: number) => new Date(ts).toLocaleTimeString()
@@ -39,56 +34,88 @@ function toggle(i: number) {
 </script>
 
 <template>
-  <div v-if="!logs" class="p-4 text-sm text-neutral-500">Loading…</div>
+  <div v-if="!logs" class="p-5 text-sm text-muted">Loading…</div>
   <div
     v-else-if="logs.console.length === 0 && logs.breadcrumbs.length === 0"
-    class="p-4 text-sm text-neutral-500"
+    class="p-5 text-sm text-muted"
   >
     No console entries or app events captured.
   </div>
-  <div v-else class="p-2 space-y-3">
-    <section>
-      <div class="flex flex-wrap gap-2 p-2 text-xs">
-        <label
-          v-for="lv in ['log', 'info', 'warn', 'error', 'debug'] as const"
-          :key="lv"
-          class="flex items-center gap-1"
+  <div v-else class="p-3 space-y-3">
+    <div class="flex flex-wrap items-center gap-3 px-1">
+      <label
+        v-for="lv in ['log', 'info', 'warn', 'error', 'debug'] as const"
+        :key="lv"
+        class="flex items-center gap-1.5 text-xs text-muted cursor-pointer"
+      >
+        <UCheckbox v-model="levels[lv]" />
+        <span class="capitalize">{{ lv }}</span>
+      </label>
+      <UInput
+        v-model="query"
+        placeholder="Filter…"
+        size="xs"
+        icon="i-heroicons-magnifying-glass"
+        class="ml-auto w-40"
+      />
+    </div>
+
+    <ul class="space-y-1">
+      <li
+        v-for="(e, i) in filtered"
+        :key="i"
+        :class="[
+          'rounded-md border border-default px-3 py-2 text-xs font-mono cursor-pointer hover:bg-elevated/40 transition',
+          e.level === 'error' ? 'border-l-4 border-l-red-500' : '',
+          e.level === 'warn' ? 'border-l-4 border-l-yellow-500' : '',
+        ]"
+        @click="toggle(i)"
+      >
+        <div class="flex items-start gap-2">
+          <UBadge
+            :label="e.level"
+            :color="levelBadge[e.level]"
+            variant="soft"
+            size="xs"
+            class="uppercase flex-shrink-0"
+          />
+          <span class="text-muted text-[11px] flex-shrink-0 mt-0.5">{{ fmtTs(e.ts) }}</span>
+          <span class="whitespace-pre-wrap break-all text-default flex-1 min-w-0">
+            {{ e.args.join(" ") }}
+          </span>
+        </div>
+        <pre
+          v-if="expanded.has(i) && e.stack"
+          class="mt-2 text-muted text-[11px] whitespace-pre-wrap break-all"
+          >{{ e.stack }}</pre
         >
-          <input v-model="levels[lv]" type="checkbox" />
-          {{ lv }}
-        </label>
-        <input
-          v-model="query"
-          placeholder="filter…"
-          class="ml-auto border rounded px-2 py-1 text-xs"
-        />
-      </div>
-      <ul class="text-xs font-mono">
+      </li>
+    </ul>
+
+    <section v-if="logs.breadcrumbs.length > 0" class="pt-2">
+      <h3 class="px-1 mb-2 text-xs font-semibold text-muted uppercase tracking-wide">App events</h3>
+      <ul class="space-y-1">
         <li
-          v-for="(e, i) in filtered"
+          v-for="(b, i) in logs.breadcrumbs"
           :key="i"
-          :class="[levelColor[e.level], levelStripe[e.level], 'px-2 py-1 cursor-pointer']"
-          @click="toggle(i)"
+          class="rounded-md border border-default px-3 py-2 text-xs font-mono"
         >
-          <span class="uppercase mr-2 inline-block w-10">{{ e.level }}</span>
-          <span class="text-neutral-500 mr-2">{{ fmtTs(e.ts) }}</span>
-          <span class="whitespace-pre-wrap break-all">{{ e.args.join(" ") }}</span>
-          <pre
-            v-if="expanded.has(i) && e.stack"
-            class="mt-1 text-neutral-600 whitespace-pre-wrap"
-            >{{ e.stack }}</pre
-          >
-        </li>
-      </ul>
-    </section>
-    <section v-if="logs.breadcrumbs.length > 0" class="border-t pt-2">
-      <h3 class="px-2 text-xs font-semibold text-neutral-600">App events</h3>
-      <ul class="text-xs font-mono">
-        <li v-for="(b, i) in logs.breadcrumbs" :key="i" class="px-2 py-1">
-          <span class="uppercase mr-2 inline-block w-10">{{ b.level }}</span>
-          <span class="text-neutral-500 mr-2">{{ fmtTs(b.ts) }}</span>
-          <strong>{{ b.event }}</strong>
-          <span v-if="b.data" class="ml-2 text-neutral-600">{{ JSON.stringify(b.data) }}</span>
+          <div class="flex items-start gap-2">
+            <UBadge
+              :label="b.level"
+              :color="levelBadge[b.level] ?? 'neutral'"
+              variant="soft"
+              size="xs"
+              class="uppercase flex-shrink-0"
+            />
+            <span class="text-muted text-[11px] flex-shrink-0 mt-0.5">{{ fmtTs(b.ts) }}</span>
+            <div class="flex-1 min-w-0">
+              <strong class="text-default">{{ b.event }}</strong>
+              <span v-if="b.data" class="ml-2 text-muted break-all">{{
+                JSON.stringify(b.data)
+              }}</span>
+            </div>
+          </div>
         </li>
       </ul>
     </section>

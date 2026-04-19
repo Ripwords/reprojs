@@ -1,3 +1,4 @@
+<!-- apps/dashboard/app/components/report-drawer/cookies-tab.vue -->
 <script setup lang="ts">
 import type { ReportContext, ReportSummaryDTO } from "@feedback-tool/shared"
 
@@ -23,26 +24,28 @@ const filtered = computed(() => {
 </script>
 
 <template>
-  <div v-if="cookies.length === 0" class="p-4 text-sm text-neutral-500">No cookies captured.</div>
-  <div v-else class="p-2">
-    <input
+  <div v-if="cookies.length === 0" class="p-5 text-sm text-muted">No cookies captured.</div>
+  <div v-else class="p-3 space-y-3">
+    <UInput
       v-model="query"
-      placeholder="filter by name…"
-      class="mb-2 border rounded px-2 py-1 text-xs w-full"
+      placeholder="Filter by name…"
+      size="xs"
+      icon="i-heroicons-magnifying-glass"
+      class="w-full"
     />
     <table class="w-full text-xs">
-      <thead class="bg-neutral-50 text-left">
-        <tr>
-          <th class="p-2">Name</th>
-          <th class="p-2">Value</th>
+      <thead class="text-left text-muted">
+        <tr class="border-b border-default">
+          <th class="p-2 font-medium">Name</th>
+          <th class="p-2 font-medium">Value</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="c in filtered" :key="c.name" class="border-t">
-          <td class="p-2 font-mono">{{ c.name }}</td>
+        <tr v-for="c in filtered" :key="c.name" class="border-b border-default">
+          <td class="p-2 font-mono text-default">{{ c.name }}</td>
           <td
             class="p-2 font-mono break-all"
-            :class="c.value === '<redacted>' ? 'italic text-neutral-400' : ''"
+            :class="c.value === '<redacted>' ? 'italic text-muted' : 'text-default'"
           >
             {{ c.value }}
           </td>

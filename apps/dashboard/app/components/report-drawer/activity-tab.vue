@@ -47,24 +47,23 @@ function relTime(iso: string): string {
 function actorLabel(e: ReportEventDTO): string {
   return e.actor?.name ?? e.actor?.email ?? "System"
 }
+function actorInitials(e: ReportEventDTO): string {
+  return actorLabel(e).slice(0, 2).toUpperCase()
+}
 </script>
 
 <template>
-  <div class="p-3 text-sm space-y-2">
-    <div v-if="!data?.items?.length" class="text-neutral-500">No activity yet.</div>
-    <ul v-else class="space-y-2">
-      <li v-for="e in data.items" :key="e.id" class="flex items-start gap-2">
-        <span
-          class="w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 flex items-center justify-center text-[10px] font-semibold"
-        >
-          {{ actorLabel(e).slice(0, 2).toUpperCase() }}
-        </span>
-        <div class="flex-1">
-          <div>
-            <span class="font-semibold">{{ actorLabel(e) }}</span>
-            <span class="text-neutral-600"> {{ summary(e) }}</span>
+  <div class="p-5 text-sm">
+    <div v-if="!data?.items?.length" class="text-muted">No activity yet.</div>
+    <ul v-else class="space-y-3">
+      <li v-for="e in data.items" :key="e.id" class="flex items-start gap-3">
+        <UAvatar :text="actorInitials(e)" size="sm" class="flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <div class="text-default">
+            <span class="font-medium">{{ actorLabel(e) }}</span>
+            <span class="text-muted"> {{ summary(e) }}</span>
           </div>
-          <div class="text-xs text-neutral-400">{{ relTime(e.createdAt) }}</div>
+          <div class="text-xs text-muted mt-0.5">{{ relTime(e.createdAt) }}</div>
         </div>
       </li>
     </ul>

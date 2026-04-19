@@ -1,48 +1,39 @@
 <!-- apps/dashboard/app/components/report-drawer/tabs.vue -->
 <script setup lang="ts">
-import type { LogsAttachment } from "@feedback-tool/shared"
-
-interface Props {
-  activeTab: "activity" | "overview" | "console" | "network" | "cookies" | "replay"
-  logs: LogsAttachment | null
+interface Tab {
+  id: string
+  label: string
+  hasData?: boolean
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits<{ change: [tab: Props["activeTab"]] }>()
+interface Props {
+  modelValue: string
+  tabs: Tab[]
+}
 
-const consoleCount = computed(() =>
-  props.logs ? props.logs.console.length + props.logs.breadcrumbs.length : null,
-)
-const networkCount = computed(() => (props.logs ? props.logs.network.length : null))
-const networkErrors = computed(() =>
-  props.logs
-    ? props.logs.network.filter((n) => n.status === null || (n.status && n.status >= 400)).length
-    : 0,
-)
+defineProps<Props>()
+const emit = defineEmits<{ "update:modelValue": [string] }>()
 </script>
 
 <template>
-  <nav class="flex gap-4 border-b px-4 text-sm">
+  <nav class="flex overflow-x-auto">
     <button
-      v-for="tab in ['activity', 'overview', 'console', 'network', 'cookies', 'replay'] as const"
-      :key="tab"
+      v-for="tab in tabs"
+      :key="tab.id"
       type="button"
-      class="py-2 capitalize border-b-2 -mb-px"
-      :class="
-        activeTab === tab
-          ? 'border-neutral-900 font-semibold'
-          : 'border-transparent text-neutral-500 hover:text-neutral-900'
-      "
-      @click="emit('change', tab)"
+      :class="[
+        'px-4 h-11 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+        modelValue === tab.id
+          ? 'border-primary-500 text-default'
+          : 'border-transparent text-muted hover:text-default',
+      ]"
+      @click="emit('update:modelValue', tab.id)"
     >
-      {{ tab }}
-      <span v-if="tab === 'console' && consoleCount !== null" class="ml-1 text-xs text-neutral-500"
-        >· {{ consoleCount }}</span
-      >
-      <span v-if="tab === 'network' && networkCount !== null" class="ml-1 text-xs text-neutral-500">
-        · {{ networkCount }}
-        <span v-if="networkErrors > 0" class="text-red-600">· {{ networkErrors }}✗</span>
-      </span>
+      {{ tab.label }}
+      <span
+        v-if="tab.hasData"
+        class="inline-block ml-1.5 w-1.5 h-1.5 rounded-full bg-primary-500"
+      />
     </button>
   </nav>
 </template>

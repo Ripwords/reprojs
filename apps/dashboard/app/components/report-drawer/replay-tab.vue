@@ -64,16 +64,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div>
-    <div v-if="status === 'missing'" class="text-sm text-neutral-500 p-6 text-center">
-      No replay captured for this report.
-    </div>
-    <div v-else-if="status === 'loading'" class="text-sm text-neutral-500 p-6 text-center">
-      Loading replay…
-    </div>
-    <div v-else-if="status === 'error'" class="text-sm text-red-600 p-6 text-center">
-      Replay unavailable. {{ errorMessage }}
-    </div>
-    <div ref="playerHost" class="w-full min-h-[400px]" />
+  <div class="p-5">
+    <UCard :ui="{ body: 'p-0 overflow-hidden' }">
+      <div v-if="status === 'missing'" class="text-sm text-muted p-8 text-center">
+        No replay captured for this report.
+      </div>
+      <div v-else-if="status === 'loading'" class="text-sm text-muted p-8 text-center">
+        Loading replay…
+      </div>
+      <div
+        v-else-if="status === 'error'"
+        class="text-sm text-red-600 dark:text-red-400 p-8 text-center"
+      >
+        Replay unavailable. {{ errorMessage }}
+      </div>
+      <div ref="playerHost" class="w-full min-h-[400px]" />
+    </UCard>
   </div>
 </template>
