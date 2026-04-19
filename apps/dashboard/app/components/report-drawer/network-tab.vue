@@ -1,6 +1,6 @@
 <!-- apps/dashboard/app/components/report-drawer/network-tab.vue -->
 <script setup lang="ts">
-import type { LogsAttachment } from "@feedback-tool/shared"
+import type { LogsAttachment } from "@repro/shared"
 
 const props = defineProps<{ logs: LogsAttachment | null }>()
 

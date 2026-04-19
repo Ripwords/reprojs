@@ -95,9 +95,7 @@ const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.ha
           class="relative size-12 rounded-xl shadow-md hidden dark:block"
         />
       </div>
-      <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-        Feedback Tool
-      </span>
+      <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted"> Repro </span>
     </div>
 
     <UCard

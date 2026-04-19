@@ -44,7 +44,7 @@ const Schema = z.object({
   GITHUB_APP_ID: z.string().optional().default(""),
   GITHUB_APP_PRIVATE_KEY: z.string().optional().default(""),
   GITHUB_APP_WEBHOOK_SECRET: z.string().optional().default(""),
-  GITHUB_APP_SLUG: z.string().default("feedback-tool"),
+  GITHUB_APP_SLUG: z.string().default("repro"),
   GITHUB_WEBHOOK_MAX_BYTES: intString(1_048_576),
 
   // Mail
@@ -53,13 +53,13 @@ const Schema = z.object({
   SMTP_PORT: intString(587),
   SMTP_USER: z.string().optional().default(""),
   SMTP_PASS: z.string().optional().default(""),
-  SMTP_FROM: z.string().default("Feedback Tool <no-reply@localhost>"),
+  SMTP_FROM: z.string().default("Repro <no-reply@localhost>"),
 
   // Storage
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_ROOT: z.string().default("./.data/attachments"),
   S3_ENDPOINT: z.string().optional().default(""),
-  S3_BUCKET: z.string().default("feedback-tool-attachments"),
+  S3_BUCKET: z.string().default("repro-attachments"),
   S3_REGION: z.string().default("us-east-1"),
   S3_ACCESS_KEY_ID: z.string().optional().default(""),
   S3_SECRET_ACCESS_KEY: z.string().optional().default(""),

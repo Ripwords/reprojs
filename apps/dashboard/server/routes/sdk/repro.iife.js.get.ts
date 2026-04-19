@@ -9,7 +9,7 @@ import { env } from "../../lib/env"
 const SDK_PATH =
   env.SDK_PATH !== ""
     ? env.SDK_PATH
-    : join(process.cwd(), "..", "..", "packages", "core", "dist", "feedback-tool.iife.js")
+    : join(process.cwd(), "..", "..", "packages", "core", "dist", "repro.iife.js")
 
 // Keyed on file mtime so a rebuild (new sdk:build output) invalidates the cache
 // automatically — no dashboard restart required.

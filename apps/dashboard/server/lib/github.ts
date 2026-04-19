@@ -2,8 +2,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { isAbsolute, resolve } from "node:path"
-import { createInstallationClient } from "@feedback-tool/integrations-github"
-import type { GitHubInstallationClient } from "@feedback-tool/integrations-github"
+import { createInstallationClient } from "@repro/integrations-github"
+import type { GitHubInstallationClient } from "@repro/integrations-github"
 import { env } from "./env"
 
 function resolvePrivateKey(raw: string): string {

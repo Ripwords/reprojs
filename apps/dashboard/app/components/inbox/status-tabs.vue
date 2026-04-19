@@ -7,7 +7,7 @@
   they don't jitter as filters change.
 -->
 <script setup lang="ts">
-import type { ReportStatus } from "@feedback-tool/shared"
+import type { ReportStatus } from "@repro/shared"
 
 interface Props {
   selected: ReportStatus[]

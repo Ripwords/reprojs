@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
 import { eq } from "drizzle-orm"
-import { UpdateProjectInput } from "@feedback-tool/shared"
+import { UpdateProjectInput } from "@repro/shared"
 import { db } from "../../../db"
 import { projects } from "../../../db/schema"
 import { requireProjectRole } from "../../../lib/permissions"

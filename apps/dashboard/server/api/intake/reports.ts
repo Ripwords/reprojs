@@ -1,7 +1,7 @@
 import { createError, defineEventHandler, getHeader, getRequestIP, readMultipartFormData } from "h3"
 import { and, count, eq, gte, sql } from "drizzle-orm"
 import { randomUUID } from "node:crypto"
-import { LogsAttachment, ReportIntakeInput } from "@feedback-tool/shared"
+import { LogsAttachment, ReportIntakeInput } from "@repro/shared"
 import { db } from "../../db"
 import { projects, reports, reportAttachments } from "../../db/schema"
 import {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppSettingsDTO } from "@feedback-tool/shared"
+import type { AppSettingsDTO } from "@repro/shared"
 
 definePageMeta({ middleware: "admin-only" })
 

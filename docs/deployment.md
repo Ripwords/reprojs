@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Feedback Tool is built to self-host. This document covers what operators need to configure.
+Repro is built to self-host. This document covers what operators need to configure.
 
 ## Prerequisites
 

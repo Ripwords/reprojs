@@ -1,7 +1,7 @@
 <!-- apps/dashboard/app/components/report-drawer/cookies-tab.vue -->
 <script setup lang="ts">
 import { computed, ref } from "vue"
-import type { ReportSummaryDTO } from "@feedback-tool/shared"
+import type { ReportSummaryDTO } from "@repro/shared"
 
 interface Props {
   projectId: string

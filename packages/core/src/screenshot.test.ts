@@ -26,7 +26,7 @@ describe("capture", () => {
 
   test("hides widget host during capture", async () => {
     const host = document.createElement("div")
-    host.id = "feedback-tool-host"
+    host.id = "repro-host"
     host.style.display = "block"
     document.body.appendChild(host)
     await capture()

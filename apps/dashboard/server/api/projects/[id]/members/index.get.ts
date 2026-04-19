@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getQuery, getRouterParam } from "h3"
 import { and, eq, inArray } from "drizzle-orm"
-import { ProjectRole, type ProjectMemberDTO } from "@feedback-tool/shared"
+import { ProjectRole, type ProjectMemberDTO } from "@repro/shared"
 import { db } from "../../../../db"
 import { projectMembers } from "../../../../db/schema"
 import { user } from "../../../../db/schema"

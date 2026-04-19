@@ -1,4 +1,4 @@
-import type { SystemInfo } from "@feedback-tool/shared"
+import type { SystemInfo } from "@repro/shared"
 
 interface NetworkInformationLike {
   effectiveType?: string

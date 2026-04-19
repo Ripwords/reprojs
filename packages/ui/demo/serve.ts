@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(here, "..", "..", "..")
-const sdkIife = join(repoRoot, "packages", "core", "dist", "feedback-tool.iife.js")
+const sdkIife = join(repoRoot, "packages", "core", "dist", "repro.iife.js")
 const indexHtml = join(here, "index.html")
 
 Bun.serve({
@@ -35,4 +35,4 @@ Bun.serve({
   },
 })
 
-console.info("Feedback Tool demo playground: http://localhost:4000")
+console.info("Repro demo playground: http://localhost:4000")

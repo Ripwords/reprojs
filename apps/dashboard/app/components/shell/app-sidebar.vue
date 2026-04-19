@@ -14,7 +14,7 @@
 <script setup lang="ts">
 import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
-import type { ProjectDTO } from "@feedback-tool/shared"
+import type { ProjectDTO } from "@repro/shared"
 
 const route = useRoute()
 const { isAdmin } = useSession()
@@ -143,11 +143,11 @@ function isActive(item: NavItem): boolean {
         v-if="!collapsed"
         to="/"
         class="flex items-center gap-2.5 text-base font-semibold tracking-tight text-default hover:text-primary transition-colors"
-        aria-label="Feedback Tool home"
+        aria-label="Repro home"
       >
         <img src="/icon-light.svg" alt="" class="size-6 rounded-[5px] dark:hidden" />
         <img src="/icon-dark.svg" alt="" class="size-6 rounded-[5px] hidden dark:block" />
-        <span>Feedback Tool</span>
+        <span>Repro</span>
       </NuxtLink>
       <button
         type="button"

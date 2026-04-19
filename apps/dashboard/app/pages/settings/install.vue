@@ -10,7 +10,7 @@ const runtimeConfig = useRuntimeConfig()
 // bundle is served from and where the intake API lives. Operators can swap
 // this by pointing `BETTER_AUTH_URL` at their public dashboard hostname.
 const SDK_ORIGIN = runtimeConfig.public.betterAuthUrl || "https://your-dashboard.example.com"
-const PROJECT_KEY_EXAMPLE = "ft_pk_xxxxxxxxxxxxxxxxxxxxxxxx"
+const PROJECT_KEY_EXAMPLE = "rp_pk_xxxxxxxxxxxxxxxxxxxxxxxx"
 
 // Lazy-load shiki once. Cache the highlighter across tab switches so the
 // ~1MB WASM payload only loads when the user actually opens this page.
@@ -63,7 +63,7 @@ async function highlight(
 const raw = {
   script: {
     lang: "html" as const,
-    code: `<script src="${SDK_ORIGIN}/sdk/feedback-tool.iife.js" async><\/script>
+    code: `<script src="${SDK_ORIGIN}/sdk/repro.iife.js" async><\/script>
 <script>
   window.feedbackTool.init({
     projectKey: "${PROJECT_KEY_EXAMPLE}",
@@ -72,7 +72,7 @@ const raw = {
   },
   init: {
     lang: "typescript" as const,
-    code: `import { init } from "@feedback-tool/core"
+    code: `import { init } from "@repro/core"
 
 init({
   projectKey: "${PROJECT_KEY_EXAMPLE}",
@@ -113,15 +113,15 @@ const snippets = ref<Record<SnippetKey, Snippet>>({
   },
 })
 
-// Install commands per package manager. Both `@feedback-tool/core` (the
-// framework-agnostic init API) and `@feedback-tool/ui` (the widget UI) need
+// Install commands per package manager. Both `@repro/core` (the
+// framework-agnostic init API) and `@repro/ui` (the widget UI) need
 // installing together. Deno uses `deno add` with an `npm:` specifier.
 const pmCommands = {
-  npm: "npm install @feedback-tool/core @feedback-tool/ui",
-  pnpm: "pnpm add @feedback-tool/core @feedback-tool/ui",
-  yarn: "yarn add @feedback-tool/core @feedback-tool/ui",
-  bun: "bun add @feedback-tool/core @feedback-tool/ui",
-  deno: "deno add npm:@feedback-tool/core npm:@feedback-tool/ui",
+  npm: "npm install @repro/core @repro/ui",
+  pnpm: "pnpm add @repro/core @repro/ui",
+  yarn: "yarn add @repro/core @repro/ui",
+  bun: "bun add @repro/core @repro/ui",
+  deno: "deno add npm:@repro/core npm:@repro/ui",
 } as const
 
 type PackageManager = keyof typeof pmCommands

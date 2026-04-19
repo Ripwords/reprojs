@@ -6,23 +6,23 @@
 #     the internal docker network
 #   - Pin image tags to exact digests, not floating major versions
 #   - Enable healthchecks + restart: unless-stopped
-name: feedback_tool
+name: repro
 services:
   postgres:
     image: postgres:17
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: feedback_tool
+      POSTGRES_DB: repro
     ports:
       - "127.0.0.1:5436:5432"
     volumes:
-      - feedback_tool_data:/var/lib/postgresql/data
+      - repro_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d feedback_tool"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d repro"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  feedback_tool_data:
+  repro_data:

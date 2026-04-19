@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { useRoute } from "vue-router"
-import type { ProjectDTO } from "@feedback-tool/shared"
+import type { ProjectDTO } from "@repro/shared"
 
 const route = useRoute()
 const { openPalette } = useCommandPalette()
@@ -38,7 +38,7 @@ const shortcutHint = computed(() => (isMac.value ? "⌘K" : "Ctrl K"))
     trailing-icon="i-heroicons-chevron-down"
     @click="openPalette"
   >
-    <span class="truncate max-w-[14rem]">{{ currentProject?.name ?? "Feedback Tool" }}</span>
+    <span class="truncate max-w-[14rem]">{{ currentProject?.name ?? "Repro" }}</span>
     <!-- navigator.platform isn't available during SSR (renders "Ctrl K")
          but becomes available post-mount (re-renders as "⌘K" on Mac),
          which triggers Vue's hydration-mismatch warning. ClientOnly skips

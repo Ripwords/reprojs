@@ -1,4 +1,4 @@
-import { createRecorder, type MaskingMode, type Recorder } from "@feedback-tool/recorder"
+import { createRecorder, type MaskingMode, type Recorder } from "@repro/recorder"
 
 export interface ReplayConfig {
   enabled?: boolean
@@ -43,7 +43,7 @@ export function createReplayCollector(config: ReplayConfig): ReplayCollector {
         })
         recorder.start()
       } catch (err) {
-        console.warn("[feedback-tool] replay recorder failed to start", err)
+        console.warn("[repro] replay recorder failed to start", err)
         recorder = null
         disabled = true
       }

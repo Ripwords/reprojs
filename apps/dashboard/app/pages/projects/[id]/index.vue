@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProjectDTO, ProjectOverviewDTO, ReportSummaryDTO } from "@feedback-tool/shared"
+import type { ProjectDTO, ProjectOverviewDTO, ReportSummaryDTO } from "@repro/shared"
 import AppEmptyState from "~/components/common/app-empty-state.vue"
 import { priorityColor, relativeTime } from "~/composables/use-report-format"
 
@@ -231,7 +231,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
       variant="gradient"
       icon="i-heroicons-code-bracket"
       title="Install the SDK to start receiving reports"
-      description="Add a single <script> tag to your site or npm-install @feedback-tool/core."
+      description="Add a single <script> tag to your site or npm-install @repro/core."
       action-label="View install instructions"
       action-to="/settings/install"
     />

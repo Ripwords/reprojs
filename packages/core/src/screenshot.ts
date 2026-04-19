@@ -1,8 +1,7 @@
 import { domToBlob } from "modern-screenshot"
 
 export async function capture(): Promise<Blob | null> {
-  const host =
-    typeof document !== "undefined" ? document.getElementById("feedback-tool-host") : null
+  const host = typeof document !== "undefined" ? document.getElementById("repro-host") : null
   const prev = host?.style.display ?? ""
   if (host) host.style.display = "none"
   try {
@@ -12,7 +11,7 @@ export async function capture(): Promise<Blob | null> {
       height: window.innerHeight,
     })
   } catch (err) {
-    console.warn("[feedback-tool] screenshot capture failed:", err)
+    console.warn("[repro] screenshot capture failed:", err)
     return null
   } finally {
     if (host) host.style.display = prev

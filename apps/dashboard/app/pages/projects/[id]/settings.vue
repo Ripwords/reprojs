@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue"
-import type { ProjectDTO } from "@feedback-tool/shared"
+import type { ProjectDTO } from "@repro/shared"
 import ConfirmDeleteDialog from "~/components/common/confirm-delete-dialog.vue"
 
 const route = useRoute()
@@ -291,10 +291,10 @@ async function confirmDelete() {
         </template>
         <pre
           class="text-xs bg-elevated rounded p-3 overflow-x-auto"
-        ><code>&lt;script src=&quot;{{ dashboardUrl }}/sdk/feedback-tool.iife.js&quot;&gt;&lt;/script&gt;
+        ><code>&lt;script src=&quot;{{ dashboardUrl }}/sdk/repro.iife.js&quot;&gt;&lt;/script&gt;
 &lt;script&gt;
-  FeedbackTool.init({
-    projectKey: &quot;{{ project?.publicKey ?? 'ft_pk_...' }}&quot;,
+  Repro.init({
+    projectKey: &quot;{{ project?.publicKey ?? 'rp_pk_...' }}&quot;,
     endpoint: &quot;{{ dashboardUrl }}&quot;
   })
 &lt;/script&gt;</code></pre>

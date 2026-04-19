@@ -1,6 +1,6 @@
 <!-- apps/dashboard/app/components/inbox/bulk-action-bar.vue -->
 <script setup lang="ts">
-import type { ReportStatus } from "@feedback-tool/shared"
+import type { ReportStatus } from "@repro/shared"
 
 interface AssigneeOption {
   value: string | null

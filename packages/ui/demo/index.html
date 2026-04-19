@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Feedback Tool — Demo Playground</title>
+    <title>Repro — Demo Playground</title>
     <style>
       body {
         font-family:
@@ -86,8 +86,8 @@
     <header>
       <h1>Demo page</h1>
       <p>
-        A deliberately rough page for testing the Feedback Tool SDK. Click the bubble in the corner
-        to report a bug.
+        A deliberately rough page for testing the Repro SDK. Click the bubble in the corner to
+        report a bug.
       </p>
     </header>
     <main>
@@ -163,8 +163,8 @@
         for (const [name, value] of cookies) {
           document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${oneDay}; SameSite=Lax`
         }
-        if (window.FeedbackTool && typeof window.FeedbackTool.log === "function") {
-          window.FeedbackTool.log("demo.cookies.seeded", { count: cookies.length })
+        if (window.Repro && typeof window.Repro.log === "function") {
+          window.Repro.log("demo.cookies.seeded", { count: cookies.length })
         }
         console.log("[demo] seeded", cookies.length, "cookies →", document.cookie)
       })
@@ -174,8 +174,8 @@
         const fd = new FormData(e.target)
         const email = fd.get("email") || ""
         const name = fd.get("name") || ""
-        if (window.FeedbackTool && typeof window.FeedbackTool.log === "function") {
-          window.FeedbackTool.log("demo.form.submit", { hasEmail: !!email, hasName: !!name })
+        if (window.Repro && typeof window.Repro.log === "function") {
+          window.Repro.log("demo.form.submit", { hasEmail: !!email, hasName: !!name })
         }
         fetch("https://httpbin.org/post?api_key=secret&debug=1", {
           method: "POST",
@@ -190,11 +190,11 @@
     <!-- Load the SDK (served by Bun at /sdk.iife.js) -->
     <script src="/sdk.iife.js"></script>
     <script>
-      const PROJECT_KEY = "ft_pk_HsRcGTjAmjh8VzdkYY7zfz3b"
+      const PROJECT_KEY = "rp_pk_HsRcGTjAmjh8VzdkYY7zfz3b"
       const ENDPOINT = "http://localhost:3000"
 
-      if (/^ft_pk_[A-Za-z0-9]{24}$/.test(PROJECT_KEY)) {
-        FeedbackTool.init({
+      if (/^rp_pk_[A-Za-z0-9]{24}$/.test(PROJECT_KEY)) {
+        Repro.init({
           projectKey: PROJECT_KEY,
           endpoint: ENDPOINT,
           // Demo config: capture as much as possible so every tab has rich data.
@@ -222,7 +222,7 @@
         })
       } else {
         console.error(
-          "[demo] set PROJECT_KEY in index.html or window.FT_DEMO_KEY before FeedbackTool.init",
+          "[demo] set PROJECT_KEY in index.html or window.REPRO_DEMO_KEY before Repro.init",
         )
       }
     </script>

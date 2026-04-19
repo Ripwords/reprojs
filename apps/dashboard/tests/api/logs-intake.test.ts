@@ -4,14 +4,14 @@ import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(30000)
 import { afterEach, describe, expect, test } from "bun:test"
 import { sql } from "drizzle-orm"
-import type { LogsAttachment } from "@feedback-tool/shared"
+import type { LogsAttachment } from "@repro/shared"
 import { createUser, makePngBlob, seedProject, truncateDomain, truncateReports } from "../helpers"
 import { db } from "../../server/db"
 import { reportAttachments, reports } from "../../server/db/schema"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
-const PK = "ft_pk_ABCDEF1234567890abcdef12"
+const PK = "rp_pk_ABCDEF1234567890abcdef12"
 const ORIGIN = "http://localhost:4000"
 
 function buildReportJSON(projectKey: string, title = "D test") {

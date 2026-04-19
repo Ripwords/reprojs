@@ -1,5 +1,5 @@
 import { createError, defineEventHandler, readValidatedBody } from "h3"
-import { CreateProjectInput } from "@feedback-tool/shared"
+import { CreateProjectInput } from "@repro/shared"
 import { db } from "../../db"
 import { projectMembers, projects } from "../../db/schema"
 import { requireSession } from "../../lib/permissions"

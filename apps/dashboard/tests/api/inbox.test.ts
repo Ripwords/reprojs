@@ -17,7 +17,7 @@ import { projectMembers, reportEvents, reports } from "../../server/db/schema"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
-const PK = "ft_pk_INBX1234567890abcdef1234"
+const PK = "rp_pk_INBX1234567890abcdef1234"
 const ORIGIN = "http://localhost:4000"
 
 async function seedReport(

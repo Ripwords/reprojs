@@ -63,7 +63,7 @@ export function createRecorder(opts: RecorderOptions): Recorder {
       buffer.push(meta)
       buffer.push(full)
     } catch (err) {
-      console.warn("[feedback-tool] full-snapshot failed; recorder disabled", err)
+      console.warn("[repro] full-snapshot failed; recorder disabled", err)
       stopped = true
       return
     }
@@ -78,7 +78,7 @@ export function createRecorder(opts: RecorderOptions): Recorder {
       try {
         h.start()
       } catch (err) {
-        console.warn("[feedback-tool] observer failed to start", err)
+        console.warn("[repro] observer failed to start", err)
       }
     }
   }

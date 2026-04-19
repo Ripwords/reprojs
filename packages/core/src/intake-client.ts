@@ -1,4 +1,4 @@
-import type { IntakeResponse, LogsAttachment, ReportContext } from "@feedback-tool/shared"
+import type { IntakeResponse, LogsAttachment, ReportContext } from "@repro/shared"
 import type { ResolvedConfig } from "./config"
 
 export interface IntakeInput {

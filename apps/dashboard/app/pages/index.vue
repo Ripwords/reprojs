@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProjectDTO } from "@feedback-tool/shared"
+import type { ProjectDTO } from "@repro/shared"
 import AppEmptyState from "~/components/common/app-empty-state.vue"
 
 const toast = useToast()

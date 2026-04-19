@@ -8,7 +8,7 @@ import { projects, reportAttachments } from "../../server/db/schema"
 await setup({ server: true, port: 3000, host: "localhost" })
 setDefaultTimeout(15000)
 
-const PK = "ft_pk_ABCDEF1234567890abcdef12"
+const PK = "rp_pk_ABCDEF1234567890abcdef12"
 const ORIGIN = "http://localhost:4000"
 
 async function gzipOf(input: string): Promise<Uint8Array> {

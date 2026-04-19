@@ -1,6 +1,6 @@
-# Feedback Tool
+# Repro
 
-A framework-agnostic, embeddable frontend user feedback SDK (similar in scope to [marker.io](https://marker.io)) **plus** a self-hostable admin dashboard for developers and team admins to triage, manage, and sync tickets.
+Repro is a framework-agnostic, embeddable frontend user feedback SDK (similar in scope to [marker.io](https://marker.io)) **plus** a self-hostable admin dashboard for developers and team admins to triage, manage, and sync tickets.
 
 End users (users of whatever host app embeds the SDK) can report bugs directly from the page, annotate an auto-captured screenshot, and attach rich diagnostic context (session replay, logs, network activity, environment info). Reports can be triaged in the dashboard and/or synced to GitHub Issues.
 
@@ -122,7 +122,7 @@ Automatically collected with each report:
 Monorepo with Bun workspaces. Mirrors the ai-trip project's `server/{api,db,lib}` layout for the Nuxt app.
 
 ```
-feedback-tool/
+repro/
 ├── apps/
 │   └── dashboard/              # Nuxt 4 fullstack — admin UI + intake API
 │       ├── app/                # Vue UI (pages, components, composables, layouts)

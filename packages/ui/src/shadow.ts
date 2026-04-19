@@ -10,10 +10,10 @@
 const attachedRoots = new WeakMap<HTMLElement, ShadowRoot>()
 
 export function createShadowHost(): ShadowRoot {
-  let host = document.getElementById("feedback-tool-host") as HTMLElement | null
+  let host = document.getElementById("repro-host") as HTMLElement | null
   if (!host) {
     host = document.createElement("div")
-    host.id = "feedback-tool-host"
+    host.id = "repro-host"
     document.body.appendChild(host)
   }
   const existing = attachedRoots.get(host)
@@ -30,7 +30,7 @@ export function injectStyles(root: ShadowRoot, css: string) {
 }
 
 export function unmountShadowHost() {
-  const host = document.getElementById("feedback-tool-host") as HTMLElement | null
+  const host = document.getElementById("repro-host") as HTMLElement | null
   if (host) {
     attachedRoots.delete(host)
     host.remove()

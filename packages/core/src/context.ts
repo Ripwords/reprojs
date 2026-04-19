@@ -1,9 +1,4 @@
-import type {
-  CookieEntry,
-  ReportContext,
-  ReporterIdentity,
-  SystemInfo,
-} from "@feedback-tool/shared"
+import type { CookieEntry, ReportContext, ReporterIdentity, SystemInfo } from "@repro/shared"
 
 export function gatherContext(
   reporter: ReporterIdentity | null,

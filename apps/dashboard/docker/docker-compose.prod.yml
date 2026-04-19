@@ -17,22 +17,18 @@
 # Local dev uses `db:push` against the dev compose — there is no migrator
 # service in docker-compose.dev.yml by design.
 
-name: feedback_tool_prod
+name: repro_prod
 services:
   postgres:
     image: postgres:17.2
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-feedback_tool}
+      POSTGRES_USER: ${POSTGRES_USER:-repro}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: ${POSTGRES_DB:-feedback_tool}
+      POSTGRES_DB: ${POSTGRES_DB:-repro}
     volumes:
-      - feedback_tool_prod_data:/var/lib/postgresql/data
+      - repro_prod_data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-feedback_tool} -d ${POSTGRES_DB:-feedback_tool}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-repro} -d ${POSTGRES_DB:-repro}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -53,7 +49,7 @@ services:
       - migrator_node_modules:/repo/node_modules
       - migrator_dashboard_node_modules:/repo/apps/dashboard/node_modules
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-feedback_tool}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-feedback_tool}
+      DATABASE_URL: postgres://${POSTGRES_USER:-repro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-repro}
     command: >
       sh -c "bun install --frozen-lockfile && bun run db:migrate"
     restart: "no"
@@ -71,7 +67,7 @@ services:
   #     migrator:
   #       condition: service_completed_successfully
   #   environment:
-  #     DATABASE_URL: postgres://${POSTGRES_USER:-feedback_tool}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-feedback_tool}
+  #     DATABASE_URL: postgres://${POSTGRES_USER:-repro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-repro}
   #     NODE_ENV: production
   #     # ... BETTER_AUTH_SECRET, ATTACHMENT_URL_SECRET, GITHUB_APP_*, etc.
   #   ports:
@@ -79,6 +75,6 @@ services:
   #   restart: unless-stopped
 
 volumes:
-  feedback_tool_prod_data:
+  repro_prod_data:
   migrator_node_modules:
   migrator_dashboard_node_modules:

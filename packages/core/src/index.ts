@@ -1,5 +1,5 @@
 // packages/core/src/index.ts
-import type { ReporterIdentity } from "@feedback-tool/shared"
+import type { ReporterIdentity } from "@repro/shared"
 import {
   close as uiClose,
   mount,
@@ -7,7 +7,7 @@ import {
   registerAllCollectors,
   unmount,
   type BreadcrumbLevel,
-} from "@feedback-tool/ui"
+} from "@repro/ui"
 import { resolveConfig, type InitOptions, type ResolvedConfig } from "./config"
 import { gatherContext } from "./context"
 import { postReport } from "./intake-client"
@@ -78,7 +78,7 @@ export function init(options: InitOptions): FeedbackHandle {
 }
 
 export function open(): void {
-  if (!_config) throw new Error("FeedbackTool.open called before init")
+  if (!_config) throw new Error("Repro.open called before init")
   uiOpen()
 }
 

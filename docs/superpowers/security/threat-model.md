@@ -1,7 +1,7 @@
-# Feedback Tool Threat Model
+# Repro Threat Model
 
 ## Scope
-This document captures the security invariants the feedback-tool platform relies on, the
+This document captures the security invariants the Repro platform relies on, the
 known tradeoffs, and the attacker capabilities we defend against.
 
 ## Identity model

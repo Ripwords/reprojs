@@ -89,7 +89,7 @@ const MAX_LOG_ENTRIES = 25
 const MAX_LINE = 500
 
 export function reportMarker(reportId: string): string {
-  return `feedback-tool:report:${reportId}`
+  return `repro:report:${reportId}`
 }
 
 function fmtUtc(d: Date): string {
@@ -195,7 +195,7 @@ function renderCookies(entries: readonly CookieShape[]): string {
 export function buildIssueBody(input: BuildIssueBodyInput): string {
   const parts: string[] = []
   const reporter = input.reporterEmail ? `**${input.reporterEmail}**` : "anonymous"
-  parts.push(`> Reported by ${reporter} via Feedback Tool`)
+  parts.push(`> Reported by ${reporter} via Repro`)
   if (input.pageUrl) parts.push(`> Page: ${input.pageUrl}`)
   parts.push(`> Captured: ${fmtUtc(input.createdAt)}`)
   parts.push("")

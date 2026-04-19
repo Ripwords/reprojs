@@ -4,10 +4,10 @@ import { resolveConfig } from "./config"
 describe("resolveConfig", () => {
   test("accepts a valid minimal config", () => {
     const c = resolveConfig({
-      projectKey: "ft_pk_ABCDEF1234567890abcdef12",
+      projectKey: "rp_pk_ABCDEF1234567890abcdef12",
       endpoint: "https://dash.example.com",
     })
-    expect(c.projectKey).toBe("ft_pk_ABCDEF1234567890abcdef12")
+    expect(c.projectKey).toBe("rp_pk_ABCDEF1234567890abcdef12")
     expect(c.endpoint).toBe("https://dash.example.com")
     expect(c.position).toBe("bottom-right")
     expect(c.launcher).toBe(true)
@@ -15,7 +15,7 @@ describe("resolveConfig", () => {
 
   test("strips trailing slash from endpoint", () => {
     const c = resolveConfig({
-      projectKey: "ft_pk_ABCDEF1234567890abcdef12",
+      projectKey: "rp_pk_ABCDEF1234567890abcdef12",
       endpoint: "https://dash.example.com/",
     })
     expect(c.endpoint).toBe("https://dash.example.com")
@@ -28,7 +28,7 @@ describe("resolveConfig", () => {
 
   test("throws on malformed endpoint", () => {
     expect(() =>
-      resolveConfig({ projectKey: "ft_pk_ABCDEF1234567890abcdef12", endpoint: "not a url" }),
+      resolveConfig({ projectKey: "rp_pk_ABCDEF1234567890abcdef12", endpoint: "not a url" }),
     ).toThrow(/endpoint/)
   })
 

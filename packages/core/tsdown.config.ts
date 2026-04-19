@@ -16,11 +16,11 @@ export default defineConfig([
   },
   {
     ...common,
-    entry: { "feedback-tool.iife": "src/index.ts" },
+    entry: { "repro.iife": "src/index.ts" },
     format: ["iife"],
     outDir: "dist",
     minify: true,
-    globalName: "FeedbackTool",
-    noExternal: [/@feedback-tool\//, /preact/, /modern-screenshot/, /zod/],
+    globalName: "Repro",
+    noExternal: [/@repro\//, /preact/, /modern-screenshot/, /zod/],
   },
 ])

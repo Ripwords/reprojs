@@ -1,6 +1,6 @@
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const KEY_LEN = 24
-const PREFIX = "ft_pk_"
+const PREFIX = "rp_pk_"
 
 export function generatePublicKey(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(KEY_LEN))

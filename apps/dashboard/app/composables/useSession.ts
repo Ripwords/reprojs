@@ -1,4 +1,4 @@
-import type { InstallRole } from "@feedback-tool/shared"
+import type { InstallRole } from "@repro/shared"
 import { useAuthClient } from "../lib/auth-client"
 
 /**

@@ -157,7 +157,7 @@ export const BulkUpdateInput = z
 export type BulkUpdateInput = z.infer<typeof BulkUpdateInput>
 
 export const ReportIntakeInput = z.object({
-  projectKey: z.string().regex(/^ft_pk_[A-Za-z0-9]{24}$/),
+  projectKey: z.string().regex(/^rp_pk_[A-Za-z0-9]{24}$/),
   title: z.string().min(1).max(120),
   description: z.string().max(10_000).optional(),
   context: ReportContext,

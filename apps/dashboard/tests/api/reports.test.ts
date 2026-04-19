@@ -1,6 +1,6 @@
 import { setup } from "@nuxt/test-utils/e2e"
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test"
-import type { ReportSummaryDTO } from "@feedback-tool/shared"
+import type { ReportSummaryDTO } from "@repro/shared"
 import {
   apiFetch,
   createUser,
@@ -15,7 +15,7 @@ await setup({ server: true, port: 3000, host: "localhost" })
 
 setDefaultTimeout(60000)
 
-const PK = "ft_pk_ABCDEF1234567890abcdef12"
+const PK = "rp_pk_ABCDEF1234567890abcdef12"
 const ORIGIN = "http://localhost:4000"
 
 async function submitReport(title: string) {
@@ -137,7 +137,7 @@ describe("attachment GET", () => {
     })
     const projectB = await seedProject({
       name: "B",
-      publicKey: "ft_pk_BBBBBBBBBBBBBBBBBBBBBBBB",
+      publicKey: "rp_pk_BBBBBBBBBBBBBBBBBBBBBBBB",
       allowedOrigins: [ORIGIN],
       createdBy: admin,
     })

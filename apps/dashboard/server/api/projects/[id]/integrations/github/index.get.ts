@@ -1,7 +1,7 @@
 // apps/dashboard/server/api/projects/[id]/integrations/github/index.get.ts
 import { createError, defineEventHandler, getRouterParam } from "h3"
 import { and, desc, eq } from "drizzle-orm"
-import type { GithubConfigDTO } from "@feedback-tool/shared"
+import type { GithubConfigDTO } from "@repro/shared"
 import { db } from "../../../../../db"
 import { githubIntegrations, reports, reportSyncJobs } from "../../../../../db/schema"
 import { requireProjectRole } from "../../../../../lib/permissions"

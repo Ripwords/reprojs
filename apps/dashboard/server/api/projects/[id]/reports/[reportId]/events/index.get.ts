@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getQuery, getRouterParam } from "h3"
 import { and, count, desc, eq } from "drizzle-orm"
-import type { ReportEventDTO } from "@feedback-tool/shared"
+import type { ReportEventDTO } from "@repro/shared"
 import { db } from "../../../../../../db"
 import { reportEvents, reports } from "../../../../../../db/schema"
 import { user as userTable } from "../../../../../../db/schema/auth-schema"

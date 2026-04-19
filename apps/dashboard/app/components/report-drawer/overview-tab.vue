@@ -1,6 +1,6 @@
 <!-- apps/dashboard/app/components/report-drawer/overview-tab.vue -->
 <script setup lang="ts">
-import type { ReportSummaryDTO } from "@feedback-tool/shared"
+import type { ReportSummaryDTO } from "@repro/shared"
 import { safeHref } from "~/composables/use-safe-href"
 
 const props = defineProps<{ projectId: string; report: ReportSummaryDTO }>()

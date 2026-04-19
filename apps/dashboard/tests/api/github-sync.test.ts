@@ -4,7 +4,7 @@ import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
 import { eq } from "drizzle-orm"
-import type { GitHubInstallationClient } from "@feedback-tool/integrations-github"
+import type { GitHubInstallationClient } from "@repro/integrations-github"
 import { __setClientOverride, signInstallState } from "../../server/lib/github"
 import {
   apiFetch,
@@ -28,7 +28,7 @@ import { reconcileReport } from "../../server/lib/github-reconcile"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
-const PK = "ft_pk_GHUB1234567890abcdef1234"
+const PK = "rp_pk_GHUB1234567890abcdef1234"
 const ORIGIN = "http://localhost:4000"
 
 interface MockCalls {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h, resolveComponent } from "vue"
 import type { TableColumn } from "@nuxt/ui"
-import type { ProjectDTO, ProjectMemberDTO, ProjectRole } from "@feedback-tool/shared"
+import type { ProjectDTO, ProjectMemberDTO, ProjectRole } from "@repro/shared"
 
 const UAvatar = resolveComponent("UAvatar")
 const USelectMenu = resolveComponent("USelectMenu")

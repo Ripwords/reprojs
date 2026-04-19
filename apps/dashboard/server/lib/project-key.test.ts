@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test"
 import { generatePublicKey } from "./project-key"
 
 describe("generatePublicKey", () => {
-  test("returns ft_pk_ prefix + 24 base62 chars", () => {
+  test("returns rp_pk_ prefix + 24 base62 chars", () => {
     const k = generatePublicKey()
-    expect(k).toMatch(/^ft_pk_[A-Za-z0-9]{24}$/)
+    expect(k).toMatch(/^rp_pk_[A-Za-z0-9]{24}$/)
   })
 
   test("is unique across 1000 calls", () => {

@@ -1,6 +1,6 @@
 {
-  "name": "Feedback Tool",
-  "short_name": "Feedback",
+  "name": "Repro",
+  "short_name": "Repro",
   "description": "Self-hostable bug reporter + GitHub-synced triage dashboard.",
   "display": "standalone",
   "start_url": "/",

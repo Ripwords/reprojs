@@ -1,5 +1,5 @@
 // packages/ui/src/collectors/index.ts
-import type { LogsAttachment, ReportContext } from "@feedback-tool/shared"
+import type { LogsAttachment, ReportContext } from "@repro/shared"
 import { type BreadcrumbLevel, createBreadcrumbsCollector } from "./breadcrumbs"
 import { createConsoleCollector } from "./console"
 import { createCookiesCollector } from "./cookies"
@@ -118,7 +118,7 @@ export function registerAllCollectors(config: CollectorConfig): {
         return result === undefined ? report : result
       } catch (err) {
         console.warn(
-          "[feedback-tool] collectors.beforeSend threw; proceeding with original report",
+          "[repro] collectors.beforeSend threw; proceeding with original report",
           err,
         )
         return report

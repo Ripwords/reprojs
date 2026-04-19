@@ -1,6 +1,6 @@
 import { defineEventHandler } from "h3"
 import { and, desc, eq, isNull } from "drizzle-orm"
-import type { ProjectDTO } from "@feedback-tool/shared"
+import type { ProjectDTO } from "@repro/shared"
 import { db } from "../../db"
 import { projectMembers, projects } from "../../db/schema"
 import { requireSession } from "../../lib/permissions"
