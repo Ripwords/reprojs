@@ -1,272 +1,182 @@
 <script setup lang="ts">
-import type { ProjectDTO, ProjectOverviewDTO } from "@feedback-tool/shared"
+import type { ProjectDTO, ProjectOverviewDTO, ReportSummaryDTO } from "@feedback-tool/shared"
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))
 
 const { data: project } = await useApi<ProjectDTO>(`/api/projects/${projectId.value}`)
-const { data: overview, refresh } = await useApi<ProjectOverviewDTO>(
+const { data: overview } = await useApi<ProjectOverviewDTO>(
   `/api/projects/${projectId.value}/overview`,
 )
+const { data: recentReportsResp } = await useApi<{ items: ReportSummaryDTO[] }>(
+  `/api/projects/${projectId.value}/reports`,
+  { query: { limit: 5, sort: "newest" } },
+)
 
-const STATUS_ORDER = ["open", "in_progress", "resolved", "closed"] as const
-const PRIORITY_ORDER = ["urgent", "high", "normal", "low"] as const
+const metrics = computed(() => {
+  const c = overview.value?.counts
+  if (!c) return null
+  return {
+    open: c.byStatus.open ?? 0,
+    newThisWeek: c.last7Days,
+    total: c.total,
+  }
+})
 
-const PRIORITY_COLOR: Record<string, string> = {
-  urgent: "bg-red-100 text-red-700",
-  high: "bg-orange-100 text-orange-700",
-  normal: "bg-neutral-100 text-neutral-700",
-  low: "bg-neutral-50 text-neutral-400",
+const integration = computed(() => {
+  const g = overview.value?.github
+  if (!g || !g.installed) return { status: "not connected" as const, repoFullName: null }
+  return {
+    status: g.status ?? "not connected",
+    repoFullName: g.repo,
+    linkedCount: g.linkedCount,
+    failedCount: g.failedCount,
+  }
+})
+
+const recentReports = computed<ReportSummaryDTO[]>(() => recentReportsResp.value?.items ?? [])
+const recentActivity = computed(() => overview.value?.recentEvents ?? [])
+
+function priorityColor(p: string): "error" | "warning" | "neutral" | "primary" {
+  if (p === "urgent") return "error"
+  if (p === "high") return "warning"
+  if (p === "normal") return "primary"
+  return "neutral"
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  open: "text-blue-700",
-  in_progress: "text-yellow-700",
-  resolved: "text-green-700",
-  closed: "text-neutral-500",
-}
-
-const EVENT_LABEL: Record<string, string> = {
-  status_changed: "status",
-  priority_changed: "priority",
-  assignee_changed: "assignee",
-  tag_added: "tag added",
-  tag_removed: "tag removed",
-  github_unlinked: "GitHub unlinked",
-}
-
-const maxVolume = computed(() => Math.max(1, ...(overview.value?.volume ?? []).map((v) => v.count)))
-
-function fmtRel(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime()
-  const s = Math.floor(ms / 1000)
-  if (s < 60) return `${s}s ago`
-  const m = Math.floor(s / 60)
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const h = Math.floor(diffMs / 3_600_000)
+  if (h < 1) return "just now"
   if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
   return `${d}d ago`
 }
 
-function fmtDayLabel(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`)
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" })
+const EVENT_LABEL: Record<string, string> = {
+  status_changed: "changed status",
+  priority_changed: "changed priority",
+  assignee_changed: "reassigned",
+  tag_added: "added a tag",
+  tag_removed: "removed a tag",
+  github_unlinked: "unlinked GitHub issue",
 }
 
 function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
-  const p = e.payload as Record<string, unknown>
-  const from = p.from
-  const to = p.to
-  switch (e.kind) {
-    case "status_changed":
-      return `changed status from ${String(from).replace("_", " ")} → ${String(to).replace("_", " ")}`
-    case "priority_changed":
-      return `changed priority from ${String(from)} → ${String(to)}`
-    case "assignee_changed":
-      return `reassigned`
-    case "tag_added":
-      return `added tag "${String(p.name ?? "")}"`
-    case "tag_removed":
-      return `removed tag "${String(p.name ?? "")}"`
-    case "github_unlinked":
-      return `unlinked GitHub issue`
-    default:
-      return e.kind
-  }
+  const label = EVENT_LABEL[e.kind] ?? e.kind
+  return `${label} on "${e.reportTitle}"`
 }
 </script>
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <!-- Page header -->
+    <header class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-semibold">{{ project?.name }}</h1>
-        <div class="text-xs text-neutral-500">role: {{ project?.effectiveRole }}</div>
+        <h1 class="text-2xl font-semibold text-default">{{ project?.name ?? "..." }}</h1>
+        <p class="text-sm text-muted mt-1">Project overview</p>
       </div>
-      <div class="flex gap-3 text-sm">
-        <NuxtLink :to="`/projects/${projectId}/reports`" class="underline">Reports</NuxtLink>
-        <NuxtLink :to="`/projects/${projectId}/members`" class="underline">Members</NuxtLink>
-        <NuxtLink
-          v-if="project?.effectiveRole === 'owner'"
-          :to="`/projects/${projectId}/settings`"
-          class="underline"
-          >Settings</NuxtLink
+      <UButton
+        :to="`/projects/${projectId}/reports`"
+        label="Go to inbox"
+        trailing-icon="i-heroicons-arrow-right"
+        color="primary"
+      />
+    </header>
+
+    <!-- Metric tiles -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <UCard>
+        <div class="text-sm text-muted">Open reports</div>
+        <div class="mt-1 text-3xl font-semibold text-default">{{ metrics?.open ?? 0 }}</div>
+      </UCard>
+      <UCard>
+        <div class="text-sm text-muted">New this week</div>
+        <div class="mt-1 text-3xl font-semibold text-default">{{ metrics?.newThisWeek ?? 0 }}</div>
+      </UCard>
+      <UCard>
+        <div class="text-sm text-muted">Total reports</div>
+        <div class="mt-1 text-3xl font-semibold text-default">{{ metrics?.total ?? 0 }}</div>
+      </UCard>
+      <UCard>
+        <div class="text-sm text-muted">GitHub sync</div>
+        <div class="mt-2 flex items-center gap-2">
+          <UBadge
+            :label="integration.status"
+            :color="integration.status === 'connected' ? 'success' : 'neutral'"
+            variant="soft"
+            size="xs"
+          />
+          <span v-if="integration.repoFullName" class="text-sm text-muted truncate">
+            {{ integration.repoFullName }}
+          </span>
+        </div>
+      </UCard>
+    </div>
+
+    <!-- Two-column: recent reports + recent activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <UCard>
+        <template #header>
+          <h2 class="text-base font-semibold text-default">Recent reports</h2>
+        </template>
+        <div
+          v-if="!recentReports || recentReports.length === 0"
+          class="text-sm text-muted py-8 text-center"
         >
-      </div>
-    </div>
-
-    <!-- Stats row -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-      <div class="border rounded-lg p-4 bg-white">
-        <div class="text-xs uppercase text-neutral-500">Total reports</div>
-        <div class="text-3xl font-semibold mt-1">{{ overview?.counts.total ?? 0 }}</div>
-        <div class="text-xs text-neutral-500 mt-1">
-          {{ overview?.counts.last7Days ?? 0 }} in last 7d
+          No reports yet.
         </div>
-      </div>
-      <div v-for="s in STATUS_ORDER" :key="s" class="border rounded-lg p-4 bg-white">
-        <div class="text-xs uppercase text-neutral-500" :class="STATUS_COLOR[s]">
-          {{ s.replace("_", " ") }}
-        </div>
-        <div class="text-3xl font-semibold mt-1">
-          {{ overview?.counts.byStatus[s] ?? 0 }}
-        </div>
-      </div>
-    </div>
-
-    <!-- Priority breakdown chips -->
-    <div class="flex flex-wrap gap-2 text-xs">
-      <span
-        v-for="p in PRIORITY_ORDER"
-        :key="p"
-        :class="[PRIORITY_COLOR[p], 'rounded px-2 py-0.5 font-semibold uppercase']"
-      >
-        {{ p }}: {{ overview?.counts.byPriority[p] ?? 0 }}
-      </span>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Volume bar chart -->
-      <div class="border rounded-lg p-4 bg-white">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-semibold">Reports — last 7 days</h2>
-          <span class="text-xs text-neutral-400">UTC</span>
-        </div>
-        <div class="flex gap-1 h-32">
-          <div
-            v-for="v in overview?.volume ?? []"
-            :key="v.date"
-            class="flex-1 h-full flex flex-col items-center gap-1"
-            :title="`${v.date}: ${v.count} report${v.count === 1 ? '' : 's'}`"
-          >
-            <div class="text-[10px] text-neutral-500">{{ v.count }}</div>
-            <div class="flex-1 w-full flex items-end">
-              <div
-                class="w-full rounded-t bg-neutral-800"
-                :style="{ height: `${Math.max(2, (v.count / maxVolume) * 100)}%` }"
-              />
-            </div>
-            <div class="text-[10px] text-neutral-500">{{ fmtDayLabel(v.date) }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- GitHub sync status -->
-      <div class="border rounded-lg p-4 bg-white">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-semibold">GitHub sync</h2>
-          <NuxtLink
-            v-if="project?.effectiveRole === 'owner'"
-            :to="`/projects/${projectId}/settings?tab=github`"
-            class="text-xs underline text-neutral-500"
-          >
-            Settings →
-          </NuxtLink>
-        </div>
-        <div v-if="!overview?.github.installed" class="text-sm text-neutral-500">
-          Not installed. Configure GitHub integration in settings to auto-create issues for every
-          report.
-        </div>
-        <div v-else-if="overview.github.status === 'disconnected'" class="text-sm text-red-700">
-          ⚠ GitHub App was uninstalled or access revoked.
-        </div>
-        <div v-else class="space-y-2 text-sm">
-          <div class="flex items-center gap-2">
-            <span class="inline-block w-2 h-2 rounded-full bg-green-500" />
-            <span class="font-medium">connected</span>
-            <span v-if="overview.github.repo" class="text-neutral-500">·</span>
-            <a
-              v-if="overview.github.repo"
-              :href="`https://github.com/${overview.github.repo}`"
-              target="_blank"
-              rel="noopener"
-              class="text-neutral-700 font-mono text-xs underline"
+        <ul v-else class="space-y-2">
+          <li v-for="r in recentReports" :key="r.id" class="flex items-center gap-3 text-sm py-1">
+            <UBadge
+              :label="r.priority"
+              :color="priorityColor(r.priority)"
+              variant="soft"
+              size="xs"
+            />
+            <NuxtLink
+              :to="`/projects/${projectId}/reports?open=${r.id}`"
+              class="flex-1 min-w-0 truncate text-default hover:text-primary-600"
             >
-              {{ overview.github.repo }}
-            </a>
-          </div>
-
-          <div class="flex items-baseline gap-2 pt-2">
-            <span class="text-3xl font-semibold">{{ overview.github.linkedCount }}</span>
-            <span class="text-xs text-neutral-500">
-              of {{ overview.counts.total }} report{{ overview.counts.total === 1 ? "" : "s" }}
-              linked
+              {{ r.title }}
+            </NuxtLink>
+            <span class="text-xs text-muted whitespace-nowrap">
+              {{ relativeTime(r.receivedAt) }}
             </span>
-          </div>
-
-          <div class="flex flex-wrap gap-3 text-xs pt-1">
-            <span
-              v-if="overview.github.pendingCount + overview.github.syncingCount > 0"
-              class="text-neutral-600"
-            >
-              ⟳ {{ overview.github.pendingCount + overview.github.syncingCount }} in queue
-            </span>
-            <span v-if="overview.github.failedCount > 0" class="text-red-700 font-medium">
-              ⚠ {{ overview.github.failedCount }} failed —
-              <NuxtLink :to="`/projects/${projectId}/settings?tab=github`" class="underline">
-                retry
-              </NuxtLink>
-            </span>
-            <span
-              v-if="
-                overview.github.pendingCount === 0 &&
-                overview.github.syncingCount === 0 &&
-                overview.github.failedCount === 0
-              "
-              class="text-green-700"
-            >
-              ✓ all synced
-            </span>
-          </div>
-
-          <div v-if="overview.github.lastSyncedAt" class="text-xs text-neutral-500 pt-1">
-            Last synced {{ fmtRel(overview.github.lastSyncedAt) }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Recent activity -->
-    <div class="border rounded-lg bg-white">
-      <div class="flex items-center justify-between p-4 border-b">
-        <h2 class="text-sm font-semibold">Recent activity</h2>
-        <button type="button" class="text-xs underline text-neutral-500" @click="refresh()">
-          Refresh
-        </button>
-      </div>
-      <ul v-if="(overview?.recentEvents ?? []).length > 0" class="divide-y">
-        <li
-          v-for="e in overview?.recentEvents ?? []"
-          :key="e.id"
-          class="flex items-start gap-3 p-3 text-sm hover:bg-neutral-50"
+          </li>
+        </ul>
+      </UCard>
+      <UCard>
+        <template #header>
+          <h2 class="text-base font-semibold text-default">Activity</h2>
+        </template>
+        <div
+          v-if="!recentActivity || recentActivity.length === 0"
+          class="text-sm text-muted py-8 text-center"
         >
-          <div class="flex-1 min-w-0">
-            <div class="flex items-baseline gap-2">
-              <span class="text-neutral-700 font-medium">
-                {{ e.actor?.name ?? e.actor?.email ?? "system" }}
-              </span>
-              <span class="text-neutral-500 text-xs">
-                {{ EVENT_LABEL[e.kind] ?? e.kind }}
-              </span>
-              <span class="text-neutral-400 text-xs ml-auto whitespace-nowrap">
-                {{ fmtRel(e.createdAt) }}
-              </span>
-            </div>
-            <div class="text-neutral-500 text-xs">
-              {{ describeEvent(e) }}
-              <span class="text-neutral-400">on</span>
-              <NuxtLink
-                :to="`/projects/${projectId}/reports?open=${e.reportId}`"
-                class="underline truncate"
-              >
-                {{ e.reportTitle }}
-              </NuxtLink>
-            </div>
-          </div>
-        </li>
-      </ul>
-      <div v-else class="p-6 text-center text-sm text-neutral-500">No activity yet.</div>
+          No activity yet.
+        </div>
+        <ul v-else class="space-y-3">
+          <li v-for="e in recentActivity" :key="e.id" class="text-sm">
+            <span class="text-default font-medium">
+              {{ e.actor?.name ?? e.actor?.email ?? "System" }}
+            </span>
+            <span class="text-muted"> {{ describeEvent(e) }}</span>
+            <span class="ml-2 text-xs text-muted">{{ relativeTime(e.createdAt) }}</span>
+          </li>
+        </ul>
+      </UCard>
     </div>
+
+    <!-- Activation CTA when no reports -->
+    <AppEmptyState
+      v-if="recentReports && recentReports.length === 0"
+      variant="gradient"
+      icon="i-heroicons-code-bracket"
+      title="Install the SDK to start receiving reports"
+      description="Add a single <script> tag to your site or npm-install @feedback-tool/core."
+      action-label="View install instructions"
+      action-to="/settings/install"
+    />
   </div>
 </template>
