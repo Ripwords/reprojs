@@ -81,16 +81,18 @@ export default defineNuxtConfig({
       },
     },
     // SDK intake — customer browsers POST from whatever origin their site
-    // is served from, so we need permissive CORS without credentials. The
-    // intake bodies are structured JSON (report shape + base64 blobs);
-    // xssValidator would false-flag them.
+    // is served from, so nuxt-security's default same-origin CORS would
+    // block them. The intake handler runs its own origin-allowlist CORS
+    // (see server/lib/intake-cors.ts): it emits ACAO reflecting the exact
+    // origin *after* validating against the project's allowedOrigins, and
+    // deliberately withholds ACAO on reject so cross-origin scripts can't
+    // read error bodies as an enumeration oracle. A blanket `origin: "*"`
+    // here would defeat that oracle protection, so disable nuxt-security's
+    // corsHandler entirely and let the handler own CORS. xssValidator is
+    // also off because intake bodies are structured JSON + base64 blobs.
     "/api/intake/**": {
       security: {
-        corsHandler: {
-          origin: "*",
-          methods: ["POST", "OPTIONS"],
-          credentials: false,
-        },
+        corsHandler: false,
         xssValidator: false,
       },
     },
