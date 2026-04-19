@@ -2,7 +2,15 @@
 @import "@nuxt/ui";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /*
+   * Typography — Geist (variable) for sans, JetBrains Mono for mono.
+   * Geist was picked over Inter to give the interface a distinctive
+   * engineering-tool character without drifting into "generic SaaS".
+   * Inter is everywhere; Geist reads cleanly at small sizes, has a slightly
+   * tighter rhythm, and pairs well with JetBrains Mono in code snippets.
+   */
+  --font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /*
@@ -10,23 +18,53 @@
    * 16px baseline for interactive + body text. Tailwind defaults (12/14/16/18)
    * put `text-sm` (the most-used class in this codebase — table rows, form
    * inputs, buttons) at 14px, which tests as cramped on standard desktop
-   * DPIs. The bump keeps ratios stable and leaves `text-base` at the WCAG
-   * baseline:
+   * DPIs.
    *
-   *   xs:   12 → 13  (table meta, tooltips)
-   *   sm:   14 → 15  (primary body, labels, inputs, buttons)
-   *   base: 16 → 16  (prose, empty-state descriptions — unchanged)
-   *   lg:   18 → 18  (card titles — unchanged)
-   *   xl+:  unchanged
+   *   xs:   12 → 13   (table meta, tooltips)
+   *   sm:   14 → 15   (primary body, labels, inputs, buttons)
+   *   base: 16        (prose, empty-state descriptions)
+   *   lg:   18        (card titles)
    */
-  --text-xs: 0.8125rem; /* 13px */
-  --text-xs--line-height: 1.125rem; /* 18px */
-  --text-sm: 0.9375rem; /* 15px */
-  --text-sm--line-height: 1.375rem; /* 22px */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+
+  /*
+   * Motion tokens — consolidated durations and easings so components share
+   * the same rhythm. "Quick" is for hovers, "standard" for layout shifts,
+   * "deliberate" for modals / page transitions. Easings avoid the browser
+   * default `ease` (too bouncy for this aesthetic) and prefer the cubic
+   * curves common in editorial UI work.
+   */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.05);
+  --shadow-card-hover:
+    0 0 0 1px var(--ui-border), 0 12px 32px -12px rgb(0 0 0 / 0.14),
+    0 4px 12px -6px rgb(0 0 0 / 0.08);
+  --shadow-glow-primary:
+    0 0 0 1px color-mix(in oklch, var(--ui-primary) 20%, transparent),
+    0 0 24px -6px color-mix(in oklch, var(--ui-primary) 30%, transparent);
 }
 
 html {
   font-family: var(--font-sans);
+  /* Slightly tighter default tracking — Geist reads better at -0.005em */
+  letter-spacing: -0.005em;
+  /* Prevent the sub-pixel sans-serif "smudge" on darker backgrounds */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01", "ss03";
+}
+
+/* Headings sit a touch tighter than body for a more confident rhythm. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }
 
 code,
@@ -34,4 +72,80 @@ pre,
 kbd,
 samp {
   font-family: var(--font-mono);
+  font-feature-settings: "calt", "ss02";
+}
+
+/*
+ * Subtle grain overlay — borrowed from editorial / print UI work (ai-trip
+ * uses a similar trick). At 0.025 opacity it's invisible as a texture but
+ * breaks up flat backgrounds just enough to feel tactile rather than
+ * plasticky on large areas. The SVG is inlined so there's no request.
+ */
+.app-grain {
+  position: relative;
+  isolation: isolate;
+}
+.app-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 180px 180px;
+}
+/* Dark mode gets a touch more grain to compensate for the lower surface
+   contrast — it reads as "film", not "noise". */
+.dark .app-grain::before {
+  opacity: 0.04;
+}
+
+/*
+ * Staggered page enter — CSS-only so there's no JS cost. Elements tagged
+ * with `.fade-up` start translated down + faded, and land in place with
+ * a quintic ease. Parents can set `--fade-up-delay` on each child for a
+ * cascading reveal. Respects reduced-motion.
+ */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fade-up 0.5s var(--ease-out-quint) both;
+  animation-delay: var(--fade-up-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    animation: none;
+  }
+}
+
+/* Shimmer for skeleton loaders — reads as "loading" at a glance without
+   being busy. Direction is left→right; width is slightly narrower than the
+   track so it looks like a sweep, not a wash. */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--ui-bg-muted) 0%,
+    var(--ui-bg-accented) 50%,
+    var(--ui-bg-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }

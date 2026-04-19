@@ -137,7 +137,27 @@ function isActive(to: string): boolean {
       'flex-shrink-0 border-r border-default bg-default flex flex-col transition-[width] duration-150',
     ]"
   >
-    <div class="h-12 flex items-center px-3 border-b border-default">
+    <div
+      :class="[
+        'h-12 flex items-center border-b border-default',
+        collapsed ? 'justify-center px-0' : 'justify-between px-3',
+      ]"
+    >
+      <NuxtLink
+        v-if="!collapsed"
+        to="/"
+        class="flex items-center gap-2 text-sm font-semibold tracking-tight text-default hover:text-primary transition-colors"
+        aria-label="Feedback Tool home"
+      >
+        <!-- Brand mark: small teal square rotated 45° with a dot inside.
+             Distinctive enough to claim the corner without needing an
+             actual logo asset, and scales down cleanly for the collapsed
+             sidebar state (no text, just the mark). -->
+        <span
+          class="inline-block size-4 rotate-45 rounded-[3px] bg-gradient-to-br from-primary-400 to-primary-600 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]"
+        />
+        <span>Feedback Tool</span>
+      </NuxtLink>
       <UButton
         :icon="collapsed ? 'i-heroicons-bars-3' : 'i-heroicons-chevron-left'"
         color="neutral"

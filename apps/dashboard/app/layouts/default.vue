@@ -7,12 +7,12 @@ import AppTopBar from "~/components/shell/app-top-bar.vue"
 
 <template>
   <UApp>
-    <div class="min-h-screen flex bg-muted text-default">
+    <div class="app-grain min-h-screen flex bg-muted text-default">
       <AppSidebar />
       <div class="flex-1 flex flex-col min-w-0">
         <AppTopBar />
         <main class="flex-1 overflow-y-auto">
-          <div class="p-6">
+          <div class="p-6 fade-up">
             <slot />
           </div>
         </main>

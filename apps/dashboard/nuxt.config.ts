@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   css: ["~/assets/css/tailwind.css"],
   fonts: {
     families: [
-      { name: "Inter", provider: "fontsource", weights: ["400", "500", "600", "700"] },
+      { name: "Geist", provider: "fontsource", weights: ["400", "500", "600", "700"] },
       { name: "JetBrains Mono", provider: "fontsource", weights: ["400", "500"] },
     ],
   },
