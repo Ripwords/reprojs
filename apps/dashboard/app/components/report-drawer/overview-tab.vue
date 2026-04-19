@@ -2,11 +2,16 @@
 <script setup lang="ts">
 import type { ReportSummaryDTO } from "@reprokit/shared"
 import { safeHref } from "~/composables/use-safe-href"
+import { parseBrowser, parseOs } from "~/composables/use-user-agent"
 
 const props = defineProps<{ projectId: string; report: ReportSummaryDTO }>()
+const emit = defineEmits<{ "select-tab": [tab: "console" | "network" | "replay"] }>()
 
 const ctx = computed(() => props.report.context)
 const sys = computed(() => ctx.value?.systemInfo)
+
+const os = computed(() => parseOs(sys.value?.userAgent, sys.value?.platform))
+const browser = computed(() => parseBrowser(sys.value?.userAgent))
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleString()
 </script>
@@ -39,6 +44,62 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
           <span class="text-default">{{ fmtTime(report.receivedAt) }}</span>
         </div>
       </div>
+    </UCard>
+
+    <UCard v-if="sys">
+      <template #header>
+        <div class="text-sm font-medium text-default">Session environment</div>
+      </template>
+      <dl class="text-sm space-y-3">
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">Website</dt>
+          <dd class="min-w-0 flex-1">
+            <a
+              :href="safeHref(report.pageUrl)"
+              target="_blank"
+              rel="noopener"
+              class="text-primary-600 dark:text-primary-400 hover:underline truncate inline-block max-w-full align-bottom"
+            >
+              {{ report.pageUrl }}
+            </a>
+          </dd>
+        </div>
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">OS</dt>
+          <dd class="flex items-center gap-2 min-w-0">
+            <UIcon :name="os.icon" class="size-4 flex-shrink-0 text-default" />
+            <span class="text-default truncate">{{ os.label }}</span>
+          </dd>
+        </div>
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">Browser</dt>
+          <dd class="flex items-center gap-2 min-w-0">
+            <UIcon :name="browser.icon" class="size-4 flex-shrink-0 text-default" />
+            <span class="text-default truncate">{{ browser.label }}</span>
+          </dd>
+        </div>
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">Viewport</dt>
+          <dd class="flex items-center gap-2">
+            <UIcon name="i-lucide-monitor" class="size-4 flex-shrink-0 text-muted" />
+            <span class="text-default tabular-nums">
+              {{ sys.viewport.w }} × {{ sys.viewport.h }}
+            </span>
+          </dd>
+        </div>
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">Network</dt>
+          <dd>
+            <button
+              type="button"
+              class="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+              @click="emit('select-tab', 'network')"
+            >
+              View network logs
+            </button>
+          </dd>
+        </div>
+      </dl>
     </UCard>
 
     <UCard v-if="sys">

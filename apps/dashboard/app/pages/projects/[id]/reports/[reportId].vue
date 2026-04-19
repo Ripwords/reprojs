@@ -193,7 +193,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
 
       <!-- Tab content -->
       <div class="flex-1 min-h-0 overflow-y-auto">
-        <OverviewTab v-if="activeTab === 'overview'" :project-id="projectId" :report="report" />
+        <OverviewTab
+          v-if="activeTab === 'overview'"
+          :project-id="projectId"
+          :report="report"
+          @select-tab="(t) => (activeTab = t)"
+        />
         <ConsoleTab v-else-if="activeTab === 'console'" :logs="logs" />
         <NetworkTab v-else-if="activeTab === 'network'" :logs="logs" />
         <ReplayTab
