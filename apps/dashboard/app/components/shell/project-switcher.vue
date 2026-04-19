@@ -1,17 +1,21 @@
+<!--
+  Top-bar label + entry point for the global command palette. Clicking it
+  opens the same palette as ⌘K / Ctrl+K, so the switcher, the keyboard
+  shortcut, and any other future entry points all share one UI. The label
+  reflects the current project when inside a project route, and falls back
+  to the product name on the index / admin pages.
+-->
 <script setup lang="ts">
-import { computed, ref } from "vue"
-import { useRoute, useRouter } from "vue-router"
-
-interface ProjectSummary {
-  id: string
-  name: string
-}
+import { computed } from "vue"
+import { useRoute } from "vue-router"
+import type { ProjectDTO } from "@feedback-tool/shared"
 
 const route = useRoute()
-const router = useRouter()
-const open = ref(false)
+const { openPalette } = useCommandPalette()
 
-const { data } = await useApi<ProjectSummary[]>("/api/projects", { default: () => [] })
+// Piggybacks on the same `/api/projects` request as the sidebar + palette —
+// Nuxt's useFetch dedupes by URL, so no extra round-trip.
+const { data } = await useApi<ProjectDTO[]>("/api/projects", { default: () => [] })
 
 const currentProjectId = computed(() => {
   const m = /^\/projects\/([^/]+)/.exec(route.path)
@@ -22,31 +26,24 @@ const currentProject = computed(
   () => data.value?.find((p) => p.id === currentProjectId.value) ?? null,
 )
 
-const items = computed(() =>
-  (data.value ?? []).map((p) => ({
-    label: p.name,
-    onSelect: () => {
-      router.push(`/projects/${p.id}`)
-      open.value = false
-    },
-  })),
-)
+const isMac = computed(() => typeof navigator !== "undefined" && /mac/i.test(navigator.platform))
+const shortcutHint = computed(() => (isMac.value ? "⌘K" : "Ctrl K"))
 </script>
 
 <template>
-  <div>
-    <UButton
-      :label="currentProject?.name ?? 'Feedback Tool'"
-      trailing-icon="i-heroicons-chevron-down"
-      color="neutral"
-      variant="ghost"
-      size="sm"
-      @click="open = true"
-    />
-    <UModal v-model:open="open" :ui="{ content: 'max-w-lg' }">
-      <template #content>
-        <UCommandPalette :groups="[{ id: 'projects', label: 'Projects', items }]" />
-      </template>
-    </UModal>
-  </div>
+  <UButton
+    color="neutral"
+    variant="ghost"
+    size="sm"
+    trailing-icon="i-heroicons-chevron-down"
+    @click="openPalette"
+  >
+    <span class="truncate max-w-[14rem]">{{ currentProject?.name ?? "Feedback Tool" }}</span>
+    <kbd
+      class="hidden md:inline-flex items-center ml-2 px-1.5 py-0.5 rounded border border-default bg-muted/60 text-xs font-mono text-muted"
+      aria-hidden="true"
+    >
+      {{ shortcutHint }}
+    </kbd>
+  </UButton>
 </template>

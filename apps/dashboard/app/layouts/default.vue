@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ConfirmDialogHost from "~/components/common/confirm-dialog-host.vue"
+import CommandPalette from "~/components/shell/command-palette.vue"
 import AppSidebar from "~/components/shell/app-sidebar.vue"
 import AppTopBar from "~/components/shell/app-top-bar.vue"
 </script>
@@ -18,5 +19,6 @@ import AppTopBar from "~/components/shell/app-top-bar.vue"
       </div>
     </div>
     <ConfirmDialogHost />
+    <CommandPalette />
   </UApp>
 </template>
