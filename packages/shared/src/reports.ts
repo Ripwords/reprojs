@@ -2,7 +2,7 @@ import { z } from "zod"
 
 export const ReporterIdentity = z.object({
   userId: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z.email().optional(),
   name: z.string().max(200).optional(),
 })
 export type ReporterIdentity = z.infer<typeof ReporterIdentity>
@@ -108,7 +108,7 @@ export type ProjectMemberRole = z.infer<typeof ProjectMemberRole>
 export const ReportAssigneeDTO = z.object({
   id: z.string(),
   name: z.string().nullable(),
-  email: z.string().email(),
+  email: z.email(),
 })
 export type ReportAssigneeDTO = z.infer<typeof ReportAssigneeDTO>
 

@@ -33,7 +33,7 @@ export type UpdateProjectInput = z.infer<typeof UpdateProjectInput>
 
 export const ProjectMemberDTO = z.object({
   userId: z.string(),
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().nullable(),
   role: ProjectRole,
   joinedAt: z.string(),
@@ -41,7 +41,7 @@ export const ProjectMemberDTO = z.object({
 export type ProjectMemberDTO = z.infer<typeof ProjectMemberDTO>
 
 export const AddProjectMemberInput = z.object({
-  email: z.string().email(),
+  email: z.email(),
   role: ProjectRole,
 })
 export type AddProjectMemberInput = z.infer<typeof AddProjectMemberInput>
@@ -84,7 +84,7 @@ export const ProjectOverviewDTO = z.object({
       actor: z
         .object({
           id: z.string(),
-          email: z.string().email(),
+          email: z.email(),
           name: z.string().nullable(),
         })
         .nullable(),

@@ -8,7 +8,7 @@ export type UserStatus = z.infer<typeof UserStatus>
 
 export const UserDTO = z.object({
   id: z.string(),
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().nullable(),
   role: InstallRole,
   status: UserStatus,
@@ -18,7 +18,7 @@ export const UserDTO = z.object({
 export type UserDTO = z.infer<typeof UserDTO>
 
 export const InviteUserInput = z.object({
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().min(1).max(120).optional(),
   role: InstallRole.default("member"),
 })
