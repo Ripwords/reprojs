@@ -75,11 +75,11 @@ async function createProject() {
 
 <template>
   <div class="space-y-8">
-    <header class="flex items-end justify-between gap-4">
-      <div>
+    <header class="flex items-start justify-between gap-6">
+      <div class="min-w-0 flex-1">
         <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Workspace</div>
         <h1 class="mt-1 text-3xl font-semibold text-default tracking-tight">Projects</h1>
-        <p class="mt-1.5 text-sm text-muted max-w-lg">
+        <p class="mt-2 text-sm text-muted max-w-xl">
           Each project carries its own SDK key, member list, and inbox. Pick one to triage, or spin
           up a new one.
         </p>
@@ -90,6 +90,7 @@ async function createProject() {
         icon="i-heroicons-plus"
         color="primary"
         size="md"
+        class="mt-7 shrink-0"
         @click="newOpen = true"
       />
     </header>
@@ -104,23 +105,25 @@ async function createProject() {
       @action="newOpen = true"
     />
 
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- auto-fill grid — cards size consistently at ~18rem, but only take
+         as many columns as they need. 1 project fills 1 column with a tight
+         "New project" tile next to it, rather than leaving gaping holes in
+         a fixed 3-column layout. -->
+    <div
+      v-else
+      class="grid gap-4"
+      style="grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr))"
+    >
       <NuxtLink
         v-for="(p, i) in list"
         :key="p.id"
         :to="`/projects/${p.id}`"
-        class="group relative block overflow-hidden rounded-xl border border-default bg-default p-5 transition duration-300 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--ui-primary),0_12px_32px_-12px_rgba(0,0,0,0.18)] fade-up"
+        class="group relative block overflow-hidden rounded-xl border border-default bg-default p-5 transition duration-300 hover:border-default/80 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.35)] fade-up"
         :style="{ '--fade-up-delay': `${i * 40}ms` }"
       >
-        <!-- Subtle corner glow picked up on hover — the teal radial pulls
-             the eye to the card without needing a loud border. -->
-        <div
-          class="pointer-events-none absolute -top-20 -right-20 size-40 rounded-full bg-primary/0 blur-2xl transition-colors duration-500 group-hover:bg-primary/15"
-          aria-hidden="true"
-        />
         <div class="relative flex items-start gap-3">
           <div
-            class="flex items-center justify-center size-9 rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15 shrink-0"
+            class="flex items-center justify-center size-9 rounded-lg bg-elevated text-default ring-1 ring-default shrink-0"
           >
             <UIcon name="i-heroicons-folder" class="size-4" />
           </div>
@@ -133,21 +136,21 @@ async function createProject() {
             >
               <span
                 class="inline-block size-1.5 rounded-full"
-                :class="p.effectiveRole === 'owner' ? 'bg-warning' : 'bg-primary/70'"
+                :class="p.effectiveRole === 'owner' ? 'bg-warning' : 'bg-muted/70'"
               />
               {{ p.effectiveRole }}
             </div>
           </div>
           <UIcon
             name="i-heroicons-arrow-up-right"
-            class="size-4 text-muted opacity-0 -translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-primary"
+            class="size-4 text-muted opacity-0 -translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-default"
           />
         </div>
       </NuxtLink>
       <button
         v-if="canCreate"
         type="button"
-        class="rounded-xl border-2 border-dashed border-default p-5 flex flex-col items-center justify-center text-muted hover:border-primary/60 hover:text-primary hover:bg-primary/[0.03] transition-colors fade-up"
+        class="rounded-xl border border-dashed border-default/80 p-5 flex flex-col items-center justify-center text-muted hover:border-default hover:text-default hover:bg-elevated/40 transition-colors fade-up"
         :style="{ '--fade-up-delay': `${list.length * 40}ms` }"
         @click="newOpen = true"
       >
