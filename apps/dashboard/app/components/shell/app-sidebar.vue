@@ -1,15 +1,34 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
 
 const route = useRoute()
 const { isAdmin } = useSession()
 const collapsed = useCookie<boolean>("sidebar-collapsed", { default: () => false })
 
-const projectId = computed(() => {
+// Remember the most-recently-visited project across route changes so the
+// project nav stays visible even on admin-scope pages (/settings/users,
+// /settings/install) and on the projects index. Without this, navigating
+// from a project into admin makes the project nav disappear, which feels
+// like the sidebar is "losing" context.
+const lastProjectId = useCookie<string | null>("last-project-id", { default: () => null })
+
+const routeProjectId = computed(() => {
   const m = /^\/projects\/([^/]+)/.exec(route.path)
   return m ? m[1] : null
 })
+
+// Update the cookie whenever we enter a project route.
+watch(
+  routeProjectId,
+  (id) => {
+    if (id) lastProjectId.value = id
+  },
+  { immediate: true },
+)
+
+// Effective project scope: current route > last-visited cookie > null.
+const projectId = computed(() => routeProjectId.value ?? lastProjectId.value)
 
 interface NavItem {
   label: string
