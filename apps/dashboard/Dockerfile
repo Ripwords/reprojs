@@ -53,6 +53,9 @@ COPY --from=build --chown=repro:repro /repo/apps/dashboard/.output ./.output
 COPY --from=build --chown=repro:repro /repo/apps/dashboard/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build --chown=repro:repro /repo/apps/dashboard/server/db ./server/db
 
+# Email templates read via fs.readFile at runtime — Nuxt doesn't bundle them.
+COPY --from=build --chown=repro:repro /repo/apps/dashboard/server/emails ./server/emails
+
 # drizzle-kit standalone (for the migrator command); tiny, ~30MB with its deps
 RUN bun add --cwd /app drizzle-kit@latest drizzle-orm pg
 
