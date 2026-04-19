@@ -1,17 +1,97 @@
 <script setup lang="ts">
+import { computed, ref } from "vue"
+
 const { session, signOut } = useSession()
+const toast = useToast()
+
+const email = computed(() => session.value?.data?.user?.email ?? "")
+const name = computed(() => session.value?.data?.user?.name ?? "")
+const role = computed(
+  () => (session.value?.data?.user as { role?: string } | undefined)?.role ?? "",
+)
+
+const signingOutOthers = ref(false)
+
+async function signOutOtherSessions() {
+  if (!confirm("Sign out of all other sessions? Other devices will have to sign in again.")) return
+  signingOutOthers.value = true
+  try {
+    await $fetch("/api/auth/revoke-other-sessions", {
+      method: "POST",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+    })
+    toast.add({
+      title: "Other sessions signed out",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not sign out other sessions",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    signingOutOthers.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="space-y-4 max-w-md">
-    <h1 class="text-2xl font-semibold">Account</h1>
-    <div class="border rounded-lg bg-white p-4 space-y-2 text-sm">
-      <div><span class="text-neutral-500">Email:</span> {{ session.data?.user?.email }}</div>
-      <div>
-        <span class="text-neutral-500">Role:</span>
-        {{ (session.data?.user as { role?: string } | undefined)?.role }}
+  <div class="space-y-6 max-w-3xl">
+    <header>
+      <h1 class="text-2xl font-semibold text-default">Account</h1>
+      <p class="text-sm text-muted mt-1">Your profile and sign-in sessions.</p>
+    </header>
+
+    <UCard>
+      <template #header>
+        <h2 class="text-base font-semibold text-default">Profile</h2>
+      </template>
+      <div class="space-y-4">
+        <UFormField label="Email">
+          <UInput :model-value="email" readonly class="w-full" />
+        </UFormField>
+        <UFormField label="Name">
+          <UInput :model-value="name" readonly class="w-full" />
+        </UFormField>
+        <UFormField label="Role">
+          <UInput :model-value="role" readonly class="w-full" />
+        </UFormField>
       </div>
-    </div>
-    <button class="border rounded px-4 py-2" @click="signOut()">Sign out</button>
+    </UCard>
+
+    <UCard>
+      <template #header>
+        <h2 class="text-base font-semibold text-default">Sessions</h2>
+      </template>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Signing out of other sessions forces anyone signed in as you on a different device or
+          browser to sign back in. Your current session stays active.
+        </p>
+        <div class="flex justify-end">
+          <UButton
+            label="Sign out all other sessions"
+            color="warning"
+            variant="soft"
+            :loading="signingOutOthers"
+            @click="signOutOtherSessions"
+          />
+        </div>
+      </div>
+    </UCard>
+
+    <UCard>
+      <template #header>
+        <h2 class="text-base font-semibold text-default">Sign out</h2>
+      </template>
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-sm text-muted">Sign out of this session.</p>
+        <UButton label="Sign out" color="error" variant="soft" @click="signOut()" />
+      </div>
+    </UCard>
   </div>
 </template>

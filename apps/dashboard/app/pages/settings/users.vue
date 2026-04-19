@@ -1,89 +1,287 @@
 <script setup lang="ts">
-import type { InstallRole, UserDTO } from "@feedback-tool/shared"
+import { h, resolveComponent } from "vue"
+import type { TableColumn } from "@nuxt/ui"
+import type { InstallRole, UserDTO, UserStatus } from "@feedback-tool/shared"
 
 definePageMeta({ middleware: "admin-only" })
 
-const { data: users, refresh } = await useApi<UserDTO[]>("/api/users")
+const UAvatar = resolveComponent("UAvatar")
+const UBadge = resolveComponent("UBadge")
+const UButton = resolveComponent("UButton")
+const UDropdownMenu = resolveComponent("UDropdownMenu")
+const USelectMenu = resolveComponent("USelectMenu")
+
+const toast = useToast()
+
+const {
+  data: users,
+  pending,
+  refresh,
+} = await useApi<UserDTO[]>("/api/users", {
+  default: () => [],
+})
+
+const usersList = computed<UserDTO[]>(() => users.value ?? [])
+
+const roleOptions = [
+  { label: "Admin", value: "admin" },
+  { label: "Member", value: "member" },
+] as const
+
+const inviteOpen = ref(false)
 const inviteEmail = ref("")
 const inviteRole = ref<InstallRole>("member")
+const inviting = ref(false)
 
-async function invite() {
-  await $fetch("/api/users", {
-    method: "POST",
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
-    credentials: "include",
-    body: { email: inviteEmail.value, role: inviteRole.value },
-  })
-  inviteEmail.value = ""
-  await refresh()
+async function sendInvite() {
+  if (!inviteEmail.value) return
+  inviting.value = true
+  try {
+    await $fetch("/api/users", {
+      method: "POST",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+      body: { email: inviteEmail.value, role: inviteRole.value },
+    })
+    inviteOpen.value = false
+    inviteEmail.value = ""
+    inviteRole.value = "member"
+    toast.add({ title: "Invite sent", color: "success", icon: "i-heroicons-check-circle" })
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not send invite",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    inviting.value = false
+  }
 }
 
-async function updateRole(id: string, role: InstallRole) {
-  await $fetch(`/api/users/${id}`, {
-    method: "PATCH",
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
-    credentials: "include",
-    body: { role },
-  })
-  await refresh()
+async function updateRole(userId: string, next: InstallRole) {
+  try {
+    await $fetch(`/api/users/${userId}`, {
+      method: "PATCH",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+      body: { role: next },
+    })
+    toast.add({ title: "Role updated", color: "success", icon: "i-heroicons-check-circle" })
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not update role",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
 }
 
-async function disable(id: string) {
-  await $fetch(`/api/users/${id}`, {
-    method: "PATCH",
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
-    credentials: "include",
-    body: { status: "disabled" },
-  })
-  await refresh()
+async function setStatus(userId: string, status: UserStatus) {
+  try {
+    await $fetch(`/api/users/${userId}`, {
+      method: "PATCH",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+      body: { status },
+    })
+    toast.add({
+      title: status === "disabled" ? "User disabled" : "User reactivated",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: status === "disabled" ? "Could not disable user" : "Could not reactivate user",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
 }
+
+function confirmDisable(u: UserDTO) {
+  if (!confirm(`Disable ${u.email}? They will lose access to this install.`)) return
+  void setStatus(u.id, "disabled")
+}
+
+function reactivate(u: UserDTO) {
+  void setStatus(u.id, "active")
+}
+
+function statusColor(status: UserStatus): "success" | "neutral" | "warning" {
+  if (status === "active") return "success"
+  if (status === "disabled") return "warning"
+  return "neutral"
+}
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diffMs / 60_000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
+function initials(name: string | null, email: string): string {
+  const base = name?.trim() || email
+  return base.slice(0, 2).toUpperCase()
+}
+
+const columns = computed<TableColumn<UserDTO>[]>(() => [
+  {
+    accessorKey: "email",
+    header: "User",
+    cell: ({ row }) =>
+      h("div", { class: "flex items-center gap-3" }, [
+        h(UAvatar, {
+          size: "sm",
+          alt: row.original.name ?? row.original.email,
+          text: initials(row.original.name, row.original.email),
+        }),
+        h("div", {}, [
+          h(
+            "div",
+            { class: "text-sm font-medium text-default" },
+            row.original.name ?? row.original.email,
+          ),
+          row.original.name ? h("div", { class: "text-xs text-muted" }, row.original.email) : null,
+        ]),
+      ]),
+  },
+  {
+    accessorKey: "role",
+    header: "Role",
+    cell: ({ row }) =>
+      h(USelectMenu, {
+        modelValue: roleOptions.find((o) => o.value === row.original.role),
+        items: roleOptions,
+        size: "xs",
+        class: "w-28",
+        "onUpdate:modelValue": (v: { label: string; value: InstallRole }) => {
+          if (v?.value && v.value !== row.original.role) {
+            void updateRole(row.original.id, v.value)
+          }
+        },
+      }),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) =>
+      h(
+        UBadge,
+        {
+          color: statusColor(row.original.status),
+          variant: "subtle",
+          size: "sm",
+        },
+        () => row.original.status,
+      ),
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Joined",
+    cell: ({ row }) =>
+      h("span", { class: "text-sm text-muted" }, relativeTime(row.original.createdAt)),
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: ({ row }) => {
+      const items =
+        row.original.status === "disabled"
+          ? [
+              {
+                label: "Reactivate",
+                icon: "i-heroicons-arrow-path",
+                onSelect: () => reactivate(row.original),
+              },
+            ]
+          : [
+              {
+                label: "Disable",
+                icon: "i-heroicons-no-symbol",
+                onSelect: () => confirmDisable(row.original),
+              },
+            ]
+      return h(UDropdownMenu, { items }, () =>
+        h(UButton, {
+          icon: "i-heroicons-ellipsis-horizontal",
+          color: "neutral",
+          variant: "ghost",
+          size: "xs",
+          ariaLabel: "User actions",
+        }),
+      )
+    },
+  },
+])
 </script>
 
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-semibold">Users</h1>
-    <form class="flex gap-2" @submit.prevent="invite">
-      <input
-        v-model="inviteEmail"
-        type="email"
-        placeholder="user@example.com"
-        class="border rounded px-3 py-2 flex-1"
-        required
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold text-default">Users</h1>
+        <p class="text-sm text-muted mt-1">Everyone with access to this install.</p>
+      </div>
+      <UButton
+        label="Invite user"
+        icon="i-heroicons-plus"
+        color="primary"
+        @click="inviteOpen = true"
       />
-      <select v-model="inviteRole" class="border rounded px-3 py-2">
-        <option value="member">Member</option>
-        <option value="admin">Admin</option>
-      </select>
-      <button class="bg-neutral-900 text-white rounded px-4 py-2">Invite</button>
-    </form>
-    <table class="w-full bg-white border rounded">
-      <thead class="bg-neutral-100 text-left text-sm">
-        <tr>
-          <th class="p-3">Email</th>
-          <th class="p-3">Role</th>
-          <th class="p-3">Status</th>
-          <th class="p-3"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="u in users" :key="u.id" class="border-t">
-          <td class="p-3">{{ u.email }}</td>
-          <td class="p-3">
-            <select
-              :value="u.role"
-              class="border rounded px-2 py-1"
-              @change="updateRole(u.id, ($event.target as HTMLSelectElement).value as InstallRole)"
-            >
-              <option value="member">member</option>
-              <option value="admin">admin</option>
-            </select>
-          </td>
-          <td class="p-3">{{ u.status }}</td>
-          <td class="p-3 text-right">
-            <button class="text-red-600" @click="disable(u.id)">Disable</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    </header>
+
+    <UCard :ui="{ body: 'p-0' }">
+      <UTable
+        :data="usersList"
+        :columns="columns"
+        :loading="pending"
+        :ui="{ td: 'text-sm', th: 'text-xs font-medium text-muted uppercase' }"
+      />
+    </UCard>
+
+    <UModal v-model:open="inviteOpen" :ui="{ content: 'max-w-md' }">
+      <template #content>
+        <div class="p-6 space-y-4">
+          <h3 class="text-lg font-semibold text-default">Invite user</h3>
+          <UFormField label="Email" name="email" required>
+            <UInput
+              v-model="inviteEmail"
+              type="email"
+              placeholder="person@company.com"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Role" name="role">
+            <USelectMenu
+              v-model="inviteRole"
+              :items="roleOptions"
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" @click="inviteOpen = false" />
+            <UButton
+              label="Send invite"
+              color="primary"
+              :loading="inviting"
+              :disabled="!inviteEmail"
+              @click="sendInvite"
+            />
+          </div>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
