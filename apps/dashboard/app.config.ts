@@ -1,12 +1,13 @@
 export default defineAppConfig({
   ui: {
     colors: {
-      // Muted teal reads as "diagnostic tool" without the SaaS-indigo cliché,
-      // and pairs with stone's warm neutrals for a less-sterile surface.
-      primary: "teal",
-      // Stone is Tailwind's warmest neutral — cards and dividers feel like
-      // paper against a workshop light rather than cold-steel zinc/slate.
-      neutral: "stone",
+      // Muted violet — used sparingly, Linear-style. Primary is only pulled
+      // in when an action is genuinely the primary intent on the page;
+      // most nav / interactive state uses neutral shades instead.
+      primary: "violet",
+      // Zinc is Tailwind's cool-neutral scale. Gives the surfaces a quiet
+      // greyscale feel instead of the warmer stone tones we started with.
+      neutral: "zinc",
     },
   },
 })

@@ -1,3 +1,16 @@
+<!--
+  Primary navigation sidebar. Three sections from top to bottom:
+    1. Header: product mark + wordmark, collapse toggle
+    2. Workspace: "All projects" + (when a project is in scope) project-
+       scoped links grouped under the project name eyebrow
+    3. Admin: install-wide admin links (only rendered for admins)
+
+  Rows are hand-rolled <NuxtLink>/<button> pairs rather than UButton so
+  the typography, active-state indicator, and hover rhythm are under our
+  control. Earlier UButton `size="sm"` rows felt cramped against the
+  larger page headers we introduced; the new rows use `text-sm` with
+  more vertical padding and a clearer teal active state.
+-->
 <script setup lang="ts">
 import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
@@ -19,9 +32,7 @@ const lastProjectId = useCookie<string | null>("last-project-id", {
 })
 
 // Piggybacks on the same `/api/projects` request as the project-switcher —
-// Nuxt's useFetch dedupes by URL, so this doesn't add a round-trip. We need
-// the list to (a) validate `lastProjectId` against reality and (b) know
-// whether the user has any projects at all (empty-state vs dead-link case).
+// Nuxt's useFetch dedupes by URL, so this doesn't add a round-trip.
 const { data: projectsData } = await useApi<ProjectDTO[]>("/api/projects", {
   default: () => [],
 })
@@ -75,7 +86,6 @@ interface NavItem {
   label: string
   icon: string
   to: string
-  badge?: string | number
 }
 
 const projectItems = computed<NavItem[]>(() => {
@@ -83,22 +93,10 @@ const projectItems = computed<NavItem[]>(() => {
   const base = `/projects/${projectId.value}`
   return [
     { label: "Overview", icon: "i-heroicons-home", to: base },
-    {
-      label: "Reports",
-      icon: "i-heroicons-inbox-stack",
-      to: `${base}/reports`,
-    },
+    { label: "Reports", icon: "i-heroicons-inbox-stack", to: `${base}/reports` },
     { label: "Members", icon: "i-heroicons-user-group", to: `${base}/members` },
-    {
-      label: "Integrations",
-      icon: "i-heroicons-squares-plus",
-      to: `${base}/integrations`,
-    },
-    {
-      label: "Settings",
-      icon: "i-heroicons-cog-6-tooth",
-      to: `${base}/settings`,
-    },
+    { label: "Integrations", icon: "i-heroicons-squares-plus", to: `${base}/integrations` },
+    { label: "Settings", icon: "i-heroicons-cog-6-tooth", to: `${base}/settings` },
   ]
 })
 
@@ -106,20 +104,12 @@ const adminItems = computed<NavItem[]>(() => {
   if (!isAdmin.value) return []
   return [
     { label: "Users", icon: "i-heroicons-users", to: "/settings/users" },
-    {
-      label: "Access",
-      icon: "i-heroicons-shield-check",
-      to: "/settings/access",
-    },
-    {
-      label: "Install",
-      icon: "i-heroicons-code-bracket",
-      to: "/settings/install",
-    },
+    { label: "Access", icon: "i-heroicons-shield-check", to: "/settings/access" },
+    { label: "Install", icon: "i-heroicons-code-bracket", to: "/settings/install" },
   ]
 })
 
-const width = computed(() => (collapsed.value ? "w-14" : "w-60"))
+const width = computed(() => (collapsed.value ? "w-16" : "w-64"))
 
 function toggle() {
   collapsed.value = !collapsed.value
@@ -137,100 +127,123 @@ function isActive(to: string): boolean {
       'flex-shrink-0 border-r border-default bg-default flex flex-col transition-[width] duration-150',
     ]"
   >
+    <!-- Header: brand mark + wordmark + collapse toggle -->
     <div
       :class="[
-        'h-12 flex items-center border-b border-default',
+        'h-14 flex items-center border-b border-default',
         collapsed ? 'justify-center px-0' : 'justify-between px-3',
       ]"
     >
       <NuxtLink
         v-if="!collapsed"
         to="/"
-        class="flex items-center gap-2 text-sm font-semibold tracking-tight text-default hover:text-primary transition-colors"
+        class="flex items-center gap-2.5 text-base font-semibold tracking-tight text-default hover:text-primary transition-colors"
         aria-label="Feedback Tool home"
       >
-        <!-- Product logo — viewfinder brackets + center dot. Swaps variants
-             via dark-mode class so the mark matches the surface on each
-             theme. -->
-        <img src="/icon-light.svg" alt="" class="size-5 rounded-[4px] dark:hidden" />
-        <img src="/icon-dark.svg" alt="" class="size-5 rounded-[4px] hidden dark:block" />
+        <img src="/icon-light.svg" alt="" class="size-6 rounded-[5px] dark:hidden" />
+        <img src="/icon-dark.svg" alt="" class="size-6 rounded-[5px] hidden dark:block" />
         <span>Feedback Tool</span>
       </NuxtLink>
-      <UButton
-        :icon="collapsed ? 'i-heroicons-bars-3' : 'i-heroicons-chevron-left'"
-        color="neutral"
-        variant="ghost"
-        size="sm"
+      <button
+        type="button"
+        class="inline-flex items-center justify-center size-8 rounded-lg text-muted hover:text-default hover:bg-elevated/60 transition-colors"
         :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         @click="toggle"
-      />
-    </div>
-    <nav class="flex-1 overflow-y-auto py-2">
-      <div class="space-y-0.5 px-2">
-        <UButton
-          to="/"
-          icon="i-heroicons-squares-2x2"
-          :label="collapsed ? undefined : 'All projects'"
-          :active="route.path === '/'"
-          :aria-label="collapsed ? 'All projects' : undefined"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          block
-          :class="collapsed ? 'justify-center px-0' : 'justify-start'"
+      >
+        <UIcon
+          :name="collapsed ? 'i-heroicons-bars-3' : 'i-heroicons-chevron-left'"
+          class="size-4"
         />
+      </button>
+    </div>
+
+    <!-- Nav. Rows are standalone NuxtLinks so we can control their type
+         and active treatment exactly: icon at size-4, label at text-sm
+         medium weight, 2.5 vertical padding, 3px rounded. Active rows
+         get a teal tint + left bar + teal icon so the eye lands on the
+         current location before anywhere else. -->
+    <nav class="flex-1 overflow-y-auto py-3">
+      <!-- Root: always-visible "All projects" entry -->
+      <div :class="['px-2', collapsed ? '' : '']">
+        <NuxtLink
+          to="/"
+          :aria-label="collapsed ? 'All projects' : undefined"
+          :class="[
+            'flex items-center rounded-lg transition-colors',
+            collapsed ? 'justify-center size-10' : 'gap-3 px-3 py-2.5',
+            route.path === '/'
+              ? 'bg-elevated text-default font-semibold'
+              : 'text-muted hover:text-default hover:bg-elevated/60 font-medium',
+          ]"
+        >
+          <UIcon name="i-heroicons-squares-2x2" class="size-4 shrink-0" />
+          <span v-if="!collapsed" class="text-sm truncate">All projects</span>
+        </NuxtLink>
       </div>
-      <div v-if="projectItems.length > 0" class="mt-4 space-y-0.5 px-2">
+
+      <!-- Project scope: eyebrow with current project name + nav items -->
+      <div v-if="projectItems.length > 0" class="mt-6 px-2">
         <div
           v-if="!collapsed && currentProjectName"
           :title="currentProjectName"
-          class="mb-1 px-3 text-xs font-medium uppercase text-muted truncate"
+          class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted truncate"
         >
           {{ currentProjectName }}
         </div>
-        <USeparator v-else-if="collapsed" class="my-2" />
-        <UButton
-          v-for="item in projectItems"
-          :key="item.to"
-          :to="item.to"
-          :icon="item.icon"
-          :label="collapsed ? undefined : item.label"
-          :active="isActive(item.to)"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          block
-          :class="collapsed ? 'justify-center px-0' : 'justify-start'"
-        >
-          <template v-if="!collapsed && item.badge" #trailing>
-            <UBadge :label="String(item.badge)" size="xs" variant="soft" />
-          </template>
-        </UButton>
+        <div v-else-if="collapsed" class="mx-2 my-3 border-t border-default" />
+        <div class="space-y-0.5">
+          <NuxtLink
+            v-for="item in projectItems"
+            :key="item.to"
+            :to="item.to"
+            :aria-label="collapsed ? item.label : undefined"
+            :class="[
+              'flex items-center rounded-lg transition-colors',
+              collapsed ? 'justify-center size-10' : 'gap-3 px-3 py-2.5',
+              isActive(item.to)
+                ? 'bg-elevated text-default font-semibold'
+                : 'text-muted hover:text-default hover:bg-elevated/60 font-medium',
+            ]"
+          >
+            <UIcon :name="item.icon" class="size-4 shrink-0" />
+            <span v-if="!collapsed" class="text-sm truncate">{{ item.label }}</span>
+          </NuxtLink>
+        </div>
       </div>
-      <div v-else-if="!collapsed && !hasAnyProject" class="mt-3 px-3">
-        <p class="px-2 text-xs text-muted leading-relaxed">
+
+      <!-- Empty workspace hint -->
+      <div v-else-if="!collapsed && !hasAnyProject" class="mt-3 px-5">
+        <p class="text-xs text-muted leading-relaxed">
           Projects group incoming reports. Create one to get started.
         </p>
       </div>
-      <div v-if="adminItems.length > 0">
-        <div v-if="!collapsed" class="mt-4 mb-1 px-3 text-xs font-medium uppercase text-muted">
+
+      <!-- Admin section -->
+      <div v-if="adminItems.length > 0" class="mt-6 px-2">
+        <div
+          v-if="!collapsed"
+          class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted"
+        >
           Admin
         </div>
-        <USeparator v-else class="my-3" />
-        <div class="space-y-0.5 px-2">
-          <UButton
+        <div v-else class="mx-2 my-3 border-t border-default" />
+        <div class="space-y-0.5">
+          <NuxtLink
             v-for="item in adminItems"
             :key="item.to"
             :to="item.to"
-            :icon="item.icon"
-            :label="collapsed ? undefined : item.label"
-            :active="isActive(item.to)"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            block
-            :class="collapsed ? 'justify-center px-0' : 'justify-start'"
-          />
+            :aria-label="collapsed ? item.label : undefined"
+            :class="[
+              'flex items-center rounded-lg transition-colors',
+              collapsed ? 'justify-center size-10' : 'gap-3 px-3 py-2.5',
+              isActive(item.to)
+                ? 'bg-elevated text-default font-semibold'
+                : 'text-muted hover:text-default hover:bg-elevated/60 font-medium',
+            ]"
+          >
+            <UIcon :name="item.icon" class="size-4 shrink-0" />
+            <span v-if="!collapsed" class="text-sm truncate">{{ item.label }}</span>
+          </NuxtLink>
         </div>
       </div>
     </nav>

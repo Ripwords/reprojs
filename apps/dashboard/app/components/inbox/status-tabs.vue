@@ -63,19 +63,16 @@ function onClick(key: TabKey) {
       <span>{{ t.label }}</span>
       <span
         class="inline-flex items-center justify-center min-w-6 px-1.5 h-5 rounded-md text-[11px] font-semibold tabular-nums transition-colors"
-        :class="
-          isActive(t.key)
-            ? 'bg-primary/15 text-primary ring-1 ring-primary/20'
-            : 'bg-elevated/60 text-muted'
-        "
+        :class="isActive(t.key) ? 'bg-elevated text-default' : 'bg-elevated/60 text-muted'"
       >
         {{ countFor(t.key) }}
       </span>
-      <!-- Active-tab underline, absolutely positioned so it can be thicker
-           than a `border-b-2` without affecting layout height -->
+      <!-- Active-tab underline at the baseline — no solid color bar,
+           just a subtle white-tinted rule that extends slightly past
+           the label for a clean dropped baseline. -->
       <span
         v-if="isActive(t.key)"
-        class="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-primary"
+        class="absolute left-0 right-0 -bottom-px h-px bg-default"
         aria-hidden="true"
       />
     </button>

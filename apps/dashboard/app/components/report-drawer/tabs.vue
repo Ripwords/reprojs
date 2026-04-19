@@ -22,17 +22,23 @@ const emit = defineEmits<{ "update:modelValue": [string] }>()
       :key="tab.id"
       type="button"
       :class="[
-        'px-4 h-11 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+        'relative px-4 h-11 text-sm whitespace-nowrap transition-colors -mb-px',
         modelValue === tab.id
-          ? 'border-primary-500 text-default'
-          : 'border-transparent text-muted hover:text-default',
+          ? 'text-default font-semibold'
+          : 'text-muted hover:text-default font-medium',
       ]"
       @click="emit('update:modelValue', tab.id)"
     >
       {{ tab.label }}
       <span
         v-if="tab.hasData"
-        class="inline-block ml-1.5 w-1.5 h-1.5 rounded-full bg-primary-500"
+        class="inline-block ml-1.5 size-1.5 rounded-full bg-muted/70"
+        aria-hidden="true"
+      />
+      <span
+        v-if="modelValue === tab.id"
+        class="absolute left-3 right-3 bottom-0 h-px bg-default"
+        aria-hidden="true"
       />
     </button>
   </nav>

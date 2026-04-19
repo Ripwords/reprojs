@@ -106,8 +106,8 @@ const priorityDot: Record<ReportPriority, string> = {
             class="group w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors"
             :class="
               isAssigneeSelected(a)
-                ? 'bg-primary/10 text-primary'
-                : 'text-default hover:bg-elevated/60'
+                ? 'bg-elevated text-default font-semibold'
+                : 'text-muted hover:text-default hover:bg-elevated/60'
             "
             @click="toggleAssignee(assigneeToken(a))"
           >
@@ -142,8 +142,8 @@ const priorityDot: Record<ReportPriority, string> = {
             class="group w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors"
             :class="
               selectedPriority.includes(p)
-                ? 'bg-primary/10 text-primary'
-                : 'text-default hover:bg-elevated/60'
+                ? 'bg-elevated text-default font-semibold'
+                : 'text-muted hover:text-default hover:bg-elevated/60'
             "
             @click="togglePriority(p)"
           >
@@ -176,8 +176,8 @@ const priorityDot: Record<ReportPriority, string> = {
             class="group w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors"
             :class="
               selectedTags.includes(t.name)
-                ? 'bg-primary/10 text-primary'
-                : 'text-default hover:bg-elevated/60'
+                ? 'bg-elevated text-default font-semibold'
+                : 'text-muted hover:text-default hover:bg-elevated/60'
             "
             @click="toggleTag(t.name)"
           >
