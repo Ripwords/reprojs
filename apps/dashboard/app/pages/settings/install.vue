@@ -72,7 +72,7 @@ const raw = {
   },
   init: {
     lang: "typescript" as const,
-    code: `import { init } from "@repro/core"
+    code: `import { init } from "@reprokit/core"
 
 init({
   projectKey: "${PROJECT_KEY_EXAMPLE}",
@@ -113,15 +113,15 @@ const snippets = ref<Record<SnippetKey, Snippet>>({
   },
 })
 
-// Install commands per package manager. Both `@repro/core` (the
-// framework-agnostic init API) and `@repro/ui` (the widget UI) need
+// Install commands per package manager. Both `@reprokit/core` (the
+// framework-agnostic init API) and `@reprokit/ui` (the widget UI) need
 // installing together. Deno uses `deno add` with an `npm:` specifier.
 const pmCommands = {
-  npm: "npm install @repro/core @repro/ui",
-  pnpm: "pnpm add @repro/core @repro/ui",
-  yarn: "yarn add @repro/core @repro/ui",
-  bun: "bun add @repro/core @repro/ui",
-  deno: "deno add npm:@repro/core npm:@repro/ui",
+  npm: "npm install @reprokit/core @reprokit/ui",
+  pnpm: "pnpm add @reprokit/core @reprokit/ui",
+  yarn: "yarn add @reprokit/core @reprokit/ui",
+  bun: "bun add @reprokit/core @reprokit/ui",
+  deno: "deno add npm:@reprokit/core npm:@reprokit/ui",
 } as const
 
 type PackageManager = keyof typeof pmCommands

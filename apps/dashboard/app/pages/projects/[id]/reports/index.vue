@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { h, resolveComponent } from "vue"
 import type { TableColumn } from "@nuxt/ui"
-import type { ReportPriority, ReportStatus, ReportSummaryDTO } from "@repro/shared"
+import type { ReportPriority, ReportStatus, ReportSummaryDTO } from "@reprokit/shared"
 import StatusTabs from "~/components/inbox/status-tabs.vue"
 import FacetSidebar from "~/components/inbox/facet-sidebar.vue"
 import SearchSort from "~/components/inbox/search-sort.vue"

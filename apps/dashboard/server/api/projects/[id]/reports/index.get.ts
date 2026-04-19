@@ -7,7 +7,7 @@ import {
   type ReportAssigneeDTO,
   type ReportContext,
   type ReportSummaryDTO,
-} from "@repro/shared"
+} from "@reprokit/shared"
 import { db } from "../../../../db"
 import { reportAttachments, reports } from "../../../../db/schema"
 import { user as userTable } from "../../../../db/schema/auth-schema"

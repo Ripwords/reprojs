@@ -1,6 +1,6 @@
 import { setup } from "@nuxt/test-utils/e2e"
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test"
-import type { ReportSummaryDTO } from "@repro/shared"
+import type { ReportSummaryDTO } from "@reprokit/shared"
 import {
   apiFetch,
   createUser,

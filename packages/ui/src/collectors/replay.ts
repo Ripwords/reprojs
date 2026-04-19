@@ -1,4 +1,4 @@
-import { createRecorder, type MaskingMode, type Recorder } from "@repro/recorder"
+import { createRecorder, type MaskingMode, type Recorder } from "@reprokit/recorder"
 
 export interface ReplayConfig {
   enabled?: boolean

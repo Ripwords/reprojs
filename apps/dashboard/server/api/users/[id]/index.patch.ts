@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
 import { count, eq } from "drizzle-orm"
-import { UpdateUserInput } from "@repro/shared"
+import { UpdateUserInput } from "@reprokit/shared"
 import { db } from "../../../db"
 import { user } from "../../../db/schema"
 import { requireInstallAdmin } from "../../../lib/permissions"

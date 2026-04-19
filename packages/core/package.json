@@ -1,5 +1,5 @@
 {
-  "name": "@repro/core",
+  "name": "@reprokit/core",
   "version": "0.0.0",
   "private": true,
   "files": [
@@ -20,8 +20,8 @@
     "dev": "tsdown --watch"
   },
   "dependencies": {
-    "@repro/shared": "workspace:*",
-    "@repro/ui": "workspace:*",
+    "@reprokit/shared": "workspace:*",
+    "@reprokit/ui": "workspace:*",
     "modern-screenshot": "^4.6.0",
     "zod": "^4.3.6"
   },

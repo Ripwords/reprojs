@@ -4,7 +4,7 @@ import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(30000)
 import { afterEach, describe, expect, test } from "bun:test"
 import { sql } from "drizzle-orm"
-import type { LogsAttachment } from "@repro/shared"
+import type { LogsAttachment } from "@reprokit/shared"
 import { createUser, makePngBlob, seedProject, truncateDomain, truncateReports } from "../helpers"
 import { db } from "../../server/db"
 import { reportAttachments, reports } from "../../server/db/schema"

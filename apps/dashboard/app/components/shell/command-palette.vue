@@ -12,7 +12,7 @@
 -->
 <script setup lang="ts">
 import { computed } from "vue"
-import type { ProjectDTO } from "@repro/shared"
+import type { ProjectDTO } from "@reprokit/shared"
 import { _useCommandPaletteHost } from "~/composables/use-command-palette"
 
 const { open } = _useCommandPaletteHost()

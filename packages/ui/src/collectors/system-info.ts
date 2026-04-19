@@ -1,4 +1,4 @@
-import type { SystemInfo } from "@repro/shared"
+import type { SystemInfo } from "@reprokit/shared"
 
 interface NetworkInformationLike {
   effectiveType?: string

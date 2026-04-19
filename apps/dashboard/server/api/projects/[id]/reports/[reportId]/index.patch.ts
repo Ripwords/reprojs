@@ -1,7 +1,7 @@
 // apps/dashboard/server/api/projects/[id]/reports/[reportId]/index.patch.ts
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
 import { and, eq } from "drizzle-orm"
-import { TriagePatchInput } from "@repro/shared"
+import { TriagePatchInput } from "@reprokit/shared"
 import { db } from "../../../../../db"
 import { projectMembers, reportEvents, reports } from "../../../../../db/schema"
 import { buildReportEvents } from "../../../../../lib/report-events"

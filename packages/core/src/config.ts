@@ -1,4 +1,4 @@
-import type { CollectorConfig } from "@repro/ui"
+import type { CollectorConfig } from "@reprokit/ui"
 
 export interface ReplayInitConfig {
   enabled?: boolean

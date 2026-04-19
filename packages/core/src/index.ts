@@ -1,5 +1,5 @@
 // packages/core/src/index.ts
-import type { ReporterIdentity } from "@repro/shared"
+import type { ReporterIdentity } from "@reprokit/shared"
 import {
   close as uiClose,
   mount,
@@ -7,7 +7,7 @@ import {
   registerAllCollectors,
   unmount,
   type BreadcrumbLevel,
-} from "@repro/ui"
+} from "@reprokit/ui"
 import { resolveConfig, type InitOptions, type ResolvedConfig } from "./config"
 import { gatherContext } from "./context"
 import { postReport } from "./intake-client"

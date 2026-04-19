@@ -14,7 +14,7 @@
 <script setup lang="ts">
 import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
-import type { ProjectDTO } from "@repro/shared"
+import type { ProjectDTO } from "@reprokit/shared"
 
 const route = useRoute()
 const { isAdmin } = useSession()

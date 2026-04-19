@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppSettingsDTO } from "@repro/shared"
+import type { AppSettingsDTO } from "@reprokit/shared"
 
 definePageMeta({ middleware: "admin-only" })
 

@@ -1,5 +1,5 @@
 {
-  "name": "@repro/integrations-github",
+  "name": "@reprokit/integrations-github",
   "version": "0.0.0",
   "private": true,
   "type": "module",

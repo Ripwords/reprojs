@@ -4,7 +4,7 @@ import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
 import { eq } from "drizzle-orm"
-import type { GitHubInstallationClient } from "@repro/integrations-github"
+import type { GitHubInstallationClient } from "@reprokit/integrations-github"
 import { __setClientOverride, signInstallState } from "../../server/lib/github"
 import {
   apiFetch,
