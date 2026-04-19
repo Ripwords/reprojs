@@ -2,11 +2,14 @@
 import type { GithubConfigDTO } from "@feedback-tool/shared"
 import RepoPicker from "./repo-picker.vue"
 import SyncStatus from "./sync-status.vue"
+import UnlinkDialog from "./unlink-dialog.vue"
 
 interface Props {
   projectId: string
 }
 const props = defineProps<Props>()
+
+const toast = useToast()
 
 const { data, refresh } = useApi<GithubConfigDTO>(
   `/api/projects/${props.projectId}/integrations/github`,
@@ -18,6 +21,8 @@ const selectedRepo = ref({ owner: "", name: "" })
 const labelsText = ref("")
 const assigneesText = ref("")
 const saving = ref(false)
+const installing = ref(false)
+const unlinkOpen = ref(false)
 
 async function loadRepos() {
   reposError.value = null
@@ -48,15 +53,47 @@ watch(
   { immediate: true },
 )
 
-async function install() {
-  const { url } = await $fetch<{ url: string }>(
-    `/api/projects/${props.projectId}/integrations/github/install-redirect`,
-    { method: "POST", credentials: "include" },
-  )
-  window.location.href = url
+const isInstalled = computed(() => Boolean(data.value?.installed))
+const isConnected = computed(() => data.value?.status === "connected")
+
+const statusLabel = computed(() => {
+  if (!data.value?.installed) return "not connected"
+  if (data.value.status === "connected") return "connected"
+  return "disconnected"
+})
+
+const statusColor = computed<"neutral" | "success" | "warning">(() => {
+  if (!data.value?.installed) return "neutral"
+  if (data.value.status === "connected") return "success"
+  return "warning"
+})
+
+const ctaLabel = computed(() =>
+  data.value?.installed && data.value.status === "disconnected"
+    ? "Reconnect on GitHub"
+    : "Install on GitHub",
+)
+
+async function startInstall() {
+  installing.value = true
+  try {
+    const { url } = await $fetch<{ url: string }>(
+      `/api/projects/${props.projectId}/integrations/github/install-redirect`,
+      { method: "POST", credentials: "include" },
+    )
+    window.location.href = url
+  } catch (err) {
+    installing.value = false
+    toast.add({
+      title: "Could not start install flow",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
 }
 
-async function save() {
+async function saveRepo() {
   saving.value = true
   try {
     await $fetch(`/api/projects/${props.projectId}/integrations/github`, {
@@ -76,97 +113,133 @@ async function save() {
       },
     })
     await refresh()
+    toast.add({
+      title: "Saved",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not save",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
   } finally {
     saving.value = false
   }
 }
-
-async function disconnect() {
-  if (!confirm("Disconnect GitHub integration? Pending sync jobs will stop.")) return
-  await $fetch(`/api/projects/${props.projectId}/integrations/github/disconnect`, {
-    method: "POST",
-    credentials: "include",
-  })
-  await refresh()
-}
 </script>
 
 <template>
-  <section class="space-y-4">
-    <h2 class="text-xl font-semibold">GitHub integration</h2>
+  <UCard>
+    <template #header>
+      <div class="flex items-center gap-3">
+        <UIcon name="i-simple-icons-github" class="size-6 text-default" />
+        <div class="flex-1">
+          <h2 class="text-base font-semibold text-default">GitHub Issues</h2>
+          <p class="text-xs text-muted mt-0.5">
+            Auto-create issues for every report, sync status both ways.
+          </p>
+        </div>
+        <UBadge :label="statusLabel" :color="statusColor" variant="soft" size="sm" />
+      </div>
+    </template>
 
-    <!-- Not installed -->
-    <div v-if="!data?.installed" class="border rounded p-4 bg-white">
-      <p class="text-sm text-neutral-600 mb-3">
-        Auto-create GitHub issues for every new report and keep status synchronized.
+    <!-- Not installed yet -->
+    <div v-if="!isInstalled" class="space-y-3 py-2">
+      <p class="text-sm text-muted">
+        Install the GitHub App on a repository to start syncing reports as issues.
       </p>
-      <button type="button" class="border rounded px-3 py-1.5 text-sm" @click="install">
-        🐙 Install on GitHub
-      </button>
+      <UButton
+        :label="ctaLabel"
+        :loading="installing"
+        icon="i-simple-icons-github"
+        color="neutral"
+        variant="solid"
+        @click="startInstall"
+      />
     </div>
 
-    <!-- Connected -->
-    <div v-else-if="data.status === 'connected'" class="border rounded p-4 bg-white space-y-3">
-      <div class="flex items-center gap-2">
-        <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-        <span class="text-sm font-medium">connected</span>
-      </div>
-      <div v-if="data.repoOwner && data.repoName" class="text-sm">
-        Repo: <strong>{{ data.repoOwner }}/{{ data.repoName }}</strong>
-      </div>
-      <div v-else class="text-sm text-orange-700">
-        Pick a repo to start syncing:
-        <RepoPicker v-model="selectedRepo" :repos="repos" class="mt-2" @refresh="loadRepos" />
-        <p v-if="reposError" class="mt-1 text-xs text-red-700">
+    <!-- Installed but disconnected (App uninstalled / access revoked) -->
+    <div v-else-if="!isConnected" class="space-y-3 py-2">
+      <UAlert
+        color="warning"
+        variant="soft"
+        icon="i-heroicons-exclamation-triangle"
+        title="Integration disconnected"
+        description="The GitHub App was uninstalled or access was revoked. Reconnect to resume syncing."
+      />
+      <UButton
+        :label="ctaLabel"
+        :loading="installing"
+        icon="i-simple-icons-github"
+        color="neutral"
+        variant="solid"
+        @click="startInstall"
+      />
+    </div>
+
+    <!-- Installed + connected -->
+    <div v-else class="space-y-4 py-2">
+      <div>
+        <div class="text-xs font-medium text-muted uppercase mb-1.5">Repository</div>
+        <RepoPicker
+          v-model="selectedRepo"
+          :repos="repos"
+          @refresh="loadRepos"
+          @update:model-value="saveRepo"
+        />
+        <p v-if="reposError" class="mt-1.5 text-xs text-error">
           {{ reposError }} —
           <button type="button" class="underline" @click="loadRepos">retry</button>
         </p>
-        <p v-else-if="repos.length === 0" class="mt-1 text-xs text-neutral-500">
+        <p v-else-if="repos.length === 0" class="mt-1.5 text-xs text-muted">
           Loading repositories…
         </p>
       </div>
 
-      <label class="block text-sm">
-        Default labels
-        <input v-model="labelsText" class="border rounded px-2 py-1 w-full text-sm" />
-      </label>
-
-      <label class="block text-sm">
-        Default assignees (GitHub usernames, comma-separated)
-        <input v-model="assigneesText" class="border rounded px-2 py-1 w-full text-sm" />
-      </label>
-
-      <div class="flex gap-2">
-        <button
-          type="button"
-          class="border rounded px-3 py-1.5 text-sm"
-          :disabled="saving"
-          @click="save"
-        >
-          {{ saving ? "Saving…" : "Save" }}
-        </button>
-        <button
-          type="button"
-          class="border rounded px-3 py-1.5 text-sm text-red-700"
-          @click="disconnect"
-        >
-          Disconnect
-        </button>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <UFormField label="Default labels">
+          <UInput v-model="labelsText" placeholder="bug, triage" class="w-full" size="sm" />
+        </UFormField>
+        <UFormField label="Default assignees">
+          <UInput v-model="assigneesText" placeholder="octocat, hubot" class="w-full" size="sm" />
+        </UFormField>
       </div>
 
-      <SyncStatus :project-id="projectId" @retried="refresh()" />
+      <div class="flex gap-2">
+        <UButton
+          label="Save defaults"
+          color="primary"
+          variant="solid"
+          size="sm"
+          :loading="saving"
+          @click="saveRepo"
+        />
+      </div>
+
+      <div>
+        <div class="text-xs font-medium text-muted uppercase mb-1.5">Sync status</div>
+        <SyncStatus :project-id="projectId" @retried="refresh" />
+      </div>
+
+      <div class="pt-2">
+        <UButton
+          label="Disconnect"
+          color="error"
+          variant="soft"
+          size="sm"
+          @click="unlinkOpen = true"
+        />
+      </div>
     </div>
 
-    <!-- Disconnected -->
-    <div v-else class="border border-red-300 bg-red-50 rounded p-4 text-sm">
-      ⚠ GitHub integration disconnected. The App was uninstalled or access was revoked.
-      <button
-        type="button"
-        class="mt-3 border border-red-400 rounded px-3 py-1.5 bg-white"
-        @click="install"
-      >
-        🐙 Reconnect
-      </button>
-    </div>
-  </section>
+    <UnlinkDialog
+      v-model:open="unlinkOpen"
+      mode="disconnect-integration"
+      :project-id="projectId"
+      @confirmed="refresh"
+    />
+  </UCard>
 </template>

@@ -7,29 +7,68 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{ retried: [] }>()
 
+const toast = useToast()
+
 const { data, refresh } = useApi<GithubConfigDTO>(
   `/api/projects/${props.projectId}/integrations/github`,
 )
 
+const retryingAll = ref(false)
+const retryingOne = ref<string | null>(null)
+
+const failedJobs = computed(() => data.value?.failedJobs ?? [])
+const failedCount = computed(() => failedJobs.value.length)
+const lastSyncedAt = computed(() => data.value?.lastSyncedAt ?? null)
+
 async function retryAll() {
-  await $fetch(`/api/projects/${props.projectId}/integrations/github/retry-failed`, {
-    method: "POST",
-    credentials: "include",
-  })
-  await refresh()
-  emit("retried")
+  retryingAll.value = true
+  try {
+    await $fetch(`/api/projects/${props.projectId}/integrations/github/retry-failed`, {
+      method: "POST",
+      credentials: "include",
+    })
+    await refresh()
+    emit("retried")
+    toast.add({
+      title: "Retry queued",
+      description: `Retrying ${failedCount.value} failed job${failedCount.value === 1 ? "" : "s"}.`,
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not retry",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    retryingAll.value = false
+  }
 }
 
 async function retryOne(reportId: string) {
-  await $fetch(`/api/projects/${props.projectId}/reports/${reportId}/github-sync`, {
-    method: "POST",
-    credentials: "include",
-  })
-  await refresh()
-  emit("retried")
+  retryingOne.value = reportId
+  try {
+    await $fetch(`/api/projects/${props.projectId}/reports/${reportId}/github-sync`, {
+      method: "POST",
+      credentials: "include",
+    })
+    await refresh()
+    emit("retried")
+  } catch (err) {
+    toast.add({
+      title: "Retry failed",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    retryingOne.value = null
+  }
 }
 
-function relTime(iso: string): string {
+function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime()
   const s = Math.floor(ms / 1000)
   if (s < 60) return `${s}s ago`
@@ -42,40 +81,59 @@ function relTime(iso: string): string {
 </script>
 
 <template>
-  <div class="border-t pt-3 space-y-2">
-    <div class="flex items-baseline justify-between">
-      <h3 class="text-sm font-medium">Sync status</h3>
-      <button
-        v-if="(data?.failedJobs.length ?? 0) > 0"
-        type="button"
-        class="text-xs border rounded px-2 py-0.5"
-        @click="retryAll"
-      >
-        Retry all
-      </button>
-    </div>
-    <div v-if="data?.lastSyncedAt" class="text-xs text-neutral-500">
-      Last synced: {{ relTime(data.lastSyncedAt) }}
-    </div>
-    <div v-if="!data?.failedJobs.length" class="text-xs text-neutral-400">No failed jobs.</div>
-    <ul v-else class="text-xs space-y-1">
-      <li
-        v-for="j in data.failedJobs"
-        :key="j.reportId"
-        class="flex items-start gap-2 bg-red-50 rounded p-2"
-      >
-        <div class="flex-1">
-          <div class="font-medium">{{ j.reportTitle }}</div>
-          <div class="text-neutral-600">{{ j.lastError ?? "Unknown error" }}</div>
-          <div class="text-neutral-400">{{ j.attempts }} attempts · {{ relTime(j.updatedAt) }}</div>
-        </div>
-        <button
-          type="button"
-          class="border border-red-300 rounded px-2 py-0.5 self-center"
-          @click="retryOne(j.reportId)"
+  <div class="space-y-3">
+    <div class="grid grid-cols-2 gap-3">
+      <div class="p-3 rounded-lg border border-default bg-default">
+        <div class="text-xs text-muted uppercase">Failed</div>
+        <div
+          class="mt-1 text-xl font-semibold"
+          :class="failedCount > 0 ? 'text-error' : 'text-default'"
         >
-          Retry
-        </button>
+          {{ failedCount }}
+        </div>
+      </div>
+      <div class="p-3 rounded-lg border border-default bg-default">
+        <div class="text-xs text-muted uppercase">Last sync</div>
+        <div class="mt-1 text-sm font-semibold text-default">
+          {{ lastSyncedAt ? relativeTime(lastSyncedAt) : "—" }}
+        </div>
+      </div>
+    </div>
+
+    <UButton
+      v-if="failedCount > 0"
+      label="Retry failed"
+      icon="i-heroicons-arrow-path"
+      color="neutral"
+      variant="outline"
+      size="sm"
+      block
+      :loading="retryingAll"
+      @click="retryAll"
+    />
+
+    <ul v-if="failedJobs.length > 0" class="space-y-1.5">
+      <li
+        v-for="j in failedJobs"
+        :key="j.reportId"
+        class="flex items-start gap-2 rounded-lg border border-error/30 bg-error/5 p-2.5"
+      >
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-default truncate">{{ j.reportTitle }}</div>
+          <div class="text-xs text-muted truncate">{{ j.lastError ?? "Unknown error" }}</div>
+          <div class="text-xs text-muted/80">
+            {{ j.attempts }} attempt{{ j.attempts === 1 ? "" : "s" }} ·
+            {{ relativeTime(j.updatedAt) }}
+          </div>
+        </div>
+        <UButton
+          label="Retry"
+          color="neutral"
+          variant="outline"
+          size="xs"
+          :loading="retryingOne === j.reportId"
+          @click="retryOne(j.reportId)"
+        />
       </li>
     </ul>
   </div>
