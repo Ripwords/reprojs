@@ -89,6 +89,13 @@ jobs:
       ATTACHMENT_URL_SECRET: ci-test-secret-at-least-32-bytes-long-xxxxx
       MAIL_PROVIDER: console
       NODE_ENV: test
+      # Dummy GitHub App credentials — must match the fallback values in
+      # apps/dashboard/tests/api/github-sync.test.ts so the dev server's
+      # webhook signature verifier uses the same secret the tests sign with.
+      # Not real secrets; the tests don't make actual API calls.
+      GITHUB_APP_ID: "123"
+      GITHUB_APP_PRIVATE_KEY: "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----"
+      GITHUB_APP_WEBHOOK_SECRET: test-webhook-secret
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
