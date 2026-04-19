@@ -38,3 +38,6 @@ coverage/
 
 # Attachment storage (LocalDiskAdapter)
 apps/dashboard/.data/
+
+# Claude Code local scratch (agent-maintained)
+.claude/
