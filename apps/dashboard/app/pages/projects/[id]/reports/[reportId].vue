@@ -155,32 +155,46 @@ function relativeTime(iso: string | undefined): string {
       message="It may have been deleted, or you may not have access."
     />
   </div>
-  <div v-else class="flex h-[calc(100vh-6rem)] min-h-0">
+  <div
+    v-else
+    class="flex h-[calc(100vh-6rem)] min-h-0 rounded-xl border border-default bg-default overflow-hidden"
+  >
     <!-- Main column -->
     <div class="flex-1 min-w-0 flex flex-col">
       <!-- Breadcrumb + header -->
-      <header class="px-6 pt-5 pb-4 border-b border-default">
-        <nav class="flex items-center gap-1 text-sm text-muted mb-3">
-          <NuxtLink :to="`/projects/${projectId}/reports`" class="hover:text-default transition">
+      <header class="px-6 pt-5 pb-5 border-b border-default">
+        <nav class="flex items-center gap-1.5 text-xs text-muted mb-3 font-medium">
+          <NuxtLink
+            :to="`/projects/${projectId}/reports`"
+            class="hover:text-default transition-colors"
+          >
             Reports
           </NuxtLink>
-          <UIcon name="i-heroicons-chevron-right" class="size-4" />
-          <span class="text-default truncate">{{ report.title }}</span>
+          <UIcon name="i-heroicons-chevron-right" class="size-3.5 opacity-60" />
+          <span class="text-default truncate max-w-[24rem]">{{ report.title }}</span>
         </nav>
         <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <h1 class="text-2xl font-semibold text-default truncate">{{ report.title }}</h1>
-            <div class="mt-1 text-sm text-muted truncate">
-              {{ report.context?.pageUrl ?? report.pageUrl }} ·
-              {{ relativeTime(report.receivedAt) }}
+          <div class="min-w-0 flex-1">
+            <h1 class="text-2xl font-semibold text-default tracking-tight truncate">
+              {{ report.title }}
+            </h1>
+            <div class="mt-1.5 flex items-center gap-2 text-sm text-muted">
+              <UIcon name="i-heroicons-globe-alt" class="size-3.5 shrink-0" />
+              <span class="truncate font-mono text-xs">
+                {{ report.context?.pageUrl ?? report.pageUrl }}
+              </span>
+              <span class="text-muted/60">·</span>
+              <span class="whitespace-nowrap tabular-nums text-xs">
+                {{ relativeTime(report.receivedAt) }}
+              </span>
             </div>
           </div>
           <UBadge
             :label="report.priority"
             :color="priorityColor(report.priority)"
             variant="soft"
-            size="sm"
-            class="capitalize flex-shrink-0"
+            size="md"
+            class="capitalize font-medium flex-shrink-0"
           />
         </div>
       </header>
@@ -229,10 +243,15 @@ function relativeTime(iso: string | undefined): string {
       </div>
     </div>
 
-    <!-- Right triage panel -->
-    <aside class="w-80 flex-shrink-0 border-l border-default bg-elevated/20 overflow-y-auto">
+    <!-- Right triage panel. Distinct surface (elevated bg + left border)
+         so it reads as "meta / controls" against the main report content.
+         Scrolls independently so long tag piles don't push GitHub off. -->
+    <aside class="w-80 flex-shrink-0 border-l border-default bg-elevated/40 overflow-y-auto">
       <div class="p-6">
-        <h2 class="text-xs font-semibold text-muted uppercase tracking-wide mb-4">Triage</h2>
+        <div class="flex items-center gap-2 mb-5">
+          <UIcon name="i-heroicons-adjustments-horizontal" class="size-4 text-muted" />
+          <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
+        </div>
         <TriageFooter
           :project-id="projectId"
           :report="report"

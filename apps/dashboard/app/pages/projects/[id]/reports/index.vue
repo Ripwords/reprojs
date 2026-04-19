@@ -244,8 +244,8 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
         label: row.original.priority,
         color: priorityColor(row.original.priority),
         variant: "soft",
-        size: "xs",
-        class: "capitalize",
+        size: "md",
+        class: "capitalize font-medium",
       }),
   },
   {

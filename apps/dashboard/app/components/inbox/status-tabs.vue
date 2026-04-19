@@ -1,4 +1,11 @@
-<!-- apps/dashboard/app/components/inbox/status-tabs.vue -->
+<!--
+  Status filter tabs above the inbox table. Each tab is a label + count; the
+  active tab gets a teal underline + teal label, and its count sits in a
+  soft teal chip. Inactive tabs show a muted-chip count so it's clearly a
+  number, not a stray character. No UBadge — the built-in `xs` badge was
+  too tiny to register as "this is a count". Counts use `tabular-nums` so
+  they don't jitter as filters change.
+-->
 <script setup lang="ts">
 import type { ReportStatus } from "@feedback-tool/shared"
 
@@ -37,7 +44,7 @@ function onClick(key: TabKey) {
 
 <template>
   <nav
-    class="flex items-center gap-1 border-b border-default text-sm"
+    class="flex items-center gap-6 border-b border-default text-sm"
     role="tablist"
     aria-label="Filter by status"
   >
@@ -47,20 +54,29 @@ function onClick(key: TabKey) {
       type="button"
       role="tab"
       :aria-selected="isActive(t.key)"
-      class="inline-flex items-center gap-2 px-3 py-2 border-b-2 -mb-px transition-colors"
+      class="relative inline-flex items-center gap-2 py-3 -mb-px transition-colors"
       :class="
-        isActive(t.key)
-          ? 'border-primary text-default font-medium'
-          : 'border-transparent text-muted hover:text-default'
+        isActive(t.key) ? 'text-default font-semibold' : 'text-muted hover:text-default font-medium'
       "
       @click="onClick(t.key)"
     >
       <span>{{ t.label }}</span>
-      <UBadge
-        :label="String(countFor(t.key))"
-        :color="isActive(t.key) ? 'primary' : 'neutral'"
-        :variant="isActive(t.key) ? 'soft' : 'subtle'"
-        size="xs"
+      <span
+        class="inline-flex items-center justify-center min-w-6 px-1.5 h-5 rounded-md text-[11px] font-semibold tabular-nums transition-colors"
+        :class="
+          isActive(t.key)
+            ? 'bg-primary/15 text-primary ring-1 ring-primary/20'
+            : 'bg-elevated/60 text-muted'
+        "
+      >
+        {{ countFor(t.key) }}
+      </span>
+      <!-- Active-tab underline, absolutely positioned so it can be thicker
+           than a `border-b-2` without affecting layout height -->
+      <span
+        v-if="isActive(t.key)"
+        class="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-primary"
+        aria-hidden="true"
       />
     </button>
   </nav>
