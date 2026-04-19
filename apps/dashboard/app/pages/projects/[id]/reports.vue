@@ -18,6 +18,7 @@ const UIcon = resolveComponent("UIcon")
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const projectId = computed(() => route.params.id as string)
 const { session } = useSession()
 const sessionUserId = computed(() => session.value?.data?.user?.id ?? "")
@@ -61,6 +62,7 @@ function clearSelection() {
 
 async function bulkStatus(status: ReportStatus) {
   submittingBulk.value = true
+  const n = checkedIds.value.length
   try {
     await $fetch(`/api/projects/${projectId.value}/reports/bulk-update`, {
       method: "POST",
@@ -69,12 +71,25 @@ async function bulkStatus(status: ReportStatus) {
     })
     clearSelection()
     await refresh()
+    toast.add({
+      title: `${n} report${n === 1 ? "" : "s"} updated`,
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not update reports",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
   } finally {
     submittingBulk.value = false
   }
 }
 async function bulkAssign(assigneeId: string | null) {
   submittingBulk.value = true
+  const n = checkedIds.value.length
   try {
     await $fetch(`/api/projects/${projectId.value}/reports/bulk-update`, {
       method: "POST",
@@ -83,6 +98,18 @@ async function bulkAssign(assigneeId: string | null) {
     })
     clearSelection()
     await refresh()
+    toast.add({
+      title: `${n} report${n === 1 ? "" : "s"} updated`,
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not update reports",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
   } finally {
     submittingBulk.value = false
   }

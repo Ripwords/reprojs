@@ -17,6 +17,8 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{ patched: [] }>()
 
+const toast = useToast()
+
 const STATUSES: ReportStatus[] = ["open", "in_progress", "resolved", "closed"]
 const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
 
@@ -37,18 +39,44 @@ async function createIssue() {
       credentials: "include",
     })
     emit("patched")
+    toast.add({
+      title: "GitHub issue created",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not create GitHub issue",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
   } finally {
     ghSubmitting.value = false
   }
 }
 
 async function unlink() {
-  await $fetch(`/api/projects/${props.projectId}/reports/${props.report.id}/github-unlink`, {
-    method: "POST",
-    credentials: "include",
-  })
-  unlinkOpen.value = false
-  emit("patched")
+  try {
+    await $fetch(`/api/projects/${props.projectId}/reports/${props.report.id}/github-unlink`, {
+      method: "POST",
+      credentials: "include",
+    })
+    unlinkOpen.value = false
+    emit("patched")
+    toast.add({
+      title: "Unlinked from GitHub",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not unlink",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
 }
 
 function ghRepoFullName(url: string | null): string {
@@ -67,6 +95,18 @@ async function patch(body: Record<string, unknown>) {
       credentials: "include",
     })
     emit("patched")
+    toast.add({
+      title: "Saved",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not save",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
   } finally {
     posting.value = false
   }

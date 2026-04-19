@@ -56,6 +56,11 @@ async function retryOne(reportId: string) {
     })
     await refresh()
     emit("retried")
+    toast.add({
+      title: "Retry queued",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
   } catch (err) {
     toast.add({
       title: "Retry failed",
