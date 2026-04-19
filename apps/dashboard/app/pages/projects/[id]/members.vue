@@ -1,99 +1,272 @@
 <script setup lang="ts">
+import { h, resolveComponent } from "vue"
+import type { TableColumn } from "@nuxt/ui"
 import type { ProjectDTO, ProjectMemberDTO, ProjectRole } from "@feedback-tool/shared"
 
+const UAvatar = resolveComponent("UAvatar")
+const USelectMenu = resolveComponent("USelectMenu")
+const UButton = resolveComponent("UButton")
+const UDropdownMenu = resolveComponent("UDropdownMenu")
+
 const route = useRoute()
-const { data: project } = await useApi<ProjectDTO>(`/api/projects/${route.params.id}`)
-const { data: members, refresh } = await useApi<ProjectMemberDTO[]>(
-  `/api/projects/${route.params.id}/members`,
-)
-const email = ref("")
-const role = ref<ProjectRole>("developer")
+const projectId = computed(() => String(route.params.id))
+const toast = useToast()
 
-async function add() {
-  await $fetch(`/api/projects/${route.params.id}/members`, {
-    method: "POST",
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
-    credentials: "include",
-    body: { email: email.value, role: role.value },
-  })
-  email.value = ""
-  await refresh()
+const { data: project } = await useApi<ProjectDTO>(`/api/projects/${projectId.value}`)
+const {
+  data: members,
+  pending,
+  refresh,
+} = await useApi<ProjectMemberDTO[]>(`/api/projects/${projectId.value}/members`)
+
+const membersList = computed<ProjectMemberDTO[]>(() => members.value ?? [])
+const isOwner = computed(() => project.value?.effectiveRole === "owner")
+
+const roleOptions = [
+  { label: "Owner", value: "owner" },
+  { label: "Developer", value: "developer" },
+  { label: "Viewer", value: "viewer" },
+] as const
+
+const inviteOpen = ref(false)
+const inviteEmail = ref("")
+const inviteRole = ref<ProjectRole>("developer")
+const inviting = ref(false)
+
+async function sendInvite() {
+  if (!inviteEmail.value) return
+  inviting.value = true
+  try {
+    await $fetch(`/api/projects/${projectId.value}/members`, {
+      method: "POST",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+      body: { email: inviteEmail.value, role: inviteRole.value },
+    })
+    inviteOpen.value = false
+    inviteEmail.value = ""
+    inviteRole.value = "developer"
+    toast.add({ title: "Invite sent", color: "success", icon: "i-heroicons-check-circle" })
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not send invite",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    inviting.value = false
+  }
 }
 
-async function changeRole(userId: string, r: ProjectRole) {
-  await $fetch(`/api/projects/${route.params.id}/members/${userId}`, {
-    method: "PATCH",
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
-    credentials: "include",
-    body: { role: r },
-  })
-  await refresh()
+async function updateRole(userId: string, next: ProjectRole) {
+  try {
+    await $fetch(`/api/projects/${projectId.value}/members/${userId}`, {
+      method: "PATCH",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+      body: { role: next },
+    })
+    toast.add({ title: "Role updated", color: "success", icon: "i-heroicons-check-circle" })
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not update role",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
 }
 
-async function remove(userId: string) {
-  await $fetch(`/api/projects/${route.params.id}/members/${userId}`, {
-    method: "DELETE",
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
-    credentials: "include",
-  })
-  await refresh()
+async function removeMember(userId: string) {
+  try {
+    await $fetch(`/api/projects/${projectId.value}/members/${userId}`, {
+      method: "DELETE",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+    })
+    toast.add({ title: "Member removed", color: "success", icon: "i-heroicons-check-circle" })
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not remove member",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
 }
+
+function confirmRemove(member: ProjectMemberDTO) {
+  if (!confirm(`Remove ${member.email} from this project?`)) return
+  void removeMember(member.userId)
+}
+
+function roleColor(role: string): "primary" | "neutral" | "warning" | "success" {
+  if (role === "owner") return "warning"
+  if (role === "developer") return "primary"
+  if (role === "viewer") return "neutral"
+  return "neutral"
+}
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diffMs / 60_000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
+function initials(name: string | null, email: string): string {
+  const base = name?.trim() || email
+  return base.slice(0, 2).toUpperCase()
+}
+
+const columns = computed<TableColumn<ProjectMemberDTO>[]>(() => [
+  {
+    accessorKey: "name",
+    header: "Member",
+    cell: ({ row }) =>
+      h("div", { class: "flex items-center gap-3" }, [
+        h(UAvatar, {
+          size: "sm",
+          alt: row.original.name ?? row.original.email,
+          text: initials(row.original.name, row.original.email),
+        }),
+        h("div", {}, [
+          h(
+            "div",
+            { class: "text-sm font-medium text-default" },
+            row.original.name ?? row.original.email,
+          ),
+          row.original.name ? h("div", { class: "text-xs text-muted" }, row.original.email) : null,
+        ]),
+      ]),
+  },
+  {
+    accessorKey: "role",
+    header: "Role",
+    cell: ({ row }) => {
+      if (!isOwner.value) {
+        const UBadge = resolveComponent("UBadge")
+        return h(
+          UBadge,
+          { color: roleColor(row.original.role), variant: "subtle", size: "sm" },
+          () => row.original.role,
+        )
+      }
+      return h(USelectMenu, {
+        modelValue: roleOptions.find((o) => o.value === row.original.role),
+        items: roleOptions,
+        size: "xs",
+        "onUpdate:modelValue": (v: { label: string; value: ProjectRole }) => {
+          if (v?.value && v.value !== row.original.role) {
+            void updateRole(row.original.userId, v.value)
+          }
+        },
+      })
+    },
+  },
+  {
+    accessorKey: "joinedAt",
+    header: "Joined",
+    cell: ({ row }) =>
+      h("span", { class: "text-sm text-muted" }, relativeTime(row.original.joinedAt)),
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: ({ row }) => {
+      if (!isOwner.value) return null
+      return h(
+        UDropdownMenu,
+        {
+          items: [
+            {
+              label: "Remove",
+              icon: "i-heroicons-trash",
+              onSelect: () => confirmRemove(row.original),
+            },
+          ],
+        },
+        () =>
+          h(UButton, {
+            icon: "i-heroicons-ellipsis-horizontal",
+            color: "neutral",
+            variant: "ghost",
+            size: "xs",
+            ariaLabel: "Member actions",
+          }),
+      )
+    },
+  },
+])
 </script>
 
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-semibold">{{ project?.name }} — Members</h1>
-    <form v-if="project?.effectiveRole === 'owner'" class="flex gap-2" @submit.prevent="add">
-      <input
-        v-model="email"
-        type="email"
-        placeholder="user@example.com"
-        class="border rounded px-3 py-2 flex-1"
-        required
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold text-default">
+          {{ project?.name ? `${project.name} — Members` : "Members" }}
+        </h1>
+        <p class="text-sm text-muted mt-1">People with access to this project</p>
+      </div>
+      <UButton
+        v-if="isOwner"
+        label="Invite member"
+        icon="i-heroicons-plus"
+        color="primary"
+        @click="inviteOpen = true"
       />
-      <select v-model="role" class="border rounded px-3 py-2">
-        <option value="viewer">Viewer</option>
-        <option value="developer">Developer</option>
-        <option value="owner">Owner</option>
-      </select>
-      <button class="bg-neutral-900 text-white rounded px-4 py-2">Add</button>
-    </form>
-    <table class="w-full bg-white border rounded">
-      <thead class="bg-neutral-100 text-left text-sm">
-        <tr>
-          <th class="p-3">Email</th>
-          <th class="p-3">Role</th>
-          <th class="p-3"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="m in members" :key="m.userId" class="border-t">
-          <td class="p-3">{{ m.email }}</td>
-          <td class="p-3">
-            <select
-              :value="m.role"
-              :disabled="project?.effectiveRole !== 'owner'"
-              class="border rounded px-2 py-1"
-              @change="
-                changeRole(m.userId, ($event.target as HTMLSelectElement).value as ProjectRole)
-              "
-            >
-              <option value="viewer">viewer</option>
-              <option value="developer">developer</option>
-              <option value="owner">owner</option>
-            </select>
-          </td>
-          <td class="p-3 text-right">
-            <button
-              v-if="project?.effectiveRole === 'owner'"
-              class="text-red-600"
-              @click="remove(m.userId)"
-            >
-              Remove
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    </header>
+
+    <UCard :ui="{ body: 'p-0' }">
+      <UTable
+        :data="membersList"
+        :columns="columns"
+        :loading="pending"
+        :ui="{ td: 'text-sm', th: 'text-xs font-medium text-muted uppercase' }"
+      />
+    </UCard>
+
+    <UModal v-model:open="inviteOpen" :ui="{ content: 'max-w-md' }">
+      <template #content>
+        <div class="p-6 space-y-4">
+          <h3 class="text-lg font-semibold text-default">Invite member</h3>
+          <UFormField label="Email" name="email" required>
+            <UInput
+              v-model="inviteEmail"
+              type="email"
+              placeholder="person@company.com"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Role" name="role">
+            <USelectMenu
+              v-model="inviteRole"
+              :items="roleOptions"
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" @click="inviteOpen = false" />
+            <UButton
+              label="Send invite"
+              color="primary"
+              :loading="inviting"
+              :disabled="!inviteEmail"
+              @click="sendInvite"
+            />
+          </div>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
