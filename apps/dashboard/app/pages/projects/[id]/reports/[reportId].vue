@@ -1,0 +1,240 @@
+<!--
+  apps/dashboard/app/pages/projects/[id]/reports/[reportId].vue
+
+  Dedicated full-page report view. Supersedes the 470px USlideover drawer
+  which was too cramped for reports containing screenshots, replay video,
+  console tables, and a triage panel. Full-width layout matches the
+  Linear/Jira/Sentry pattern, yields a shareable URL, and restores the
+  browser back button.
+-->
+<script setup lang="ts">
+import type { LogsAttachment, ReportSummaryDTO } from "@feedback-tool/shared"
+import ActivityTab from "~/components/report-drawer/activity-tab.vue"
+import ConsoleTab from "~/components/report-drawer/console-tab.vue"
+import CookiesTab from "~/components/report-drawer/cookies-tab.vue"
+import NetworkTab from "~/components/report-drawer/network-tab.vue"
+import OverviewTab from "~/components/report-drawer/overview-tab.vue"
+import ReplayTab from "~/components/report-drawer/replay-tab.vue"
+import DrawerTabs from "~/components/report-drawer/tabs.vue"
+import TriageFooter from "~/components/report-drawer/triage-footer.vue"
+
+const route = useRoute()
+const projectId = computed(() => String(route.params.id))
+const reportId = computed(() => String(route.params.reportId))
+
+// Single-report endpoint returns exactly one list-row's shape. useApi forwards
+// the session cookie so protected routes resolve during SSR.
+const {
+  data: report,
+  pending,
+  refresh,
+  error,
+} = useApi<ReportSummaryDTO>(`/api/projects/${projectId.value}/reports/${reportId.value}`, {
+  key: `report-${reportId.value}`,
+})
+
+// Role check — viewers see read-only controls in the triage panel. Mirrors the
+// drawer's canEdit wiring.
+const { data: meRole } = useApi<{ role: string }>(`/api/projects/${projectId.value}/me`, {
+  default: () => ({ role: "viewer" }),
+})
+const canEdit = computed(() => meRole.value?.role !== "viewer")
+
+type TabId =
+  | "overview"
+  | "console"
+  | "network"
+  | "replay"
+  | "activity"
+  | "cookies"
+  | "system"
+  | "raw"
+const activeTab = ref<TabId>("overview")
+
+// Logs attachment is lazy-loaded when a tab that needs it is opened. Matches
+// the drawer's behaviour so the Console/Network bundles aren't fetched up-front
+// for reports the reviewer never drills into.
+const logs = ref<LogsAttachment | null>(null)
+const logsLoaded = ref(false)
+async function ensureLogs() {
+  if (logsLoaded.value) return
+  logsLoaded.value = true
+  const res = await $fetch<LogsAttachment>(
+    `/api/projects/${projectId.value}/reports/${reportId.value}/attachment?kind=logs`,
+    { credentials: "include" },
+  ).catch(() => null)
+  logs.value = res ?? null
+}
+watch(activeTab, (t) => {
+  if (t === "console" || t === "network") ensureLogs()
+})
+
+const consoleHasData = computed(
+  () => logs.value !== null && (logs.value.console.length > 0 || logs.value.breadcrumbs.length > 0),
+)
+const networkHasData = computed(() => logs.value !== null && logs.value.network.length > 0)
+const cookiesHasData = computed(() => (report.value?.context?.cookies?.length ?? 0) > 0)
+
+const tabs = computed(() => [
+  { id: "overview", label: "Overview" },
+  { id: "console", label: "Console", hasData: consoleHasData.value },
+  { id: "network", label: "Network", hasData: networkHasData.value },
+  { id: "replay", label: "Replay", hasData: report.value?.hasReplay ?? false },
+  { id: "activity", label: "Activity" },
+  { id: "cookies", label: "Cookies", hasData: cookiesHasData.value },
+  { id: "system", label: "System" },
+  { id: "raw", label: "Raw" },
+])
+
+// After a triage mutation, re-fetch the report row and refresh the activity
+// feed so the timeline reflects the new event immediately.
+const activityRef = ref<InstanceType<typeof ActivityTab> | null>(null)
+async function onPatched() {
+  await refresh()
+  if (activityRef.value) await activityRef.value.refresh()
+}
+
+// Keyboard shortcuts: 1-8 jump to each tab; Esc navigates back to the inbox.
+function onKey(e: KeyboardEvent) {
+  const target = e.target as HTMLElement | null
+  const tag = target?.tagName.toLowerCase() ?? ""
+  if (tag === "input" || tag === "textarea" || target?.isContentEditable) return
+
+  if (e.key === "Escape") {
+    navigateTo(`/projects/${projectId.value}/reports`)
+    return
+  }
+  const map: Record<string, TabId> = {
+    "1": "overview",
+    "2": "console",
+    "3": "network",
+    "4": "replay",
+    "5": "activity",
+    "6": "cookies",
+    "7": "system",
+    "8": "raw",
+  }
+  const next = map[e.key]
+  if (next) activeTab.value = next
+}
+onMounted(() => window.addEventListener("keydown", onKey))
+onUnmounted(() => window.removeEventListener("keydown", onKey))
+
+function priorityColor(p: string | undefined): "error" | "warning" | "neutral" | "primary" {
+  if (p === "urgent") return "error"
+  if (p === "high") return "warning"
+  if (p === "normal") return "primary"
+  return "neutral"
+}
+
+function relativeTime(iso: string | undefined): string {
+  if (!iso) return ""
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diffMs / 60_000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+</script>
+
+<template>
+  <div v-if="pending" class="p-6">
+    <AppLoadingSkeleton variant="card" />
+  </div>
+  <div v-else-if="error || !report" class="p-6">
+    <AppErrorState
+      title="Report not found"
+      message="It may have been deleted, or you may not have access."
+    />
+  </div>
+  <div v-else class="flex h-[calc(100vh-3rem)] min-h-0">
+    <!-- Main column -->
+    <div class="flex-1 min-w-0 flex flex-col">
+      <!-- Breadcrumb + header -->
+      <header class="px-6 pt-5 pb-4 border-b border-default">
+        <nav class="flex items-center gap-1 text-sm text-muted mb-3">
+          <NuxtLink :to="`/projects/${projectId}/reports`" class="hover:text-default transition">
+            Reports
+          </NuxtLink>
+          <UIcon name="i-heroicons-chevron-right" class="size-4" />
+          <span class="text-default truncate">{{ report.title }}</span>
+        </nav>
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <h1 class="text-2xl font-semibold text-default truncate">{{ report.title }}</h1>
+            <div class="mt-1 text-sm text-muted truncate">
+              {{ report.context?.pageUrl ?? report.pageUrl }} ·
+              {{ relativeTime(report.receivedAt) }}
+            </div>
+          </div>
+          <UBadge
+            :label="report.priority"
+            :color="priorityColor(report.priority)"
+            variant="soft"
+            size="sm"
+            class="capitalize flex-shrink-0"
+          />
+        </div>
+      </header>
+
+      <!-- Tab strip -->
+      <DrawerTabs
+        :model-value="activeTab"
+        :tabs="tabs"
+        class="border-b border-default px-4"
+        @update:model-value="(v) => (activeTab = v as TabId)"
+      />
+
+      <!-- Tab content -->
+      <div class="flex-1 min-h-0 overflow-y-auto">
+        <OverviewTab v-if="activeTab === 'overview'" :project-id="projectId" :report="report" />
+        <ConsoleTab v-else-if="activeTab === 'console'" :logs="logs" />
+        <NetworkTab v-else-if="activeTab === 'network'" :logs="logs" />
+        <ReplayTab
+          v-else-if="activeTab === 'replay'"
+          :key="report.id"
+          :project-id="projectId"
+          :report-id="report.id"
+          :has-replay="report.hasReplay"
+        />
+        <ActivityTab
+          v-else-if="activeTab === 'activity'"
+          ref="activityRef"
+          :project-id="projectId"
+          :report="report"
+        />
+        <CookiesTab v-else-if="activeTab === 'cookies'" :project-id="projectId" :report="report" />
+        <div v-else-if="activeTab === 'system'" class="p-5">
+          <UCard :ui="{ body: 'p-4' }">
+            <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{
+              JSON.stringify(report.context?.systemInfo ?? {}, null, 2)
+            }}</pre>
+          </UCard>
+        </div>
+        <div v-else-if="activeTab === 'raw'" class="p-5">
+          <UCard :ui="{ body: 'p-4' }">
+            <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{
+              JSON.stringify(report, null, 2)
+            }}</pre>
+          </UCard>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right triage panel -->
+    <aside class="w-80 flex-shrink-0 border-l border-default bg-elevated/20 overflow-y-auto">
+      <div class="p-6">
+        <h2 class="text-xs font-semibold text-muted uppercase tracking-wide mb-4">Triage</h2>
+        <TriageFooter
+          :project-id="projectId"
+          :report="report"
+          :can-edit="canEdit"
+          @patched="onPatched"
+        />
+      </div>
+    </aside>
+  </div>
+</template>

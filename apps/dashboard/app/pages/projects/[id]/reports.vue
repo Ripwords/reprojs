@@ -3,7 +3,6 @@
 import { h, resolveComponent } from "vue"
 import type { TableColumn } from "@nuxt/ui"
 import type { ReportPriority, ReportStatus, ReportSummaryDTO } from "@feedback-tool/shared"
-import ReportDrawer from "~/components/report-drawer/drawer.vue"
 import StatusTabs from "~/components/inbox/status-tabs.vue"
 import FacetSidebar from "~/components/inbox/facet-sidebar.vue"
 import SearchSort from "~/components/inbox/search-sort.vue"
@@ -44,7 +43,6 @@ const { data, pending, refresh } = useApi<{
 
 const reports = computed<ReportSummaryDTO[]>(() => data.value?.items ?? [])
 
-const selected = ref<ReportSummaryDTO | null>(null)
 const submittingBulk = ref(false)
 
 // UTable uses a row-selection map keyed by row index (or id). We map it to our
@@ -90,9 +88,11 @@ async function bulkAssign(assigneeId: string | null) {
   }
 }
 
-function closeDrawer() {
-  selected.value = null
-  refresh()
+// Row click / keyboard activation navigates to the dedicated report page.
+// Replaces the previous drawer integration — dedicated page gives full width,
+// a shareable URL, and proper browser back-button behaviour.
+function openReport(reportId: string) {
+  navigateTo(`/projects/${projectId.value}/reports/${reportId}`)
 }
 
 const assigneeOptions = computed(() => {
@@ -150,7 +150,8 @@ function openCurrent() {
   const list = reports.value
   const idx = highlightedIndex.value
   if (idx < 0 || idx >= list.length) return
-  selected.value = list[idx] ?? null
+  const row = list[idx]
+  if (row) openReport(row.id)
 }
 
 useKeyboardShortcuts({
@@ -165,9 +166,6 @@ useKeyboardShortcuts({
     moveSelection(-1)
   },
   enter: () => openCurrent(),
-  escape: () => {
-    if (selected.value) closeDrawer()
-  },
 })
 
 // ---- Columns ----
@@ -301,7 +299,7 @@ function getRowId(row: ReportSummaryDTO): string {
 type TableRowLike = { original: ReportSummaryDTO; index: number }
 function onRowSelect(_e: Event, row: TableRowLike) {
   highlightedIndex.value = row.index
-  selected.value = row.original
+  openReport(row.original.id)
 }
 </script>
 
@@ -385,7 +383,5 @@ function onRowSelect(_e: Event, row: TableRowLike) {
         />
       </div>
     </div>
-
-    <ReportDrawer v-if="selected" :project-id="projectId" :report="selected" @close="closeDrawer" />
   </div>
 </template>
