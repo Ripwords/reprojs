@@ -1,40 +1,97 @@
 <script setup lang="ts">
+import { ref, computed } from "vue"
 import type { ProjectDTO } from "@feedback-tool/shared"
-import GithubPanel from "~/components/integrations/github/github-panel.vue"
+import ConfirmDeleteDialog from "~/components/common/confirm-delete-dialog.vue"
 
 const route = useRoute()
-const projectId = computed(() => route.params.id as string)
+const router = useRouter()
+const toast = useToast()
 const runtime = useRuntimeConfig()
 const dashboardUrl = runtime.public.betterAuthUrl
-const { data: project, refresh } = await useApi<ProjectDTO>(`/api/projects/${route.params.id}`)
-const name = ref(project.value?.name ?? "")
-const originsText = ref((project.value?.allowedOrigins ?? []).join("\n"))
-const dailyReportCap = ref(project.value?.dailyReportCap ?? 1000)
-const rotating = ref(false)
-const saving = ref(false)
-const error = ref<string | null>(null)
-const replayUpdating = ref(false)
+const projectId = computed(() => String(route.params.id))
 
-async function save() {
+const { data: project, refresh } = await useApi<ProjectDTO>(`/api/projects/${projectId.value}`)
+
+const isOwner = computed(() => project.value?.effectiveRole === "owner")
+
+// Local form state — seeded from the fetched project.
+const generalForm = ref({
+  name: project.value?.name ?? "",
+  originsText: (project.value?.allowedOrigins ?? []).join("\n"),
+  dailyReportCap: project.value?.dailyReportCap ?? 1000,
+})
+
+const saving = ref(false)
+const rotating = ref(false)
+const replayUpdating = ref(false)
+const deleteOpen = ref(false)
+const deleting = ref(false)
+
+const activeTab = ref("general")
+const tabs = [
+  { value: "general", label: "General", icon: "i-heroicons-cog-6-tooth" },
+  { value: "triage", label: "Triage", icon: "i-heroicons-inbox" },
+  { value: "security", label: "Security", icon: "i-heroicons-key" },
+  { value: "danger", label: "Danger zone", icon: "i-heroicons-exclamation-triangle" },
+]
+
+function describeError(err: unknown): string | undefined {
+  if (err instanceof Error) return err.message
+  const e = err as { statusMessage?: string; data?: { statusMessage?: string } } | null
+  return e?.data?.statusMessage ?? e?.statusMessage
+}
+
+async function saveGeneral() {
   saving.value = true
-  error.value = null
-  const allowedOrigins = originsText.value
+  const allowedOrigins = generalForm.value.originsText
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean)
   try {
-    await $fetch(`/api/projects/${route.params.id}`, {
+    await $fetch(`/api/projects/${projectId.value}`, {
       method: "PATCH",
       baseURL: dashboardUrl,
       credentials: "include",
-      body: { name: name.value, allowedOrigins, dailyReportCap: dailyReportCap.value },
+      body: {
+        name: generalForm.value.name,
+        allowedOrigins,
+        dailyReportCap: generalForm.value.dailyReportCap,
+      },
     })
+    toast.add({ title: "Saved", color: "success", icon: "i-heroicons-check-circle" })
     await refresh()
-  } catch (e: unknown) {
-    const err = e as { statusMessage?: string; data?: { statusMessage?: string } }
-    error.value = err?.data?.statusMessage ?? err?.statusMessage ?? "Save failed"
+  } catch (err) {
+    toast.add({
+      title: "Could not save",
+      description: describeError(err),
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
   } finally {
     saving.value = false
+  }
+}
+
+async function updateReplayEnabled(enabled: boolean) {
+  replayUpdating.value = true
+  try {
+    await $fetch(`/api/projects/${projectId.value}`, {
+      method: "PATCH",
+      baseURL: dashboardUrl,
+      credentials: "include",
+      body: { replayEnabled: enabled },
+    })
+    toast.add({ title: "Saved", color: "success", icon: "i-heroicons-check-circle" })
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not save",
+      description: describeError(err),
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    replayUpdating.value = false
   }
 }
 
@@ -47,142 +104,234 @@ async function rotateKey() {
     return
   rotating.value = true
   try {
-    await $fetch(`/api/projects/${route.params.id}/rotate-key`, {
+    await $fetch(`/api/projects/${projectId.value}/rotate-key`, {
       method: "POST",
       baseURL: dashboardUrl,
       credentials: "include",
     })
+    toast.add({ title: "Key rotated", color: "success", icon: "i-heroicons-check-circle" })
     await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not rotate key",
+      description: describeError(err),
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
   } finally {
     rotating.value = false
   }
 }
 
-async function updateReplayEnabled(enabled: boolean) {
-  replayUpdating.value = true
+async function copyKey() {
+  const key = project.value?.publicKey
+  if (!key) return
   try {
-    await $fetch(`/api/projects/${route.params.id}`, {
-      method: "PATCH",
-      baseURL: dashboardUrl,
-      credentials: "include",
-      body: { replayEnabled: enabled },
+    await navigator.clipboard.writeText(key)
+    toast.add({ title: "Copied", color: "success", icon: "i-heroicons-clipboard-document-check" })
+  } catch {
+    toast.add({
+      title: "Could not copy",
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
     })
-    await refresh()
-  } finally {
-    replayUpdating.value = false
   }
 }
 
-async function softDelete() {
-  if (!confirm("Delete this project?")) return
-  await $fetch(`/api/projects/${route.params.id}`, {
-    method: "DELETE",
-    baseURL: dashboardUrl,
-    credentials: "include",
-  })
-  await navigateTo("/")
+async function confirmDelete() {
+  deleting.value = true
+  try {
+    await $fetch(`/api/projects/${projectId.value}`, {
+      method: "DELETE",
+      baseURL: dashboardUrl,
+      credentials: "include",
+    })
+    toast.add({ title: "Project deleted", color: "success", icon: "i-heroicons-check-circle" })
+    router.push("/")
+  } catch (err) {
+    toast.add({
+      title: "Could not delete",
+      description: describeError(err),
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    deleting.value = false
+    deleteOpen.value = false
+  }
 }
 </script>
 
 <template>
-  <div class="space-y-8 max-w-lg">
-    <h1 class="text-2xl font-semibold">Project settings</h1>
+  <div class="space-y-6">
+    <header>
+      <h1 class="text-2xl font-semibold text-default">
+        {{ project?.name ? `${project.name} — Settings` : "Settings" }}
+      </h1>
+      <p class="text-sm text-muted mt-1">Configure the project's intake, triage, and security.</p>
+    </header>
 
-    <section class="space-y-3">
-      <h2 class="text-sm font-semibold text-neutral-600">General</h2>
-      <form class="space-y-3" @submit.prevent="save">
-        <label class="block">
-          <span class="text-sm">Name</span>
-          <input v-model="name" class="w-full border rounded px-3 py-2" />
-        </label>
-        <label class="block">
-          <span class="text-sm">
-            Allowed origins
-            <span class="text-neutral-500"
-              >(one per line, e.g. <code>http://localhost:4000</code>)</span
-            >
-          </span>
-          <textarea
-            v-model="originsText"
-            rows="4"
-            class="w-full border rounded px-3 py-2 font-mono text-xs"
-          />
-        </label>
-        <label class="block">
-          <span class="text-sm">
-            Daily report limit
-            <span class="text-neutral-500">
-              (hard cap on reports created per 24h; protects against runaway spam)
-            </span>
-          </span>
-          <input
-            v-model.number="dailyReportCap"
-            type="number"
-            min="1"
-            max="1000000"
-            class="w-full border rounded px-3 py-2"
-          />
-        </label>
-        <button
-          type="submit"
-          :disabled="saving"
-          class="bg-neutral-900 text-white rounded px-4 py-2 disabled:opacity-50"
-        >
-          {{ saving ? "Saving\u2026" : "Save" }}
-        </button>
-        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-      </form>
-    </section>
+    <UTabs v-model="activeTab" :items="tabs" value-key="value" :content="false" class="w-full" />
 
-    <section class="space-y-3">
-      <h2 class="text-sm font-semibold text-neutral-600">Session replay</h2>
-      <label class="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          :checked="project?.replayEnabled ?? false"
-          :disabled="replayUpdating || !project"
-          @change="updateReplayEnabled(($event.target as HTMLInputElement).checked)"
-        />
-        <span>Enable session replay for this project</span>
-      </label>
-      <p class="text-xs text-neutral-500">
-        When off, the intake API silently drops incoming replay payloads. Reports are still
-        accepted.
-      </p>
-    </section>
-
-    <section class="space-y-3">
-      <h2 class="text-sm font-semibold text-neutral-600">Embed key</h2>
-      <div class="border rounded-lg bg-white p-4 space-y-2">
-        <div class="font-mono text-sm break-all">
-          {{ project?.publicKey ?? "(not generated)" }}
+    <!-- General -->
+    <div v-if="activeTab === 'general'" class="space-y-4 max-w-3xl">
+      <UCard>
+        <template #header>
+          <h2 class="text-base font-semibold text-default">Project</h2>
+        </template>
+        <div class="space-y-4">
+          <UFormField label="Name">
+            <UInput v-model="generalForm.name" :disabled="!isOwner" class="w-full" />
+          </UFormField>
+          <UFormField
+            label="Allowed origins"
+            help="One origin per line. The SDK must send reports from one of these."
+          >
+            <UTextarea
+              v-model="generalForm.originsText"
+              :disabled="!isOwner"
+              :rows="4"
+              placeholder="https://app.example.com&#10;https://staging.example.com"
+              class="w-full font-mono text-xs"
+            />
+          </UFormField>
+          <UFormField
+            label="Daily report cap"
+            help="Rejects new reports once this daily limit is reached. Protects against runaway spam."
+          >
+            <UInput
+              v-model.number="generalForm.dailyReportCap"
+              :disabled="!isOwner"
+              type="number"
+              min="1"
+              max="1000000"
+              class="w-full"
+            />
+          </UFormField>
+          <div class="flex justify-end">
+            <UButton
+              label="Save changes"
+              color="primary"
+              :loading="saving"
+              :disabled="!isOwner"
+              @click="saveGeneral"
+            />
+          </div>
         </div>
-        <button
-          type="button"
-          class="text-sm underline text-red-600 disabled:opacity-50"
-          :disabled="rotating"
-          @click="rotateKey"
-        >
-          {{ rotating ? "Rotating\u2026" : "Rotate key" }}
-        </button>
-      </div>
-      <pre
-        class="text-xs bg-neutral-100 rounded p-3 overflow-x-auto"
-      ><code>&lt;script src=&quot;{{ dashboardUrl }}/sdk/feedback-tool.iife.js&quot;&gt;&lt;/script&gt;
+      </UCard>
+    </div>
+
+    <!-- Triage -->
+    <div v-else-if="activeTab === 'triage'" class="space-y-4 max-w-3xl">
+      <UCard>
+        <template #header>
+          <h2 class="text-base font-semibold text-default">Session replay</h2>
+        </template>
+        <div class="space-y-4">
+          <UFormField
+            label="Enable session replay"
+            help="Capture the last 30s of DOM activity with each report. When off, the intake API silently drops incoming replay payloads."
+          >
+            <USwitch
+              :model-value="project?.replayEnabled ?? false"
+              :disabled="replayUpdating || !isOwner || !project"
+              @update:model-value="updateReplayEnabled"
+            />
+          </UFormField>
+        </div>
+      </UCard>
+    </div>
+
+    <!-- Security -->
+    <div v-else-if="activeTab === 'security'" class="space-y-4 max-w-3xl">
+      <UCard>
+        <template #header>
+          <h2 class="text-base font-semibold text-default">Public SDK key</h2>
+        </template>
+        <div class="space-y-3">
+          <p class="text-sm text-muted">
+            Embed this key in your SDK initialization. Rotate it if it leaks — embeds using the old
+            key will stop working immediately.
+          </p>
+          <div class="flex gap-2">
+            <UInput
+              :model-value="project?.publicKey ?? '(not generated)'"
+              readonly
+              class="flex-1 font-mono"
+            />
+            <UButton
+              label="Copy"
+              icon="i-heroicons-clipboard"
+              color="neutral"
+              variant="outline"
+              :disabled="!project?.publicKey"
+              @click="copyKey"
+            />
+          </div>
+          <div class="flex justify-end pt-2">
+            <UButton
+              label="Rotate key"
+              color="warning"
+              variant="soft"
+              :loading="rotating"
+              :disabled="!isOwner"
+              @click="rotateKey"
+            />
+          </div>
+        </div>
+      </UCard>
+
+      <UCard>
+        <template #header>
+          <h2 class="text-base font-semibold text-default">Embed snippet</h2>
+        </template>
+        <pre
+          class="text-xs bg-elevated rounded p-3 overflow-x-auto"
+        ><code>&lt;script src=&quot;{{ dashboardUrl }}/sdk/feedback-tool.iife.js&quot;&gt;&lt;/script&gt;
 &lt;script&gt;
   FeedbackTool.init({
     projectKey: &quot;{{ project?.publicKey ?? 'ft_pk_...' }}&quot;,
     endpoint: &quot;{{ dashboardUrl }}&quot;
   })
 &lt;/script&gt;</code></pre>
-    </section>
+      </UCard>
+    </div>
 
-    <section class="border-t pt-6">
-      <GithubPanel :project-id="projectId" />
-    </section>
+    <!-- Danger zone -->
+    <div v-else-if="activeTab === 'danger'" class="space-y-4 max-w-3xl">
+      <UCard :ui="{ root: 'border-error/30' }">
+        <template #header>
+          <h2 class="text-base font-semibold text-error">Delete project</h2>
+        </template>
+        <div class="space-y-3">
+          <p class="text-sm text-muted">
+            Permanently deletes the project, all reports, attachments, and integration settings.
+            This cannot be undone.
+          </p>
+          <p v-if="!isOwner" class="text-sm text-muted">
+            Only project owners can delete this project.
+          </p>
+          <div class="flex justify-end">
+            <UButton
+              label="Delete project"
+              icon="i-heroicons-trash"
+              color="error"
+              :disabled="!isOwner"
+              @click="deleteOpen = true"
+            />
+          </div>
+        </div>
+      </UCard>
+    </div>
 
-    <section class="border-t pt-4">
-      <button type="button" class="text-red-600" @click="softDelete">Delete project</button>
-    </section>
+    <ConfirmDeleteDialog
+      :open="deleteOpen"
+      title="Delete project"
+      :description="`This permanently deletes ${project?.name ?? 'this project'} and all its data. This cannot be undone.`"
+      :confirm-text="project?.name ?? undefined"
+      :loading="deleting"
+      @update:open="deleteOpen = $event"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
