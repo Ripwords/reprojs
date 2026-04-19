@@ -5,6 +5,22 @@ export default defineNuxtConfig({
   future: { compatibilityVersion: 5 },
   modules: ["@nuxt/ui", "@nuxt/fonts", "nuxt-security"],
   css: ["~/assets/css/tailwind.css"],
+
+  // Scan source at build time and bundle every `<UIcon>` / `i-*` reference
+  // into the client JS. Without this, icons fall through to `@nuxt/icon`'s
+  // `/api/_nuxt_icon/:collection.json?icons=*` runtime endpoint — which
+  // crashes with `TypeError: Invalid URL` because our graph has both
+  // `h3@1.15` (Nitro) and `h3@2.0.1-rc` (via @nuxt/telemetry → ofetch@2),
+  // and @nuxt/icon 2.2.1's handler was compiled against h3 v2's Request
+  // shape while the wrapping event is still h3 v1. Bundling at build time
+  // sidesteps the broken server path entirely. The three `@iconify-json/*`
+  // collections we installed (heroicons, lucide, simple-icons) feed this.
+  icon: {
+    clientBundle: {
+      scan: true,
+      includeCustomCollections: true,
+    },
+  },
   fonts: {
     families: [
       { name: "Geist", provider: "fontsource", weights: ["400", "500", "600", "700"] },
