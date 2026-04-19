@@ -1,12 +1,22 @@
 <script setup lang="ts">
 definePageMeta({ layout: "auth" })
-const { signIn } = useSession()
+
+const { session, signIn } = useSession()
 const config = useRuntimeConfig()
+const router = useRouter()
 const route = useRoute()
+const toast = useToast()
+
+// If already signed in, bounce to the projects index.
+watchEffect(() => {
+  if (session.value?.data?.user) {
+    router.replace("/")
+  }
+})
+
 const email = ref("")
-const sent = ref(false)
-const submitting = ref(false)
-const error = ref<string | null>(null)
+const magicLinkSent = ref(false)
+const sendingLink = ref(false)
 
 // Surface gate rejections from the server-side auth pipeline. The magic-link
 // verify + OAuth callback redirect here with `?error=<reason>` when the
@@ -21,9 +31,9 @@ const gateError = computed(() => {
   return gateErrorMessages[code] ?? "Sign-in was rejected."
 })
 
-async function submit() {
-  error.value = null
-  submitting.value = true
+async function sendMagicLink() {
+  if (!email.value) return
+  sendingLink.value = true
   try {
     // callbackURL is where the browser lands AFTER the token is verified and
     // the session cookie is set. `next` preserves the pre-redirect target.
@@ -33,69 +43,103 @@ async function submit() {
       callbackURL,
     })
     if (err) {
-      error.value = err.message ?? "Sign in failed"
+      toast.add({
+        title: "Could not send sign-in link",
+        description: err.message ?? undefined,
+        color: "error",
+        icon: "i-heroicons-exclamation-triangle",
+      })
       return
     }
-    sent.value = true
+    magicLinkSent.value = true
   } finally {
-    submitting.value = false
+    sendingLink.value = false
   }
 }
 
 async function oauth(provider: "github" | "google") {
-  await signIn.social({ provider, callbackURL: (route.query.next as string) || "/" })
+  try {
+    await signIn.social({ provider, callbackURL: (route.query.next as string) || "/" })
+  } catch (err) {
+    toast.add({
+      title: `${provider === "github" ? "GitHub" : "Google"} sign-in failed`,
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
 }
+
+const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.hasGoogleOAuth)
 </script>
 
 <template>
-  <div class="space-y-4">
-    <h1 class="text-xl font-semibold">Sign in</h1>
-    <p v-if="gateError" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3">
-      {{ gateError }}
-    </p>
-    <div v-if="sent" class="space-y-2 text-sm">
-      <p class="text-green-700">Check your email.</p>
-      <p class="text-neutral-600">
-        We sent a sign-in link to <strong>{{ email }}</strong
+  <UCard :ui="{ body: 'p-8' }">
+    <div class="space-y-6">
+      <div class="text-center">
+        <h1 class="text-2xl font-semibold text-default">Sign in</h1>
+        <p class="text-sm text-muted mt-1.5">Welcome back to Feedback Tool.</p>
+      </div>
+
+      <div
+        v-if="gateError"
+        class="rounded-lg border border-error/30 bg-error/5 px-3 py-2.5 text-sm text-error"
+      >
+        {{ gateError }}
+      </div>
+
+      <div
+        v-if="magicLinkSent"
+        class="rounded-lg border border-success/30 bg-success/5 px-3 py-3 text-sm text-default"
+      >
+        Check your inbox — we sent a sign-in link to <strong>{{ email }}</strong
         >. It expires in 5 minutes.
-      </p>
+      </div>
+
+      <form v-else class="space-y-3" @submit.prevent="sendMagicLink">
+        <UFormField label="Email" required>
+          <UInput
+            v-model="email"
+            type="email"
+            placeholder="you@company.com"
+            autocomplete="email"
+            size="md"
+            class="w-full"
+          />
+        </UFormField>
+        <UButton
+          type="submit"
+          label="Email me a sign-in link"
+          color="primary"
+          :loading="sendingLink"
+          block
+        />
+      </form>
+
+      <template v-if="!magicLinkSent && hasOAuth">
+        <UDivider label="or" />
+
+        <div class="space-y-2">
+          <UButton
+            v-if="config.public.hasGithubOAuth"
+            label="Continue with GitHub"
+            icon="i-simple-icons-github"
+            color="neutral"
+            variant="outline"
+            block
+            @click="oauth('github')"
+          />
+          <UButton
+            v-if="config.public.hasGoogleOAuth"
+            label="Continue with Google"
+            icon="i-simple-icons-google"
+            color="neutral"
+            variant="outline"
+            block
+            @click="oauth('google')"
+          />
+        </div>
+      </template>
     </div>
-    <form v-else class="space-y-3" @submit.prevent="submit">
-      <input
-        v-model="email"
-        type="email"
-        placeholder="Email"
-        autocomplete="email"
-        class="w-full border rounded px-3 py-2"
-        required
-      />
-      <button
-        :disabled="submitting"
-        class="w-full bg-neutral-900 text-white rounded py-2 disabled:opacity-60"
-      >
-        {{ submitting ? "Sending…" : "Email me a sign-in link" }}
-      </button>
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-    </form>
-    <div
-      v-if="!sent && (config.public.hasGithubOAuth || config.public.hasGoogleOAuth)"
-      class="space-y-2"
-    >
-      <div class="text-xs text-neutral-500 text-center">or</div>
-      <button
-        v-if="config.public.hasGithubOAuth"
-        class="w-full border rounded py-2"
-        @click="oauth('github')"
-      >
-        Continue with GitHub
-      </button>
-      <button
-        v-if="config.public.hasGoogleOAuth"
-        class="w-full border rounded py-2"
-        @click="oauth('google')"
-      >
-        Continue with Google
-      </button>
-    </div>
-  </div>
+  </UCard>
 </template>

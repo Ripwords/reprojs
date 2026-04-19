@@ -1,42 +1,116 @@
 <script setup lang="ts">
 import type { ProjectDTO } from "@feedback-tool/shared"
+import AppEmptyState from "~/components/common/app-empty-state.vue"
 
-const { data, refresh } = await useApi<ProjectDTO[]>("/api/projects")
+const toast = useToast()
+const {
+  data: projects,
+  pending,
+  refresh,
+} = await useApi<ProjectDTO[]>("/api/projects", {
+  default: () => [],
+})
+
+const list = computed(() => projects.value ?? [])
+
+const newOpen = ref(false)
 const newName = ref("")
+const creating = ref(false)
 
-async function create() {
+// Role gating — only admins can create projects (backend enforces, UI reflects).
+const { isAdmin } = useSession()
+
+async function createProject() {
   if (!newName.value.trim()) return
-  await $fetch("/api/projects", {
-    method: "POST",
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
-    credentials: "include",
-    body: { name: newName.value },
-  })
-  newName.value = ""
-  await refresh()
+  creating.value = true
+  try {
+    await $fetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      baseURL: useRuntimeConfig().public.betterAuthUrl,
+      credentials: "include",
+      body: { name: newName.value.trim() },
+    })
+    toast.add({
+      title: "Project created",
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+    newOpen.value = false
+    newName.value = ""
+    await refresh()
+  } catch (err) {
+    toast.add({
+      title: "Could not create project",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    creating.value = false
+  }
 }
 </script>
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Projects</h1>
-      <form class="flex gap-2" @submit.prevent="create">
-        <input v-model="newName" placeholder="New project name" class="border rounded px-3 py-2" />
-        <button class="bg-neutral-900 text-white rounded px-4 py-2">Create</button>
-      </form>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold text-default">Projects</h1>
+        <p class="text-sm text-muted mt-1">All the apps and sites sending you reports.</p>
+      </div>
+      <UButton
+        v-if="isAdmin"
+        label="New project"
+        icon="i-heroicons-plus"
+        color="primary"
+        @click="newOpen = true"
+      />
+    </header>
+
+    <AppEmptyState
+      v-if="!pending && list.length === 0"
+      variant="gradient"
+      icon="i-heroicons-squares-plus"
+      title="Create your first project"
+      description="A project groups incoming reports from a single app or site. You'll get an SDK key once it's created."
+      :action-label="isAdmin ? 'New project' : undefined"
+      @action="newOpen = true"
+    />
+
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <NuxtLink
-        v-for="p in data"
+        v-for="p in list"
         :key="p.id"
         :to="`/projects/${p.id}`"
-        class="block border rounded-lg p-4 bg-white hover:bg-neutral-50"
+        class="block rounded-xl border border-default bg-default p-5 transition hover:border-primary hover:shadow-sm"
       >
-        <div class="font-semibold">{{ p.name }}</div>
-        <div class="text-xs text-neutral-500">{{ p.effectiveRole }}</div>
+        <h3 class="text-base font-semibold text-default truncate">{{ p.name }}</h3>
+        <p class="mt-1 text-sm text-muted">Role: {{ p.effectiveRole }}</p>
       </NuxtLink>
-      <div v-if="data?.length === 0" class="text-neutral-500 col-span-full">No projects yet.</div>
+      <button
+        v-if="isAdmin"
+        type="button"
+        class="rounded-xl border-2 border-dashed border-default p-5 flex flex-col items-center justify-center text-muted hover:border-primary hover:text-primary transition-colors"
+        @click="newOpen = true"
+      >
+        <UIcon name="i-heroicons-plus" class="size-8" />
+        <span class="mt-2 text-sm font-medium">New project</span>
+      </button>
     </div>
+
+    <UModal v-model:open="newOpen" :ui="{ content: 'max-w-md' }">
+      <template #content>
+        <form class="p-6 space-y-4" @submit.prevent="createProject">
+          <h3 class="text-lg font-semibold text-default">Create project</h3>
+          <UFormField label="Name" required>
+            <UInput v-model="newName" placeholder="My App" autofocus class="w-full" />
+          </UFormField>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" @click="newOpen = false" />
+            <UButton type="submit" label="Create" color="primary" :loading="creating" />
+          </div>
+        </form>
+      </template>
+    </UModal>
   </div>
 </template>
