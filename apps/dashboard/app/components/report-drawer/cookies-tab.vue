@@ -1,19 +1,15 @@
 <!-- apps/dashboard/app/components/report-drawer/cookies-tab.vue -->
 <script setup lang="ts">
-import type { ReportContext, ReportSummaryDTO } from "@feedback-tool/shared"
+import { computed, ref } from "vue"
+import type { ReportSummaryDTO } from "@feedback-tool/shared"
 
-const props = defineProps<{ projectId: string; report: ReportSummaryDTO }>()
+interface Props {
+  projectId: string
+  report: ReportSummaryDTO
+}
+const props = defineProps<Props>()
 
-// Cookies live in report.context, not in the logs attachment. Pull them from the same list
-// endpoint (already includes the context since Task 16).
-const { data } = await useApi<{
-  items: Array<ReportSummaryDTO & { context?: ReportContext }>
-}>(`/api/projects/${props.projectId}/reports?limit=50`)
-
-const cookies = computed(() => {
-  const row = data.value?.items.find((r) => r.id === props.report.id)
-  return row?.context?.cookies ?? []
-})
+const cookies = computed(() => props.report.context?.cookies ?? [])
 
 const query = ref("")
 const filtered = computed(() => {

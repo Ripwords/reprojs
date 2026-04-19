@@ -56,8 +56,10 @@ export function useInboxQuery() {
     const parts: string[] = []
     if (query.value.status.length) parts.push(`status=${query.value.status.join(",")}`)
     if (query.value.priority.length) parts.push(`priority=${query.value.priority.join(",")}`)
-    if (query.value.tag.length) parts.push(`tag=${query.value.tag.join(",")}`)
-    if (query.value.assignee.length) parts.push(`assignee=${query.value.assignee.join(",")}`)
+    if (query.value.tag.length)
+      parts.push(`tag=${query.value.tag.map(encodeURIComponent).join(",")}`)
+    if (query.value.assignee.length)
+      parts.push(`assignee=${query.value.assignee.map(encodeURIComponent).join(",")}`)
     if (query.value.q) parts.push(`q=${encodeURIComponent(query.value.q)}`)
     parts.push(`sort=${query.value.sort}`)
     parts.push(`limit=${query.value.limit}`)

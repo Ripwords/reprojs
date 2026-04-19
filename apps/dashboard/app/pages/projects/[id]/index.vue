@@ -135,7 +135,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
               size="xs"
             />
             <NuxtLink
-              :to="`/projects/${projectId}/reports?open=${r.id}`"
+              :to="`/projects/${projectId}/reports/${r.id}`"
               class="flex-1 min-w-0 truncate text-default hover:text-primary-600"
             >
               {{ r.title }}

@@ -29,13 +29,16 @@ const {
   pending,
   refresh,
   error,
-} = useApi<ReportSummaryDTO>(`/api/projects/${projectId.value}/reports/${reportId.value}`, {
-  key: `report-${reportId.value}`,
+} = useApi<ReportSummaryDTO>(() => `/api/projects/${projectId.value}/reports/${reportId.value}`, {
+  key: computed(() => `report-${projectId.value}-${reportId.value}`),
+  watch: [projectId, reportId],
 })
 
 // Role check — viewers see read-only controls in the triage panel. Mirrors the
 // drawer's canEdit wiring.
-const { data: meRole } = useApi<{ role: string }>(`/api/projects/${projectId.value}/me`, {
+const { data: meRole } = useApi<{ role: string }>(() => `/api/projects/${projectId.value}/me`, {
+  key: computed(() => `me-role-${projectId.value}`),
+  watch: [projectId],
   default: () => ({ role: "viewer" }),
 })
 const canEdit = computed(() => meRole.value?.role !== "viewer")
@@ -150,7 +153,7 @@ function relativeTime(iso: string | undefined): string {
       message="It may have been deleted, or you may not have access."
     />
   </div>
-  <div v-else class="flex h-[calc(100vh-3rem)] min-h-0">
+  <div v-else class="flex h-[calc(100vh-6rem)] min-h-0">
     <!-- Main column -->
     <div class="flex-1 min-w-0 flex flex-col">
       <!-- Breadcrumb + header -->

@@ -11,7 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const open = ref(false)
 
-const { data } = await useFetch<ProjectSummary[]>("/api/projects", { default: () => [] })
+const { data } = await useApi<ProjectSummary[]>("/api/projects", { default: () => [] })
 
 const currentProjectId = computed(() => {
   const m = /^\/projects\/([^/]+)/.exec(route.path)

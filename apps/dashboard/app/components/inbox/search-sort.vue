@@ -26,6 +26,9 @@ watch(localQuery, (v) => {
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => emit("update:query", v), 250)
 })
+onBeforeUnmount(() => {
+  if (timer) clearTimeout(timer)
+})
 
 const sortItems: Array<{ label: string; value: Sort }> = [
   { label: "Newest", value: "newest" },

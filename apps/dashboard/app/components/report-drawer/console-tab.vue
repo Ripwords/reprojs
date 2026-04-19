@@ -66,8 +66,8 @@ function toggle(i: number) {
         :key="i"
         :class="[
           'rounded-md border border-default px-3 py-2 text-xs font-mono cursor-pointer hover:bg-elevated/40 transition',
-          e.level === 'error' ? 'border-l-4 border-l-red-500' : '',
-          e.level === 'warn' ? 'border-l-4 border-l-yellow-500' : '',
+          e.level === 'error' ? 'border-l-4 border-l-error' : '',
+          e.level === 'warn' ? 'border-l-4 border-l-warning' : '',
         ]"
         @click="toggle(i)"
       >
