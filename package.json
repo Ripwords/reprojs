@@ -27,6 +27,9 @@
     "check": "oxfmt --check . && oxlint",
     "test": "bun test",
     "test:sdk": "bun test packages/",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "prepare": "husky",
     "fix": "bun run fmt && bun run lint:fix",
     "prerelease": "bun run check && bun run sdk:build && bun run test:sdk",
@@ -42,6 +45,7 @@
     "changelogen": "^0.6.2",
     "husky": "^9.1.7",
     "oxfmt": "^0.44.0",
-    "oxlint": "^1.59.0"
+    "oxlint": "^1.59.0",
+    "vitepress": "^1.6.4"
   }
 }

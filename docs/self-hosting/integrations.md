@@ -1,0 +1,126 @@
+# Integrations
+
+All optional. Repro works fine without any of them.
+
+## GitHub Issues sync
+
+A GitHub App (not OAuth) that lets the dashboard:
+
+- Create an issue from a report with one click, or automatically on intake
+- Mirror status two ways: close a Repro ticket → close the issue; close the issue → resolve the ticket
+
+### Creating the GitHub App
+
+1. Open [github.com/settings/apps](https://github.com/settings/apps) (or your org's App settings)
+2. Click **New GitHub App**
+3. Fill in:
+   - **GitHub App name**: `Repro` (or whatever — the slug becomes public)
+   - **Homepage URL**: your `BETTER_AUTH_URL` (e.g. `https://feedback.example.com`)
+   - **Callback URL**: `<BETTER_AUTH_URL>/api/integrations/github/callback`
+   - **Webhook URL**: `<BETTER_AUTH_URL>/api/integrations/github/webhook`
+   - **Webhook secret**: run `openssl rand -hex 32`, paste here AND save it for `.env`
+4. **Repository permissions**:
+   - **Issues**: Read + write
+   - **Metadata**: Read-only (required — GitHub auto-checks)
+   - **Contents**: Read-only (for listing repos the user can attach)
+5. **Subscribe to events**: `Issues`, `Installation`
+6. **Where can this GitHub App be installed**: your choice — *Only on this account* keeps it private
+7. Click **Create GitHub App**
+8. On the new App's settings page, scroll to **Private keys** → **Generate a private key** → a `.pem` file downloads
+9. Note the **App ID** at the top of the settings page
+
+### Wiring it up
+
+```ini
+GITHUB_APP_ID=12345
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_APP_WEBHOOK_SECRET=<same secret you pasted into step 5>
+GITHUB_APP_SLUG=<slug from https://github.com/apps/<slug>>
+```
+
+The `GITHUB_APP_PRIVATE_KEY` accepts either:
+
+- **Literal PEM contents** with newlines as `\n` (paste the whole file, replacing real newlines with `\n`)
+- **An absolute path** to a `.pem` file — the dashboard will `readFile` it at startup
+
+For container deploys, mount the `.pem` as a Docker secret or bind-mount it read-only:
+
+```yaml
+# compose.yaml override
+services:
+  dashboard:
+    volumes:
+      - ./github-app.pem:/secrets/github-app.pem:ro
+```
+
+Then `GITHUB_APP_PRIVATE_KEY=/secrets/github-app.pem`.
+
+### Installing the App on a repo
+
+Once the dashboard is running with the App creds, open the dashboard → Project settings → **GitHub**. Click **Install**. GitHub walks you through picking the repo to install on. The dashboard receives the installation via webhook and saves it to the project's config.
+
+### Troubleshooting
+
+**Issues appear in Repro but never in GitHub** — check `docker compose logs dashboard | grep -i "github"`. Usually an invalid private key (key was not generated for this App) or a wrong `GITHUB_APP_ID`.
+
+**Webhook signature mismatch** — the `GITHUB_APP_WEBHOOK_SECRET` in `.env` must match exactly what you pasted into GitHub's **Webhook secret** field.
+
+**Attachments don't render in issue bodies** — the dashboard generates time-limited signed URLs that GitHub's image renderer fetches. If your `BETTER_AUTH_URL` is `http://localhost:3000`, GitHub's servers can't reach it. Use a real hostname + proxy.
+
+## OAuth sign-in
+
+GitHub and Google OAuth via `better-auth`. Leave the secrets blank to hide the buttons.
+
+### GitHub OAuth App
+
+1. [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps** → **New OAuth App**
+2. **Application name**: Repro (or whatever)
+3. **Homepage URL**: your `BETTER_AUTH_URL`
+4. **Authorization callback URL**: `<BETTER_AUTH_URL>/api/auth/callback/github`
+5. Create, grab the **Client ID** and generate a **Client secret**
+
+```ini
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
+
+Restart the stack — the "Sign in with GitHub" button shows up.
+
+### Google OAuth
+
+1. [console.cloud.google.com](https://console.cloud.google.com/) → APIs & Services → Credentials
+2. **Create Credentials** → OAuth 2.0 Client ID → Web application
+3. **Authorized redirect URIs**: `<BETTER_AUTH_URL>/api/auth/callback/google`
+4. Copy the **Client ID** + **Client secret**
+
+```ini
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
+
+Note: Google also requires a published OAuth consent screen before external users can sign in. In dev mode, only emails you add as test users can sign in.
+
+## Email (SMTP)
+
+Any SMTP provider — SES, Postmark, Resend, SendGrid, Gmail, self-run Postfix.
+
+```ini
+MAIL_PROVIDER=smtp
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USER=resend
+SMTP_PASS=re_xxxxxxxxxxxxxxxxxxx
+SMTP_FROM="Repro <noreply@example.com>"
+```
+
+Verify a test magic-link email arrives: sign out → sign in → enter your email → check the inbox.
+
+### Common pitfalls
+
+- **DMARC / SPF on your domain** — if you're sending `From: noreply@example.com`, your sending domain needs SPF + DKIM set up or the mail lands in spam. Most providers have a setup checklist.
+- **Port 465 vs 587** — 587 with STARTTLS is the modern default. 465 (implicit TLS) also works for most nodemailer setups.
+- **Gmail SMTP** — you'll need an App Password, not your account password. And their rate limits are strict enough that a small team might hit them on bulk invites.
+
+## Storage integrations
+
+See [Storage](./storage) for S3-compatible endpoints (AWS, R2, B2, Hetzner, MinIO, Garage).

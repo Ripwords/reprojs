@@ -10,7 +10,7 @@
 # runs automatically before the dashboard starts).
 #
 # For HTTPS / public deploys, put a reverse proxy (Caddy / Nginx) in front —
-# see docs/deployment.md for recipes.
+# see docs/self-hosting/ for recipes.
 
 name: repro
 

@@ -41,3 +41,5 @@ apps/dashboard/.data/
 
 # Claude Code local scratch (agent-maintained)
 .claude/
+docs/.vitepress/dist
+docs/.vitepress/cache

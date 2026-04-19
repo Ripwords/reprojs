@@ -118,7 +118,7 @@ bun run dev
 
 Dashboard is now at `http://localhost:3000`. Sign in with a magic link (prints to stdout when `MAIL_PROVIDER=console`), create a project, and you'll see a project key + embed snippets in **Project → Settings**.
 
-For production deployment (Docker Compose with Caddy / Nginx reverse proxy, S3-compatible storage), see `docs/deployment.md`.
+For production deployment (Docker Compose with Caddy / Nginx reverse proxy, S3-compatible storage), see `docs/self-hosting/`.
 
 ---
 
