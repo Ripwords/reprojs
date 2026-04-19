@@ -71,6 +71,7 @@ export function createInProcessRateLimiter(opts: RateLimiterOptions): RateLimite
 let _keyLimiter: RateLimiter | null = null
 let _ipLimiter: RateLimiter | null = null
 let _anonKeyLimiter: RateLimiter | null = null
+let _inviteLimiter: RateLimiter | null = null
 
 async function buildLimiter(perMinute: number): Promise<RateLimiter> {
   if (env.RATE_LIMIT_STORE === "postgres") {
@@ -99,4 +100,17 @@ export async function getAnonKeyLimiter(): Promise<RateLimiter> {
     _anonKeyLimiter = await buildLimiter(env.INTAKE_RATE_PER_KEY_ANON)
   }
   return _anonKeyLimiter
+}
+
+/**
+ * Limiter for invitation-style flows that trigger email delivery on every
+ * call (POST /api/users — admin invites, etc.). A compromised or careless
+ * admin account could otherwise loop on send and exhaust SMTP quota / damage
+ * sender reputation. Keyed on admin user-id, 5 sends / minute by default.
+ */
+export async function getInviteLimiter(): Promise<RateLimiter> {
+  if (!_inviteLimiter) {
+    _inviteLimiter = await buildLimiter(env.INVITE_RATE_PER_ADMIN)
+  }
+  return _inviteLimiter
 }

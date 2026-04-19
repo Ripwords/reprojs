@@ -87,7 +87,15 @@ export function redactCookies(raw: CookieEntry[], opts: CookieRedactConfig = {})
 
 export interface HeaderRedactOpts {
   allowed?: readonly string[]
+  /**
+   * Return every header verbatim. **Dangerous**: response headers may contain
+   * `Set-Cookie` (session tokens), request headers may contain
+   * `Authorization`. Requires the caller to explicitly acknowledge via
+   * `opts.unsafe = true` — accidentally flipping one boolean in test fixtures
+   * should not silently start leaking secrets into reports.
+   */
   all?: boolean
+  unsafe?: boolean
 }
 
 export function redactHeaders(
@@ -97,6 +105,11 @@ export function redactHeaders(
 ): Record<string, string> {
   const out: Record<string, string> = {}
   if (opts.all) {
+    if (!opts.unsafe) {
+      throw new Error(
+        "redactHeaders({ all: true }) requires opts.unsafe === true — headers can contain Set-Cookie / Authorization",
+      )
+    }
     for (const [k, v] of Object.entries(headers)) out[k.toLowerCase()] = v
     return out
   }

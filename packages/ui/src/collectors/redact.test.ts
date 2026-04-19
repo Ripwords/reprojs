@@ -63,9 +63,18 @@ describe("redactHeaders", () => {
     expect(Object.keys(out).toSorted()).toEqual(["content-type", "etag"])
   })
 
-  test("all: true passes everything through (lowercased)", () => {
-    const out = redactHeaders({ Authorization: "Bearer x" }, "request", { all: true })
+  test("all: true passes everything through (lowercased) when acknowledged", () => {
+    const out = redactHeaders({ Authorization: "Bearer x" }, "request", {
+      all: true,
+      unsafe: true,
+    })
     expect(out).toEqual({ authorization: "Bearer x" })
+  })
+
+  test("all: true without unsafe flag throws", () => {
+    expect(() => redactHeaders({ Authorization: "Bearer x" }, "request", { all: true })).toThrow(
+      /unsafe/,
+    )
   })
 
   test("extra allowed headers merge with defaults", () => {

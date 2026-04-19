@@ -31,7 +31,10 @@ export default defineEventHandler(async (event) => {
 
   const q = getQuery(event)
   const limit = Math.min(100, Math.max(1, Number(q.limit ?? 50)))
-  const offset = Math.max(0, Number(q.offset ?? 0))
+  // Cap offset so `?offset=9999999999` can't force a whole-table scan. 100k
+  // rows × a reasonable limit is already well past any human paging — deep
+  // archaeology should switch to the filters, not pagination.
+  const offset = Math.max(0, Math.min(Number(q.offset ?? 0), 100_000))
   const searchRaw = typeof q.q === "string" ? q.q.slice(0, 200).trim() : ""
   const orderBy = buildSortClause(typeof q.sort === "string" ? q.sort : "newest")
 

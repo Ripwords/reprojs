@@ -83,6 +83,11 @@ const Schema = z.object({
   AUTH_RATE_LIMIT_ENABLED: boolString.optional(),
   AUTH_RATE_PER_IP_PER_15MIN: intString(5),
 
+  // Invite limiter — caps invitation-style flows that dispatch email per
+  // call (POST /api/users). 5 sends/min/admin is enough for bulk invites
+  // typed by hand; a runaway loop hits the cap before burning SMTP quota.
+  INVITE_RATE_PER_ADMIN: intString(5),
+
   RATE_LIMIT_STORE: z.enum(["memory", "postgres"]).default("memory"),
   TRUST_XFF: boolString.default(false),
   SDK_PATH: z.string().optional().default(""),
