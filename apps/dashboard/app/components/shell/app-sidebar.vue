@@ -65,6 +65,12 @@ const projectId = computed(() => {
   return null
 })
 
+const currentProjectName = computed(() => {
+  const id = projectId.value
+  if (!id) return null
+  return projectsData.value?.find((p) => p.id === id)?.name ?? null
+})
+
 interface NavItem {
   label: string
   icon: string
@@ -137,7 +143,29 @@ function isActive(to: string): boolean {
       />
     </div>
     <nav class="flex-1 overflow-y-auto py-2">
-      <div v-if="projectItems.length > 0" class="space-y-0.5 px-2">
+      <div class="space-y-0.5 px-2">
+        <UButton
+          to="/"
+          icon="i-heroicons-squares-2x2"
+          :label="collapsed ? undefined : 'All projects'"
+          :active="route.path === '/'"
+          :aria-label="collapsed ? 'All projects' : undefined"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          block
+          :class="collapsed ? 'justify-center px-0' : 'justify-start'"
+        />
+      </div>
+      <div v-if="projectItems.length > 0" class="mt-4 space-y-0.5 px-2">
+        <div
+          v-if="!collapsed && currentProjectName"
+          :title="currentProjectName"
+          class="mb-1 px-3 text-xs font-medium uppercase text-muted truncate"
+        >
+          {{ currentProjectName }}
+        </div>
+        <USeparator v-else-if="collapsed" class="my-2" />
         <UButton
           v-for="item in projectItems"
           :key="item.to"
@@ -156,31 +184,10 @@ function isActive(to: string): boolean {
           </template>
         </UButton>
       </div>
-      <div v-else-if="!collapsed" class="px-3">
-        <UButton
-          to="/"
-          :icon="hasAnyProject ? 'i-heroicons-squares-2x2' : 'i-heroicons-plus'"
-          :label="hasAnyProject ? 'Choose a project' : 'Create your first project'"
-          :active="route.path === '/'"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          block
-          class="justify-start"
-        />
-      </div>
-      <div v-else class="px-2">
-        <UButton
-          to="/"
-          :icon="hasAnyProject ? 'i-heroicons-squares-2x2' : 'i-heroicons-plus'"
-          :active="route.path === '/'"
-          :aria-label="hasAnyProject ? 'Choose a project' : 'Create a project'"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          block
-          class="justify-center px-0"
-        />
+      <div v-else-if="!collapsed && !hasAnyProject" class="mt-3 px-3">
+        <p class="px-2 text-xs text-muted leading-relaxed">
+          Projects group incoming reports. Create one to get started.
+        </p>
       </div>
       <div v-if="adminItems.length > 0">
         <div v-if="!collapsed" class="mt-4 mb-1 px-3 text-xs font-medium uppercase text-muted">
