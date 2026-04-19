@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: 1.3.12
+
+jobs:
+  check:
+    name: Lint + format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run fmt:check
+      - run: bun run lint
+
+  test-sdk:
+    name: SDK tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run test:sdk
+
+  build-sdk:
+    name: SDK build (IIFE sanity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run sdk:build
+      # Guardrails against the regression we caught in review:
+      # if the IIFE bundle tree-shakes @reprokit/* out, it drops under 50 KB
+      # and still contains unresolved "@reprokit" references.
+      - name: Verify IIFE bundle is self-contained
+        run: |
+          BUNDLE=packages/core/dist/repro.iife.js
+          test -f "$BUNDLE" || { echo "Bundle missing"; exit 1; }
+          SIZE=$(wc -c < "$BUNDLE")
+          echo "Bundle size: $SIZE bytes"
+          if [ "$SIZE" -lt 50000 ]; then
+            echo "ERROR: bundle < 50 KB — dependencies were likely tree-shaken out"
+            exit 1
+          fi
+          if grep -q "@reprokit" "$BUNDLE"; then
+            echo "ERROR: bundle contains unresolved @reprokit imports"
+            exit 1
+          fi
+
+  test-dashboard:
+    name: Dashboard tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: repro
+        ports:
+          - 5436:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d repro"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5436/repro
+      BETTER_AUTH_SECRET: ci-test-secret-at-least-32-bytes-long-xxxxx
+      BETTER_AUTH_URL: http://localhost:3000
+      ATTACHMENT_URL_SECRET: ci-test-secret-at-least-32-bytes-long-xxxxx
+      MAIL_PROVIDER: console
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+
+      - name: Generate auth + push schema
+        run: bun run db:push
+
+      - name: Start dev server
+        run: bun run dev &> /tmp/dev.log &
+
+      - name: Wait for dev server
+        run: |
+          for i in $(seq 1 60); do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ | grep -qE "^(200|302|404)$"; then
+              echo "Dev server ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Dev server did not become ready in 120s"
+          tail -60 /tmp/dev.log
+          exit 1
+
+      - name: Run dashboard tests
+        working-directory: apps/dashboard
+        run: bun test tests/
+
+      - name: Upload dev log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-server-log
+          path: /tmp/dev.log
+          if-no-files-found: ignore
