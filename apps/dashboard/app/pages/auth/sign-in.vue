@@ -74,72 +74,99 @@ const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.ha
 </script>
 
 <template>
-  <UCard :ui="{ body: 'p-8' }">
-    <div class="space-y-6">
-      <div class="text-center">
-        <h1 class="text-2xl font-semibold text-default">Sign in</h1>
-        <p class="text-sm text-muted mt-1.5">Welcome back to Feedback Tool.</p>
-      </div>
-
-      <div
-        v-if="gateError"
-        class="rounded-lg border border-error/30 bg-error/5 px-3 py-2.5 text-sm text-error"
-      >
-        {{ gateError }}
-      </div>
-
-      <div
-        v-if="magicLinkSent"
-        class="rounded-lg border border-success/30 bg-success/5 px-3 py-3 text-sm text-default"
-      >
-        Check your inbox — we sent a sign-in link to <strong>{{ email }}</strong
-        >. It expires in 5 minutes.
-      </div>
-
-      <form v-else class="space-y-3" @submit.prevent="sendMagicLink">
-        <UFormField label="Email" required>
-          <UInput
-            v-model="email"
-            type="email"
-            placeholder="you@company.com"
-            autocomplete="email"
-            size="md"
-            class="w-full"
-          />
-        </UFormField>
-        <UButton
-          type="submit"
-          label="Email me a sign-in link"
-          color="primary"
-          :loading="sendingLink"
-          block
-        />
-      </form>
-
-      <template v-if="!magicLinkSent && hasOAuth">
-        <UDivider label="or" />
-
-        <div class="space-y-2">
-          <UButton
-            v-if="config.public.hasGithubOAuth"
-            label="Continue with GitHub"
-            icon="i-simple-icons-github"
-            color="neutral"
-            variant="outline"
-            block
-            @click="oauth('github')"
-          />
-          <UButton
-            v-if="config.public.hasGoogleOAuth"
-            label="Continue with Google"
-            icon="i-simple-icons-google"
-            color="neutral"
-            variant="outline"
-            block
-            @click="oauth('google')"
-          />
-        </div>
-      </template>
+  <div class="space-y-8">
+    <!-- Product mark above the card — claims the page as "Feedback Tool"
+         without needing a wordmark inside the form. The rotated gradient
+         square mirrors the sidebar brand mark for visual continuity. -->
+    <div class="flex flex-col items-center gap-3">
+      <span
+        class="inline-block size-9 rotate-45 rounded-md bg-gradient-to-br from-primary-400 to-primary-600 shadow-[0_1px_0_0_rgba(255,255,255,0.3)_inset,0_8px_24px_-8px] shadow-primary/40"
+      />
+      <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+        Feedback Tool
+      </span>
     </div>
-  </UCard>
+
+    <UCard
+      :ui="{
+        root: 'rounded-2xl backdrop-blur-sm bg-default/80 border-default/80 shadow-xl',
+        body: 'p-8',
+      }"
+    >
+      <div class="space-y-6">
+        <div class="text-center">
+          <h1 class="text-2xl font-semibold text-default tracking-tight">Welcome back</h1>
+          <p class="text-sm text-muted mt-1.5">Sign in to triage your incoming reports.</p>
+        </div>
+
+        <div
+          v-if="gateError"
+          class="rounded-lg border border-error/30 bg-error/5 px-3 py-2.5 text-sm text-error"
+        >
+          {{ gateError }}
+        </div>
+
+        <div
+          v-if="magicLinkSent"
+          class="rounded-lg border border-success/30 bg-success/5 px-3 py-3 text-sm text-default"
+        >
+          Check your inbox — we sent a sign-in link to <strong>{{ email }}</strong
+          >. It expires in 5 minutes.
+        </div>
+
+        <form v-else class="space-y-4" @submit.prevent="sendMagicLink">
+          <UFormField label="Work email" required>
+            <UInput
+              v-model="email"
+              type="email"
+              placeholder="you@company.com"
+              autocomplete="email"
+              size="md"
+              icon="i-heroicons-envelope"
+              class="w-full"
+            />
+          </UFormField>
+          <UButton
+            type="submit"
+            label="Email me a sign-in link"
+            color="primary"
+            size="md"
+            :loading="sendingLink"
+            block
+          />
+        </form>
+
+        <template v-if="!magicLinkSent && hasOAuth">
+          <UDivider label="or" />
+
+          <div class="space-y-2">
+            <UButton
+              v-if="config.public.hasGithubOAuth"
+              label="Continue with GitHub"
+              icon="i-simple-icons-github"
+              color="neutral"
+              variant="outline"
+              size="md"
+              block
+              @click="oauth('github')"
+            />
+            <UButton
+              v-if="config.public.hasGoogleOAuth"
+              label="Continue with Google"
+              icon="i-simple-icons-google"
+              color="neutral"
+              variant="outline"
+              size="md"
+              block
+              @click="oauth('google')"
+            />
+          </div>
+        </template>
+      </div>
+    </UCard>
+
+    <p class="text-center text-xs text-muted">
+      By continuing you agree to keep your reports to yourself and be nice to your teammates.
+    </p>
+  </div>
 </template>

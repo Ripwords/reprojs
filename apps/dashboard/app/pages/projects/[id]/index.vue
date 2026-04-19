@@ -70,103 +70,178 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-8">
     <!-- Page header -->
-    <header class="flex items-start justify-between gap-4">
+    <header class="flex items-end justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-semibold text-default">{{ project?.name ?? "..." }}</h1>
-        <p class="text-sm text-muted mt-1">Project overview</p>
+        <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Project</div>
+        <h1 class="mt-1 text-3xl font-semibold text-default tracking-tight">
+          {{ project?.name ?? "…" }}
+        </h1>
+        <p class="mt-1.5 text-sm text-muted">
+          Snapshot of incoming reports, health, and recent team activity.
+        </p>
       </div>
       <UButton
         :to="`/projects/${projectId}/reports`"
         label="Go to inbox"
         trailing-icon="i-heroicons-arrow-right"
         color="primary"
+        size="md"
       />
     </header>
 
-    <!-- Metric tiles -->
+    <!-- Metric tiles: each tile has a small icon chip + eyebrow label above
+         a big number. The tiles lift slightly on hover to signal they're
+         interactive (they link into the relevant filtered view). -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <UCard>
-        <div class="text-sm text-muted">Open reports</div>
-        <div class="mt-1 text-3xl font-semibold text-default">{{ metrics?.open ?? 0 }}</div>
-      </UCard>
-      <UCard>
-        <div class="text-sm text-muted">New this week</div>
-        <div class="mt-1 text-3xl font-semibold text-default">{{ metrics?.newThisWeek ?? 0 }}</div>
-      </UCard>
-      <UCard>
-        <div class="text-sm text-muted">Total reports</div>
-        <div class="mt-1 text-3xl font-semibold text-default">{{ metrics?.total ?? 0 }}</div>
-      </UCard>
-      <UCard>
-        <div class="text-sm text-muted">GitHub sync</div>
-        <div class="mt-2 flex items-center gap-2">
-          <UBadge
-            :label="integration.status"
-            :color="integration.status === 'connected' ? 'success' : 'neutral'"
-            variant="soft"
-            size="xs"
+      <NuxtLink
+        :to="`/projects/${projectId}/reports?status=open`"
+        class="group relative overflow-hidden rounded-xl border border-default bg-default p-5 transition hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.14)]"
+      >
+        <div class="flex items-center justify-between">
+          <div
+            class="flex items-center justify-center size-8 rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15"
+          >
+            <UIcon name="i-heroicons-inbox" class="size-4" />
+          </div>
+          <UIcon
+            name="i-heroicons-arrow-up-right"
+            class="size-3.5 text-muted opacity-0 group-hover:opacity-100 transition"
           />
-          <span v-if="integration.repoFullName" class="text-sm text-muted truncate">
-            {{ integration.repoFullName }}
-          </span>
         </div>
-      </UCard>
+        <div class="mt-4 text-[11px] font-medium uppercase tracking-wider text-muted">
+          Open reports
+        </div>
+        <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
+          {{ metrics?.open ?? 0 }}
+        </div>
+      </NuxtLink>
+
+      <div class="relative overflow-hidden rounded-xl border border-default bg-default p-5">
+        <div class="flex items-center justify-center size-8 rounded-lg bg-muted text-muted">
+          <UIcon name="i-heroicons-sparkles" class="size-4" />
+        </div>
+        <div class="mt-4 text-[11px] font-medium uppercase tracking-wider text-muted">
+          New · last 7 days
+        </div>
+        <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
+          {{ metrics?.newThisWeek ?? 0 }}
+        </div>
+      </div>
+
+      <div class="relative overflow-hidden rounded-xl border border-default bg-default p-5">
+        <div class="flex items-center justify-center size-8 rounded-lg bg-muted text-muted">
+          <UIcon name="i-heroicons-chart-bar" class="size-4" />
+        </div>
+        <div class="mt-4 text-[11px] font-medium uppercase tracking-wider text-muted">
+          Total reports
+        </div>
+        <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
+          {{ metrics?.total ?? 0 }}
+        </div>
+      </div>
+
+      <NuxtLink
+        :to="`/projects/${projectId}/integrations`"
+        class="group relative overflow-hidden rounded-xl border border-default bg-default p-5 transition hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.14)]"
+      >
+        <div class="flex items-center justify-between">
+          <div
+            class="flex items-center justify-center size-8 rounded-lg"
+            :class="
+              integration.status === 'connected'
+                ? 'bg-success/10 text-success ring-1 ring-success/20'
+                : 'bg-muted text-muted'
+            "
+          >
+            <UIcon name="i-simple-icons-github" class="size-4" />
+          </div>
+          <UIcon
+            name="i-heroicons-arrow-up-right"
+            class="size-3.5 text-muted opacity-0 group-hover:opacity-100 transition"
+          />
+        </div>
+        <div class="mt-4 text-[11px] font-medium uppercase tracking-wider text-muted">
+          GitHub sync
+        </div>
+        <div
+          class="mt-1 text-base font-semibold text-default tracking-tight truncate"
+          :class="{ 'text-muted': integration.status !== 'connected' }"
+        >
+          {{ integration.repoFullName ?? "Not connected" }}
+        </div>
+      </NuxtLink>
     </div>
 
     <!-- Two-column: recent reports + recent activity -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <UCard>
-        <template #header>
-          <h2 class="text-base font-semibold text-default">Recent reports</h2>
-        </template>
+      <div class="rounded-xl border border-default bg-default">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-default">
+          <h2 class="text-sm font-semibold text-default tracking-tight">Recent reports</h2>
+          <NuxtLink
+            :to="`/projects/${projectId}/reports`"
+            class="text-xs font-medium text-muted hover:text-primary transition-colors"
+          >
+            View all →
+          </NuxtLink>
+        </div>
         <div
           v-if="!recentReports || recentReports.length === 0"
-          class="text-sm text-muted py-8 text-center"
+          class="text-sm text-muted py-10 text-center"
         >
           No reports yet.
         </div>
-        <ul v-else class="space-y-2">
-          <li v-for="r in recentReports" :key="r.id" class="flex items-center gap-3 text-sm py-1">
-            <UBadge
-              :label="r.priority"
-              :color="priorityColor(r.priority)"
-              variant="soft"
-              size="xs"
-            />
+        <ul v-else class="divide-y divide-default">
+          <li v-for="r in recentReports" :key="r.id">
             <NuxtLink
               :to="`/projects/${projectId}/reports/${r.id}`"
-              class="flex-1 min-w-0 truncate text-default hover:text-primary-600"
+              class="flex items-center gap-3 px-5 py-3 text-sm transition-colors hover:bg-elevated/50"
             >
-              {{ r.title }}
+              <UBadge
+                :label="r.priority"
+                :color="priorityColor(r.priority)"
+                variant="soft"
+                size="sm"
+                class="capitalize shrink-0"
+              />
+              <span class="flex-1 min-w-0 truncate text-default">{{ r.title }}</span>
+              <span class="text-xs text-muted whitespace-nowrap tabular-nums">
+                {{ relativeTime(r.receivedAt) }}
+              </span>
             </NuxtLink>
-            <span class="text-xs text-muted whitespace-nowrap">
-              {{ relativeTime(r.receivedAt) }}
-            </span>
           </li>
         </ul>
-      </UCard>
-      <UCard>
-        <template #header>
-          <h2 class="text-base font-semibold text-default">Activity</h2>
-        </template>
+      </div>
+
+      <div class="rounded-xl border border-default bg-default">
+        <div class="px-5 py-4 border-b border-default">
+          <h2 class="text-sm font-semibold text-default tracking-tight">Activity</h2>
+        </div>
         <div
           v-if="!recentActivity || recentActivity.length === 0"
-          class="text-sm text-muted py-8 text-center"
+          class="text-sm text-muted py-10 text-center"
         >
           No activity yet.
         </div>
-        <ul v-else class="space-y-3">
-          <li v-for="e in recentActivity" :key="e.id" class="text-sm">
-            <span class="text-default font-medium">
-              {{ e.actor?.name ?? e.actor?.email ?? "System" }}
-            </span>
-            <span class="text-muted"> {{ describeEvent(e) }}</span>
-            <span class="ml-2 text-xs text-muted">{{ relativeTime(e.createdAt) }}</span>
+        <ul v-else class="px-5 py-4 space-y-3.5">
+          <li v-for="e in recentActivity" :key="e.id" class="flex items-start gap-3 text-sm">
+            <span
+              class="shrink-0 mt-1.5 inline-block size-1.5 rounded-full bg-primary/60"
+              aria-hidden="true"
+            />
+            <div class="flex-1 min-w-0">
+              <span class="text-default font-medium">
+                {{ e.actor?.name ?? e.actor?.email ?? "System" }}
+              </span>
+              <span class="text-muted"> {{ describeEvent(e) }}</span>
+              <div class="mt-0.5 text-xs text-muted tabular-nums">
+                {{ relativeTime(e.createdAt) }}
+              </div>
+            </div>
           </li>
         </ul>
-      </UCard>
+      </div>
     </div>
 
     <!-- Activation CTA when no reports -->
