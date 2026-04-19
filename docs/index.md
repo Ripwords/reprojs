@@ -5,6 +5,10 @@ hero:
   name: Repro
   text: Feedback that actually reproduces.
   tagline: Framework-agnostic embeddable SDK + self-hostable triage dashboard. Every bug report ships with an annotated screenshot, 30 seconds of session replay, and diagnostic context.
+  image:
+    light: /logo.svg
+    dark: /logo-dark.svg
+    alt: Repro logo
   actions:
     - theme: brand
       text: Self-host in 3 minutes

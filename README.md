@@ -1,6 +1,21 @@
-# Repro
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/dashboard/public/icon-dark.svg">
+    <img src="apps/dashboard/public/icon-light.svg" alt="Repro logo" width="128">
+  </picture>
 
-> Framework-agnostic embeddable feedback SDK + self-hostable triage dashboard.
+  <h1>Repro</h1>
+
+  <p><strong>Framework-agnostic embeddable feedback SDK + self-hostable triage dashboard.</strong></p>
+
+  <p>
+    <a href="https://ripwords.github.io/reprokit/"><strong>Docs</strong></a> ·
+    <a href="https://ripwords.github.io/reprokit/self-hosting/"><strong>Self-host</strong></a> ·
+    <a href="https://ripwords.github.io/reprokit/guide/sdk"><strong>SDK</strong></a>
+  </p>
+</div>
+
+---
 
 Repro gives end users of any web app a one-click way to report bugs from the page — with an annotated screenshot, the last 30 seconds of session replay, and rich diagnostic context (console, network, cookies, system info) attached. Reports land in a self-hostable Nuxt dashboard where your team triages them, and optionally syncs them to GitHub Issues.
 

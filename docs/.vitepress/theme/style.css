@@ -1,0 +1,132 @@
+/*
+ * VitePress theme — Repro brand palette.
+ *
+ * Mirrors the dashboard's `flame` (primary, warm orange) + `mist` (neutral,
+ * cool blue-grey) scales from apps/dashboard/app/assets/css/tailwind.css so
+ * the docs site reads as one product with the app.
+ *
+ * Scales are oklch to match the source. VitePress uses a few CSS custom
+ * properties from its default theme — we override them here rather than
+ * forking the whole theme.
+ */
+
+:root {
+  /* ── flame (primary accent) ── */
+  --flame-50: oklch(0.97 0.015 62);
+  --flame-100: oklch(0.94 0.035 60);
+  --flame-200: oklch(0.895 0.068 58);
+  --flame-300: oklch(0.85 0.1 56);
+  --flame-400: oklch(0.81 0.135 56);
+  --flame-500: oklch(0.767 0.155 55); /* #FF9B51 anchor */
+  --flame-600: oklch(0.68 0.148 52);
+  --flame-700: oklch(0.575 0.128 48);
+  --flame-800: oklch(0.475 0.105 45);
+  --flame-900: oklch(0.38 0.08 42);
+  --flame-950: oklch(0.27 0.05 40);
+
+  /* ── mist (cool blue-grey neutral) ── */
+  --mist-50: oklch(0.975 0.002 220);
+  --mist-100: oklch(0.945 0.004 220);
+  --mist-200: oklch(0.895 0.01 228);
+  --mist-300: oklch(0.805 0.015 235);
+  --mist-400: oklch(0.76 0.018 237);
+  --mist-500: oklch(0.68 0.02 238);
+  --mist-600: oklch(0.575 0.022 239);
+  --mist-700: oklch(0.46 0.023 240);
+  --mist-800: oklch(0.36 0.022 240);
+  --mist-900: oklch(0.28 0.02 240);
+  --mist-950: oklch(0.185 0.015 240);
+
+  /* ── VitePress brand tokens → flame ── */
+  --vp-c-brand-1: var(--flame-600);
+  --vp-c-brand-2: var(--flame-500);
+  --vp-c-brand-3: var(--flame-400);
+  --vp-c-brand-soft: color-mix(in oklch, var(--flame-500) 14%, transparent);
+  --vp-c-brand-mute: color-mix(in oklch, var(--flame-500) 7%, transparent);
+
+  /* ── VitePress neutrals → mist scale ── */
+  --vp-c-gray-1: var(--mist-100);
+  --vp-c-gray-2: var(--mist-200);
+  --vp-c-gray-3: var(--mist-300);
+  --vp-c-gray-soft: color-mix(in oklch, var(--mist-500) 12%, transparent);
+
+  --vp-c-bg: var(--mist-50);
+  --vp-c-bg-alt: #ffffff;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: var(--mist-100);
+
+  --vp-c-text-1: var(--mist-900);
+  --vp-c-text-2: var(--mist-700);
+  --vp-c-text-3: var(--mist-600);
+
+  --vp-c-divider: var(--mist-200);
+  --vp-c-border: var(--mist-300);
+  --vp-c-gutter: var(--mist-200);
+
+  /* ── Buttons ── */
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-bg: var(--flame-600);
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-hover-bg: var(--flame-700);
+  --vp-button-brand-active-border: transparent;
+  --vp-button-brand-active-text: #ffffff;
+  --vp-button-brand-active-bg: var(--flame-800);
+
+  /* ── Home hero: flame-tinted gradient for the product name ── */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: -webkit-linear-gradient(
+    315deg,
+    var(--flame-500) 30%,
+    var(--flame-700) 70%
+  );
+
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    color-mix(in oklch, var(--flame-500) 40%, transparent) 0%,
+    color-mix(in oklch, var(--flame-700) 40%, transparent) 100%
+  );
+  --vp-home-hero-image-filter: blur(44px);
+
+  /* ── Custom blocks: tint with flame so callouts don't read "bootstrap blue" ── */
+  --vp-custom-block-tip-border: transparent;
+  --vp-custom-block-tip-text: var(--flame-800);
+  --vp-custom-block-tip-bg: color-mix(in oklch, var(--flame-200) 30%, transparent);
+  --vp-custom-block-tip-code-bg: color-mix(in oklch, var(--flame-500) 12%, transparent);
+}
+
+.dark {
+  /* Surfaces flip to the deep end of the mist scale */
+  --vp-c-bg: var(--mist-950);
+  --vp-c-bg-alt: var(--mist-900);
+  --vp-c-bg-elv: var(--mist-900);
+  --vp-c-bg-soft: var(--mist-800);
+
+  /* Text lifted to near-white; readable against mist-950 (WCAG AA) */
+  --vp-c-text-1: var(--mist-50);
+  --vp-c-text-2: var(--mist-200);
+  --vp-c-text-3: var(--mist-400);
+
+  --vp-c-divider: var(--mist-800);
+  --vp-c-border: var(--mist-700);
+  --vp-c-gutter: var(--mist-800);
+
+  /* Brand shifts lighter on dark so contrast holds */
+  --vp-c-brand-1: var(--flame-400);
+  --vp-c-brand-2: var(--flame-500);
+  --vp-c-brand-3: var(--flame-600);
+
+  /* Dark-mode tip block tint */
+  --vp-custom-block-tip-text: var(--flame-300);
+  --vp-custom-block-tip-bg: color-mix(in oklch, var(--flame-900) 30%, transparent);
+}
+
+/* Slightly tighter heading tracking, mirroring the dashboard */
+.VPDoc h1,
+.VPDoc h2,
+.VPDoc h3,
+.VPHero .name,
+.VPHero .text {
+  letter-spacing: -0.02em;
+}
