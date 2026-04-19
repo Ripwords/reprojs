@@ -1,24 +1,39 @@
 <script setup lang="ts">
 import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
+import type { ProjectDTO } from "@feedback-tool/shared"
 
 const route = useRoute()
 const { isAdmin } = useSession()
-const collapsed = useCookie<boolean>("sidebar-collapsed", { default: () => false })
+const collapsed = useCookie<boolean>("sidebar-collapsed", {
+  default: () => false,
+})
 
 // Remember the most-recently-visited project across route changes so the
 // project nav stays visible even on admin-scope pages (/settings/users,
 // /settings/install) and on the projects index. Without this, navigating
 // from a project into admin makes the project nav disappear, which feels
 // like the sidebar is "losing" context.
-const lastProjectId = useCookie<string | null>("last-project-id", { default: () => null })
+const lastProjectId = useCookie<string | null>("last-project-id", {
+  default: () => null,
+})
+
+// Piggybacks on the same `/api/projects` request as the project-switcher —
+// Nuxt's useFetch dedupes by URL, so this doesn't add a round-trip. We need
+// the list to (a) validate `lastProjectId` against reality and (b) know
+// whether the user has any projects at all (empty-state vs dead-link case).
+const { data: projectsData } = await useApi<ProjectDTO[]>("/api/projects", {
+  default: () => [],
+})
+const projectIds = computed(() => new Set((projectsData.value ?? []).map((p) => p.id)))
+const hasAnyProject = computed(() => (projectsData.value?.length ?? 0) > 0)
 
 const routeProjectId = computed(() => {
   const m = /^\/projects\/([^/]+)/.exec(route.path)
   return m ? m[1] : null
 })
 
-// Update the cookie whenever we enter a project route.
+// Update the cookie whenever we enter a valid project route.
 watch(
   routeProjectId,
   (id) => {
@@ -27,8 +42,28 @@ watch(
   { immediate: true },
 )
 
-// Effective project scope: current route > last-visited cookie > null.
-const projectId = computed(() => routeProjectId.value ?? lastProjectId.value)
+// Clear the cookie when it points at a project the user can no longer see
+// (deleted, access revoked, or a stale UUID from an old session). Without
+// this, project-scoped nav items render links that bounce straight back to
+// `/?error=project-not-found` — the sidebar looks alive but is dead.
+watch(
+  [lastProjectId, projectIds],
+  ([id, ids]) => {
+    if (id && ids.size > 0 && !ids.has(id)) {
+      lastProjectId.value = null
+    }
+  },
+  { immediate: true },
+)
+
+// Effective project scope: current route > last-visited cookie (if valid).
+const projectId = computed(() => {
+  const routeId = routeProjectId.value
+  if (routeId) return routeId
+  const cookieId = lastProjectId.value
+  if (cookieId && projectIds.value.has(cookieId)) return cookieId
+  return null
+})
 
 interface NavItem {
   label: string
@@ -42,10 +77,22 @@ const projectItems = computed<NavItem[]>(() => {
   const base = `/projects/${projectId.value}`
   return [
     { label: "Overview", icon: "i-heroicons-home", to: base },
-    { label: "Reports", icon: "i-heroicons-inbox-stack", to: `${base}/reports` },
+    {
+      label: "Reports",
+      icon: "i-heroicons-inbox-stack",
+      to: `${base}/reports`,
+    },
     { label: "Members", icon: "i-heroicons-user-group", to: `${base}/members` },
-    { label: "Integrations", icon: "i-heroicons-squares-plus", to: `${base}/integrations` },
-    { label: "Settings", icon: "i-heroicons-cog-6-tooth", to: `${base}/settings` },
+    {
+      label: "Integrations",
+      icon: "i-heroicons-squares-plus",
+      to: `${base}/integrations`,
+    },
+    {
+      label: "Settings",
+      icon: "i-heroicons-cog-6-tooth",
+      to: `${base}/settings`,
+    },
   ]
 })
 
@@ -53,7 +100,11 @@ const adminItems = computed<NavItem[]>(() => {
   if (!isAdmin.value) return []
   return [
     { label: "Users", icon: "i-heroicons-users", to: "/settings/users" },
-    { label: "Install", icon: "i-heroicons-code-bracket", to: "/settings/install" },
+    {
+      label: "Install",
+      icon: "i-heroicons-code-bracket",
+      to: "/settings/install",
+    },
   ]
 })
 
@@ -104,6 +155,32 @@ function isActive(to: string): boolean {
             <UBadge :label="String(item.badge)" size="xs" variant="soft" />
           </template>
         </UButton>
+      </div>
+      <div v-else-if="!collapsed" class="px-3">
+        <UButton
+          to="/"
+          :icon="hasAnyProject ? 'i-heroicons-squares-2x2' : 'i-heroicons-plus'"
+          :label="hasAnyProject ? 'Choose a project' : 'Create your first project'"
+          :active="route.path === '/'"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          block
+          class="justify-start"
+        />
+      </div>
+      <div v-else class="px-2">
+        <UButton
+          to="/"
+          :icon="hasAnyProject ? 'i-heroicons-squares-2x2' : 'i-heroicons-plus'"
+          :active="route.path === '/'"
+          :aria-label="hasAnyProject ? 'Choose a project' : 'Create a project'"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          block
+          class="justify-center px-0"
+        />
       </div>
       <div v-if="adminItems.length > 0">
         <div v-if="!collapsed" class="mt-4 mb-1 px-3 text-xs font-medium uppercase text-muted">

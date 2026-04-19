@@ -31,7 +31,7 @@ const userItems = computed(() => [
     <div class="flex items-center gap-1">
       <UButton
         icon="i-heroicons-question-mark-circle"
-        to="https://marker.io"
+        to="https://github.com/Ripwords/feedback-tool/wiki"
         target="_blank"
         color="neutral"
         variant="ghost"

@@ -7,6 +7,10 @@ const route = useRoute()
 const router = useRouter()
 
 // If the project-exists middleware bounced us here, surface a toast once.
+// Also clear the `last-project-id` cookie so the sidebar stops rendering
+// project-scoped links to the dead UUID — otherwise clicking Overview (or
+// any other item) would bounce the user right back here in a loop.
+const lastProjectId = useCookie<string | null>("last-project-id")
 onMounted(() => {
   if (route.query.error === "project-not-found") {
     toast.add({
@@ -15,7 +19,7 @@ onMounted(() => {
       color: "error",
       icon: "i-heroicons-exclamation-triangle",
     })
-    // Clean the URL so a refresh doesn't re-fire the toast.
+    lastProjectId.value = null
     router.replace({ query: {} })
   }
 })
