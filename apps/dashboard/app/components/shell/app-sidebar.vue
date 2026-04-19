@@ -86,13 +86,17 @@ interface NavItem {
   label: string
   icon: string
   to: string
+  // When true, `isActive` only matches the exact path — no prefix match.
+  // Needed for "Overview" since its `to` is the project root, and a
+  // naive prefix match would mark it active on every sub-route.
+  exact?: boolean
 }
 
 const projectItems = computed<NavItem[]>(() => {
   if (!projectId.value) return []
   const base = `/projects/${projectId.value}`
   return [
-    { label: "Overview", icon: "i-heroicons-home", to: base },
+    { label: "Overview", icon: "i-heroicons-home", to: base, exact: true },
     { label: "Reports", icon: "i-heroicons-inbox-stack", to: `${base}/reports` },
     { label: "Members", icon: "i-heroicons-user-group", to: `${base}/members` },
     { label: "Integrations", icon: "i-heroicons-squares-plus", to: `${base}/integrations` },
@@ -115,8 +119,9 @@ function toggle() {
   collapsed.value = !collapsed.value
 }
 
-function isActive(to: string): boolean {
-  return route.path === to || route.path.startsWith(to + "/")
+function isActive(item: NavItem): boolean {
+  if (item.exact) return route.path === item.to
+  return route.path === item.to || route.path.startsWith(item.to + "/")
 }
 </script>
 
@@ -186,7 +191,7 @@ function isActive(to: string): boolean {
         <div
           v-if="!collapsed && currentProjectName"
           :title="currentProjectName"
-          class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted truncate"
+          class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted truncate"
         >
           {{ currentProjectName }}
         </div>
@@ -200,7 +205,7 @@ function isActive(to: string): boolean {
             :class="[
               'flex items-center rounded-lg transition-colors',
               collapsed ? 'justify-center size-10' : 'gap-3 px-3 py-2.5',
-              isActive(item.to)
+              isActive(item)
                 ? 'bg-elevated text-default font-semibold'
                 : 'text-muted hover:text-default hover:bg-elevated/60 font-medium',
             ]"
@@ -213,7 +218,7 @@ function isActive(to: string): boolean {
 
       <!-- Empty workspace hint -->
       <div v-else-if="!collapsed && !hasAnyProject" class="mt-3 px-5">
-        <p class="text-xs text-muted leading-relaxed">
+        <p class="text-sm text-muted leading-relaxed">
           Projects group incoming reports. Create one to get started.
         </p>
       </div>
@@ -222,7 +227,7 @@ function isActive(to: string): boolean {
       <div v-if="adminItems.length > 0" class="mt-6 px-2">
         <div
           v-if="!collapsed"
-          class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted"
+          class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted"
         >
           Admin
         </div>
@@ -236,7 +241,7 @@ function isActive(to: string): boolean {
             :class="[
               'flex items-center rounded-lg transition-colors',
               collapsed ? 'justify-center size-10' : 'gap-3 px-3 py-2.5',
-              isActive(item.to)
+              isActive(item)
                 ? 'bg-elevated text-default font-semibold'
                 : 'text-muted hover:text-default hover:bg-elevated/60 font-medium',
             ]"

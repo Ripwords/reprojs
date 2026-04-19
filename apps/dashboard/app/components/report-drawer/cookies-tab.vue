@@ -25,22 +25,22 @@ const filtered = computed(() => {
     <UInput
       v-model="query"
       placeholder="Filter by name…"
-      size="xs"
+      size="sm"
       icon="i-heroicons-magnifying-glass"
       class="w-full"
     />
-    <table class="w-full text-xs">
-      <thead class="text-left text-muted">
+    <table class="w-full text-sm">
+      <thead class="text-left text-xs font-semibold uppercase tracking-[0.08em] text-muted">
         <tr class="border-b border-default">
-          <th class="p-2 font-medium">Name</th>
-          <th class="p-2 font-medium">Value</th>
+          <th class="p-2.5">Name</th>
+          <th class="p-2.5">Value</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="c in filtered" :key="c.name" class="border-b border-default">
-          <td class="p-2 font-mono text-default">{{ c.name }}</td>
+          <td class="p-2.5 font-mono text-[13px] text-default">{{ c.name }}</td>
           <td
-            class="p-2 font-mono break-all"
+            class="p-2.5 font-mono text-[13px] break-all"
             :class="c.value === '<redacted>' ? 'italic text-muted' : 'text-default'"
           >
             {{ c.value }}

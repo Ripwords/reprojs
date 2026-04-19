@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite"
 export default defineNuxtConfig({
   compatibilityDate: "2026-04-17",
   future: { compatibilityVersion: 5 },
-  modules: ["@nuxt/ui", "@nuxt/fonts"],
+  modules: ["@nuxt/ui", "@nuxt/fonts", "nuxt-security"],
   css: ["~/assets/css/tailwind.css"],
   fonts: {
     families: [

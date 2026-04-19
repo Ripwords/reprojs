@@ -132,23 +132,33 @@ async function saveRepo() {
 </script>
 
 <template>
-  <UCard>
+  <UCard :ui="{ header: 'p-5', body: 'p-5' }">
     <template #header>
       <div class="flex items-center gap-3">
-        <UIcon name="i-simple-icons-github" class="size-6 text-default" />
-        <div class="flex-1">
-          <h2 class="text-base font-semibold text-default">GitHub Issues</h2>
-          <p class="text-xs text-muted mt-0.5">
+        <div
+          class="flex items-center justify-center size-10 rounded-lg bg-elevated text-default ring-1 ring-default shrink-0"
+        >
+          <UIcon name="i-simple-icons-github" class="size-5" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-base font-semibold text-default tracking-tight">GitHub Issues</h2>
+          <p class="text-sm text-muted mt-0.5">
             Auto-create issues for every report, sync status both ways.
           </p>
         </div>
-        <UBadge :label="statusLabel" :color="statusColor" variant="soft" size="sm" />
+        <UBadge
+          :label="statusLabel"
+          :color="statusColor"
+          variant="soft"
+          size="md"
+          class="capitalize"
+        />
       </div>
     </template>
 
     <!-- Not installed yet -->
-    <div v-if="!isInstalled" class="space-y-3 py-2">
-      <p class="text-sm text-muted">
+    <div v-if="!isInstalled" class="space-y-4">
+      <p class="text-sm text-muted leading-relaxed">
         Install the GitHub App on a repository to start syncing reports as issues.
       </p>
       <UButton
@@ -157,12 +167,13 @@ async function saveRepo() {
         icon="i-simple-icons-github"
         color="neutral"
         variant="solid"
+        size="md"
         @click="startInstall"
       />
     </div>
 
     <!-- Installed but disconnected (App uninstalled / access revoked) -->
-    <div v-else-if="!isConnected" class="space-y-3 py-2">
+    <div v-else-if="!isConnected" class="space-y-4">
       <UAlert
         color="warning"
         variant="soft"
@@ -176,35 +187,36 @@ async function saveRepo() {
         icon="i-simple-icons-github"
         color="neutral"
         variant="solid"
+        size="md"
         @click="startInstall"
       />
     </div>
 
     <!-- Installed + connected -->
-    <div v-else class="space-y-4 py-2">
+    <div v-else class="space-y-5">
       <div>
-        <div class="text-xs font-medium text-muted uppercase mb-1.5">Repository</div>
+        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted mb-2">
+          Repository
+        </div>
         <RepoPicker
           v-model="selectedRepo"
           :repos="repos"
           @refresh="loadRepos"
           @update:model-value="saveRepo"
         />
-        <p v-if="reposError" class="mt-1.5 text-xs text-error">
+        <p v-if="reposError" class="mt-2 text-sm text-error">
           {{ reposError }} —
           <button type="button" class="underline" @click="loadRepos">retry</button>
         </p>
-        <p v-else-if="repos.length === 0" class="mt-1.5 text-xs text-muted">
-          Loading repositories…
-        </p>
+        <p v-else-if="repos.length === 0" class="mt-2 text-sm text-muted">Loading repositories…</p>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UFormField label="Default labels">
-          <UInput v-model="labelsText" placeholder="bug, triage" class="w-full" size="sm" />
+          <UInput v-model="labelsText" placeholder="bug, triage" class="w-full" />
         </UFormField>
         <UFormField label="Default assignees">
-          <UInput v-model="assigneesText" placeholder="octocat, hubot" class="w-full" size="sm" />
+          <UInput v-model="assigneesText" placeholder="octocat, hubot" class="w-full" />
         </UFormField>
       </div>
 
@@ -213,23 +225,25 @@ async function saveRepo() {
           label="Save defaults"
           color="primary"
           variant="solid"
-          size="sm"
+          size="md"
           :loading="saving"
           @click="saveRepo"
         />
       </div>
 
       <div>
-        <div class="text-xs font-medium text-muted uppercase mb-1.5">Sync status</div>
+        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted mb-2">
+          Sync status
+        </div>
         <SyncStatus :project-id="projectId" @retried="refresh" />
       </div>
 
-      <div class="pt-2">
+      <div class="pt-3 border-t border-default">
         <UButton
-          label="Disconnect"
+          label="Disconnect integration"
           color="error"
           variant="soft"
-          size="sm"
+          size="md"
           @click="unlinkOpen = true"
         />
       </div>

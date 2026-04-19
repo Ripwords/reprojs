@@ -166,9 +166,7 @@ const assigneeItems = computed(() => [
          label / select pairs with breathing room. Grouped under one
          "Properties" umbrella rather than three floating sections. -->
     <section>
-      <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-        Properties
-      </h3>
+      <h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Properties</h3>
       <div class="space-y-3">
         <div class="flex items-center gap-3">
           <label class="w-20 shrink-0 text-xs font-medium text-muted">Status</label>
@@ -211,7 +209,7 @@ const assigneeItems = computed(() => [
     <!-- Tags — proper chips with hashtag + dismiss, input lives in the
          same row so the editor feels contiguous with the tag pile. -->
     <section>
-      <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Tags</h3>
+      <h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Tags</h3>
       <div class="flex flex-wrap gap-1.5 items-center">
         <span
           v-for="t in report.tags"
@@ -250,7 +248,7 @@ const assigneeItems = computed(() => [
          border+bg instead of a bare link so it reads as "record" rather
          than "inline text". -->
     <section>
-      <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">GitHub</h3>
+      <h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">GitHub</h3>
       <template v-if="report.githubIssueNumber && report.githubIssueUrl">
         <a
           :href="safeHref(report.githubIssueUrl)"

@@ -95,7 +95,7 @@ const priorityDot: Record<ReportPriority, string> = {
 <template>
   <aside class="space-y-7 text-sm">
     <section>
-      <h3 class="px-2 mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
         Assignee
       </h3>
       <ul>
@@ -131,7 +131,7 @@ const priorityDot: Record<ReportPriority, string> = {
     </section>
 
     <section>
-      <h3 class="px-2 mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
         Priority
       </h3>
       <ul>
@@ -165,9 +165,7 @@ const priorityDot: Record<ReportPriority, string> = {
     </section>
 
     <section v-if="tags.length">
-      <h3 class="px-2 mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-        Tags
-      </h3>
+      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Tags</h3>
       <ul>
         <li v-for="t in tags" :key="t.name">
           <button

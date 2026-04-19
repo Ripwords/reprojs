@@ -26,13 +26,21 @@
   --color-mist-100: oklch(0.945 0.004 220);
   --color-mist-200: oklch(0.895 0.01 228);
   --color-mist-300: oklch(0.805 0.015 235);
-  --color-mist-400: oklch(0.7 0.018 237);
-  --color-mist-500: oklch(0.59 0.021 238);
-  --color-mist-600: oklch(0.48 0.023 239);
-  --color-mist-700: oklch(0.385 0.023 240);
-  --color-mist-800: oklch(0.31 0.021 240);
+  /*
+   * 400–600 are lifted higher than a "symmetric" ramp would place them.
+   * Nuxt UI uses `neutral-500` for `text-muted` in dark mode; with the
+   * operator's anchors (100 / 300 / 900), a smooth ramp put 500 at
+   * L=0.59, which against the 900 bg (L≈0.28) only hit a ~2.9:1 contrast
+   * ratio — WCAG AA failure. The lifted mid-shades keep muted text
+   * readable on the deep navy surface without touching the anchors.
+   */
+  --color-mist-400: oklch(0.76 0.018 237);
+  --color-mist-500: oklch(0.68 0.02 238);
+  --color-mist-600: oklch(0.575 0.022 239);
+  --color-mist-700: oklch(0.46 0.023 240);
+  --color-mist-800: oklch(0.36 0.022 240);
   --color-mist-900: oklch(0.28 0.02 240);
-  --color-mist-950: oklch(0.2 0.015 240);
+  --color-mist-950: oklch(0.185 0.015 240);
 
   --color-flame-50: oklch(0.97 0.015 62);
   --color-flame-100: oklch(0.94 0.035 60);
@@ -104,6 +112,34 @@ html {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "cv11", "ss01", "ss03";
+}
+
+/*
+ * Readability overrides for Nuxt UI's semantic text tokens. Nuxt UI's
+ * defaults are tuned against the Tailwind default palettes (slate/zinc
+ * etc.); against our lifted mist scale the raw mapping still bottomed
+ * out around 4:1 for muted copy. These overrides push text-default to
+ * mist-50 (effectively white) and text-muted to mist-300 in dark mode,
+ * and bump text-muted to mist-600 in light mode, so the WCAG AA
+ * 4.5:1 ratio is cleared with headroom on every surface.
+ *
+ * Light mode: deep navy on pale surface.
+ * Dark mode:  near-white on deep navy surface.
+ */
+:root {
+  --ui-text-highlighted: var(--color-mist-950);
+  --ui-text: var(--color-mist-900);
+  --ui-text-toned: var(--color-mist-700);
+  --ui-text-muted: var(--color-mist-600);
+  --ui-text-dimmed: var(--color-mist-500);
+}
+
+.dark {
+  --ui-text-highlighted: var(--color-white, #ffffff);
+  --ui-text: var(--color-mist-50);
+  --ui-text-toned: var(--color-mist-200);
+  --ui-text-muted: var(--color-mist-300);
+  --ui-text-dimmed: var(--color-mist-400);
 }
 
 /* Headings sit a touch tighter than body for a more confident rhythm. */

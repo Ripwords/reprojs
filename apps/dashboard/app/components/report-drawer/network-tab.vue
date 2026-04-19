@@ -48,14 +48,14 @@ function shortUrl(url: string): string {
     No network requests captured in the last {{ logs.config.networkMax }} calls.
   </div>
   <div v-else class="p-3">
-    <table class="w-full text-xs">
-      <thead class="text-left text-muted">
+    <table class="w-full text-sm">
+      <thead class="text-left text-xs font-semibold uppercase tracking-[0.08em] text-muted">
         <tr class="border-b border-default">
-          <th class="p-2 font-medium">Method</th>
-          <th class="p-2 font-medium">URL</th>
-          <th class="p-2 font-medium">Status</th>
-          <th class="p-2 font-medium text-right">Time</th>
-          <th class="p-2 font-medium text-right">Size</th>
+          <th class="p-2.5">Method</th>
+          <th class="p-2.5">URL</th>
+          <th class="p-2.5">Status</th>
+          <th class="p-2.5 text-right">Time</th>
+          <th class="p-2.5 text-right">Size</th>
         </tr>
       </thead>
       <tbody>
@@ -65,7 +65,7 @@ function shortUrl(url: string): string {
             @click="toggle(n.id)"
           >
             <td class="p-2">
-              <UBadge :label="n.method" :color="methodColor(n.method)" variant="soft" size="xs" />
+              <UBadge :label="n.method" :color="methodColor(n.method)" variant="soft" size="sm" />
             </td>
             <td class="p-2 font-mono text-default max-w-[14rem]">
               <UTooltip :text="n.url">
@@ -77,7 +77,8 @@ function shortUrl(url: string): string {
                 :label="n.status === null ? '—' : String(n.status)"
                 :color="statusColor(n.status)"
                 variant="soft"
-                size="xs"
+                size="sm"
+                class="tabular-nums"
               />
             </td>
             <td class="p-2 text-right text-muted">{{ fmtMs(n.durationMs) }}</td>

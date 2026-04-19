@@ -6,10 +6,11 @@ const projectId = computed(() => String(route.params.id))
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-8">
     <header>
-      <h1 class="text-2xl font-semibold text-default">Integrations</h1>
-      <p class="text-sm text-muted mt-1">
+      <div class="text-xs font-medium uppercase tracking-[0.18em] text-muted">Project</div>
+      <h1 class="mt-1 text-3xl font-semibold text-default tracking-tight">Integrations</h1>
+      <p class="mt-2 text-sm text-muted max-w-xl">
         Connect external services to mirror reports and enrich triage.
       </p>
     </header>

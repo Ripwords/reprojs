@@ -46,7 +46,7 @@ function toggle(i: number) {
       <label
         v-for="lv in ['log', 'info', 'warn', 'error', 'debug'] as const"
         :key="lv"
-        class="flex items-center gap-1.5 text-xs text-muted cursor-pointer"
+        class="flex items-center gap-1.5 text-sm text-default cursor-pointer"
       >
         <UCheckbox v-model="levels[lv]" />
         <span class="capitalize">{{ lv }}</span>
@@ -54,7 +54,7 @@ function toggle(i: number) {
       <UInput
         v-model="query"
         placeholder="Filter…"
-        size="xs"
+        size="sm"
         icon="i-heroicons-magnifying-glass"
         class="ml-auto w-40"
       />
@@ -65,7 +65,7 @@ function toggle(i: number) {
         v-for="(e, i) in filtered"
         :key="i"
         :class="[
-          'rounded-md border border-default px-3 py-2 text-xs font-mono cursor-pointer hover:bg-elevated/40 transition',
+          'rounded-md border border-default px-3 py-2 text-[13px] font-mono cursor-pointer hover:bg-elevated/40 transition',
           e.level === 'error' ? 'border-error/40 bg-error/5' : '',
           e.level === 'warn' ? 'border-warning/40 bg-warning/5' : '',
         ]"
@@ -98,7 +98,7 @@ function toggle(i: number) {
         <li
           v-for="(b, i) in logs.breadcrumbs"
           :key="i"
-          class="rounded-md border border-default px-3 py-2 text-xs font-mono"
+          class="rounded-md border border-default px-3 py-2 text-[13px] font-mono"
         >
           <div class="flex items-start gap-2">
             <UBadge

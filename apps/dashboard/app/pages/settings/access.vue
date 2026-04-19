@@ -133,19 +133,19 @@ function reset() {
             />
           </UFormField>
 
-          <p class="text-xs text-muted leading-relaxed">
+          <p class="text-sm text-muted leading-relaxed">
             One domain per line (or comma-separated). Users signing in with an email on any of these
             domains can bypass the invite requirement. Leave blank to require invites for everyone.
           </p>
 
-          <div v-if="invalidDomains.length > 0" class="flex items-start gap-2 text-xs text-error">
+          <div v-if="invalidDomains.length > 0" class="flex items-start gap-2 text-sm text-error">
             <UIcon name="i-heroicons-exclamation-triangle" class="size-4 flex-shrink-0 mt-0.5" />
             <div>
               Invalid domain{{ invalidDomains.length === 1 ? "" : "s" }}:
               <span class="font-mono">{{ invalidDomains.join(", ") }}</span>
             </div>
           </div>
-          <div v-if="tooManyDomains" class="flex items-start gap-2 text-xs text-error">
+          <div v-if="tooManyDomains" class="flex items-start gap-2 text-sm text-error">
             <UIcon name="i-heroicons-exclamation-triangle" class="size-4 flex-shrink-0 mt-0.5" />
             <div>At most 50 domains are allowed.</div>
           </div>

@@ -88,18 +88,18 @@ function relativeTime(iso: string): string {
 <template>
   <div class="space-y-3">
     <div class="grid grid-cols-2 gap-3">
-      <div class="p-3 rounded-lg border border-default bg-default">
-        <div class="text-xs text-muted uppercase">Failed</div>
+      <div class="p-4 rounded-lg border border-default bg-default">
+        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Failed</div>
         <div
-          class="mt-1 text-xl font-semibold"
+          class="mt-1 text-2xl font-semibold tabular-nums tracking-tight"
           :class="failedCount > 0 ? 'text-error' : 'text-default'"
         >
           {{ failedCount }}
         </div>
       </div>
-      <div class="p-3 rounded-lg border border-default bg-default">
-        <div class="text-xs text-muted uppercase">Last sync</div>
-        <div class="mt-1 text-sm font-semibold text-default">
+      <div class="p-4 rounded-lg border border-default bg-default">
+        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Last sync</div>
+        <div class="mt-1 text-base font-semibold text-default">
           {{ lastSyncedAt ? relativeTime(lastSyncedAt) : "—" }}
         </div>
       </div>
@@ -125,8 +125,10 @@ function relativeTime(iso: string): string {
       >
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-default truncate">{{ j.reportTitle }}</div>
-          <div class="text-xs text-muted truncate">{{ j.lastError ?? "Unknown error" }}</div>
-          <div class="text-xs text-muted/80">
+          <div class="text-sm text-muted truncate mt-0.5">
+            {{ j.lastError ?? "Unknown error" }}
+          </div>
+          <div class="mt-1 text-xs text-muted tabular-nums">
             {{ j.attempts }} attempt{{ j.attempts === 1 ? "" : "s" }} ·
             {{ relativeTime(j.updatedAt) }}
           </div>

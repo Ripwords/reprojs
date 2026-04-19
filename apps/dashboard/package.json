@@ -26,6 +26,7 @@
     "h3": "^1.15.11",
     "nodemailer": "^6.9.15",
     "nuxt": "^4.4.2",
+    "nuxt-security": "^2.5.1",
     "pg": "^8.20.0",
     "rrweb-player": "^2.0.0-alpha.4",
     "shiki": "^1.24.0",

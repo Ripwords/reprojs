@@ -77,7 +77,7 @@ async function createProject() {
   <div class="space-y-8">
     <header class="flex items-start justify-between gap-6">
       <div class="min-w-0 flex-1">
-        <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Workspace</div>
+        <div class="text-xs font-medium uppercase tracking-[0.18em] text-muted">Workspace</div>
         <h1 class="mt-1 text-3xl font-semibold text-default tracking-tight">Projects</h1>
         <p class="mt-2 text-sm text-muted max-w-xl">
           Each project carries its own SDK key, member list, and inbox. Pick one to triage, or spin
@@ -132,7 +132,7 @@ async function createProject() {
               {{ p.name }}
             </h3>
             <div
-              class="mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted"
+              class="mt-1 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted"
             >
               <span
                 class="inline-block size-1.5 rounded-full"

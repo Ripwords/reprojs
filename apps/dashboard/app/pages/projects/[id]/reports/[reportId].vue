@@ -250,7 +250,7 @@ function relativeTime(iso: string | undefined): string {
       <div class="p-6">
         <div class="flex items-center gap-2 mb-5">
           <UIcon name="i-heroicons-adjustments-horizontal" class="size-4 text-muted" />
-          <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
         </div>
         <TriageFooter
           :project-id="projectId"

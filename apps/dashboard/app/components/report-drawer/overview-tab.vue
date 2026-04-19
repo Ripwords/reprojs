@@ -45,7 +45,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
       <template #header>
         <div class="text-sm font-medium text-default">System info</div>
       </template>
-      <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
         <div>
           <dt class="text-muted">Platform</dt>
           <dd class="text-default">{{ sys.platform }}</dd>
