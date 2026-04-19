@@ -190,7 +190,7 @@
     <!-- Load the SDK (served by Bun at /sdk.iife.js) -->
     <script src="/sdk.iife.js"></script>
     <script>
-      const PROJECT_KEY = "ft_pk_1O08WhdQC0HSoQqRZZFpHjK7"
+      const PROJECT_KEY = "ft_pk_dV9hIXbs4TV1q4MfRlpLGH5F"
       const ENDPOINT = "http://localhost:3000"
 
       if (/^ft_pk_[A-Za-z0-9]{24}$/.test(PROJECT_KEY)) {
@@ -220,7 +220,6 @@
             },
           },
         })
-        FeedbackTool.identify({ email: "demo-user@example.com", name: "Demo User" })
       } else {
         console.error(
           "[demo] set PROJECT_KEY in index.html or window.FT_DEMO_KEY before FeedbackTool.init",
