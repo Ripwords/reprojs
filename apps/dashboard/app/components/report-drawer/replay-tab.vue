@@ -72,10 +72,7 @@ onBeforeUnmount(() => {
       <div v-else-if="status === 'loading'" class="text-sm text-muted p-8 text-center">
         Loading replay…
       </div>
-      <div
-        v-else-if="status === 'error'"
-        class="text-sm text-red-600 dark:text-red-400 p-8 text-center"
-      >
+      <div v-else-if="status === 'error'" class="text-sm text-error p-8 text-center">
         Replay unavailable. {{ errorMessage }}
       </div>
       <div ref="playerHost" class="w-full min-h-[400px]" />

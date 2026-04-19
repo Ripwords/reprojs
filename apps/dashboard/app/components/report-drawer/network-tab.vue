@@ -85,7 +85,7 @@ function shortUrl(url: string): string {
           </tr>
           <tr v-if="expanded.has(n.id)" class="border-b border-default bg-elevated/40">
             <td colspan="5" class="p-3 text-xs space-y-2">
-              <div v-if="n.error" class="text-red-600 dark:text-red-400">Error: {{ n.error }}</div>
+              <div v-if="n.error" class="text-error">Error: {{ n.error }}</div>
               <div v-if="n.requestHeaders && Object.keys(n.requestHeaders).length">
                 <div class="font-semibold text-default mb-1">Request headers</div>
                 <pre class="whitespace-pre-wrap text-muted">{{
