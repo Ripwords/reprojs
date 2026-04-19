@@ -62,10 +62,6 @@ const raw = {
   })
 <\/script>`,
   },
-  npm: {
-    lang: "bash" as const,
-    code: "npm install @feedback-tool/core",
-  },
   init: {
     lang: "typescript" as const,
     code: `import { init } from "@feedback-tool/core"
@@ -95,12 +91,6 @@ const snippets = ref<Record<SnippetKey, Snippet>>({
     highlightedLight: "",
     highlightedDark: "",
   },
-  npm: {
-    code: raw.npm.code,
-    lang: raw.npm.lang,
-    highlightedLight: "",
-    highlightedDark: "",
-  },
   init: {
     code: raw.init.code,
     lang: raw.init.lang,
@@ -115,6 +105,39 @@ const snippets = ref<Record<SnippetKey, Snippet>>({
   },
 })
 
+// Install commands per package manager. Both `@feedback-tool/core` (the
+// framework-agnostic init API) and `@feedback-tool/ui` (the widget UI) need
+// installing together. Deno uses `deno add` with an `npm:` specifier.
+const pmCommands = {
+  npm: "npm install @feedback-tool/core @feedback-tool/ui",
+  pnpm: "pnpm add @feedback-tool/core @feedback-tool/ui",
+  yarn: "yarn add @feedback-tool/core @feedback-tool/ui",
+  bun: "bun add @feedback-tool/core @feedback-tool/ui",
+  deno: "deno add npm:@feedback-tool/core npm:@feedback-tool/ui",
+} as const
+
+type PackageManager = keyof typeof pmCommands
+
+const packageManagers = [
+  { label: "npm", value: "npm" as const },
+  { label: "pnpm", value: "pnpm" as const },
+  { label: "yarn", value: "yarn" as const },
+  { label: "bun", value: "bun" as const },
+  { label: "deno", value: "deno" as const },
+]
+
+const activePm = useCookie<PackageManager>("install-pm", { default: () => "npm" })
+
+const pmSnippets = ref<Record<PackageManager, Snippet>>({
+  npm: { code: pmCommands.npm, lang: "bash", highlightedLight: "", highlightedDark: "" },
+  pnpm: { code: pmCommands.pnpm, lang: "bash", highlightedLight: "", highlightedDark: "" },
+  yarn: { code: pmCommands.yarn, lang: "bash", highlightedLight: "", highlightedDark: "" },
+  bun: { code: pmCommands.bun, lang: "bash", highlightedLight: "", highlightedDark: "" },
+  deno: { code: pmCommands.deno, lang: "bash", highlightedLight: "", highlightedDark: "" },
+})
+
+const activePmSnippet = computed(() => pmSnippets.value[activePm.value])
+
 onMounted(async () => {
   const keys = Object.keys(raw) as SnippetKey[]
   const results = await Promise.all(keys.map((key) => highlight(raw[key].code, raw[key].lang)))
@@ -123,6 +146,16 @@ onMounted(async () => {
     if (!result) continue
     snippets.value[key].highlightedLight = result.highlightedLight
     snippets.value[key].highlightedDark = result.highlightedDark
+  }
+
+  // Highlight every package-manager command once so tab-switching is instant.
+  const pmKeys = Object.keys(pmCommands) as PackageManager[]
+  const pmResults = await Promise.all(pmKeys.map((k) => highlight(pmCommands[k], "bash")))
+  for (const [i, key] of pmKeys.entries()) {
+    const r = pmResults[i]
+    if (!r) continue
+    pmSnippets.value[key].highlightedLight = r.highlightedLight
+    pmSnippets.value[key].highlightedDark = r.highlightedDark
   }
 })
 
@@ -141,7 +174,7 @@ async function copy(code: string) {
 
 const accordionItems = computed(() => [
   { label: "1. Add the script tag", slot: "script" as const },
-  { label: "2. Or install via npm", slot: "npm" as const },
+  { label: "2. Or install via a package manager", slot: "pm" as const },
   { label: "3. Initialize the SDK", slot: "init" as const },
   { label: "4. Identify signed-in users (optional)", slot: "identify" as const },
 ])
@@ -180,12 +213,28 @@ const accordionItems = computed(() => [
           </div>
         </div>
       </template>
-      <template #npm-body>
-        <div class="space-y-2">
-          <p class="text-sm text-muted">Install the package:</p>
+      <template #pm-body>
+        <div class="space-y-3">
+          <p class="text-sm text-muted">Install the packages with your preferred tool:</p>
+          <div class="flex flex-wrap gap-1 rounded-lg border border-default bg-muted/30 p-1">
+            <button
+              v-for="pm in packageManagers"
+              :key="pm.value"
+              type="button"
+              :class="[
+                'px-3 py-1 text-sm rounded-md transition-colors',
+                activePm === pm.value
+                  ? 'bg-default text-default shadow-sm font-medium'
+                  : 'text-muted hover:text-default',
+              ]"
+              @click="activePm = pm.value"
+            >
+              {{ pm.label }}
+            </button>
+          </div>
           <div class="relative rounded-lg border border-default overflow-hidden">
-            <div class="hidden dark:block" v-html="snippets.npm.highlightedDark" />
-            <div class="block dark:hidden" v-html="snippets.npm.highlightedLight" />
+            <div class="hidden dark:block" v-html="activePmSnippet.highlightedDark" />
+            <div class="block dark:hidden" v-html="activePmSnippet.highlightedLight" />
             <UButton
               class="absolute top-2 right-2"
               icon="i-heroicons-clipboard"
@@ -193,7 +242,7 @@ const accordionItems = computed(() => [
               color="neutral"
               variant="subtle"
               aria-label="Copy"
-              @click="copy(snippets.npm.code)"
+              @click="copy(activePmSnippet.code)"
             />
           </div>
         </div>
