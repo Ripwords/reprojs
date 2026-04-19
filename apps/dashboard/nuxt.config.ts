@@ -56,6 +56,45 @@ export default defineNuxtConfig({
     },
   },
   experimental: { nitroAutoImports: true },
+
+  // nuxt-security defaults are fine for the dashboard itself (same-origin),
+  // but its `xssValidator` consumes POST bodies in a way that trips up
+  // better-auth's catch-all handler (/api/auth/sign-in/social lands with
+  // `[body] Invalid input: expected object, received undefined`), and its
+  // default CORS origin is the dashboard's own URL — which blocks the
+  // cross-origin SDK POSTs to /api/intake/*. Scope the middleware down.
+  security: {
+    // Keep global defaults on; per-route overrides do the real work below.
+  },
+  routeRules: {
+    // better-auth owns request/response shape for every /api/auth/* call —
+    // rate-limits, validates, and sets session cookies itself. Letting
+    // nuxt-security middleware touch bodies or throttle here causes subtle
+    // auth-flow breakage (social sign-in, magic-link verify, session
+    // revoke). Turn the security stack off for this prefix.
+    "/api/auth/**": {
+      security: {
+        xssValidator: false,
+        requestSizeLimiter: false,
+        rateLimiter: false,
+        corsHandler: false,
+      },
+    },
+    // SDK intake — customer browsers POST from whatever origin their site
+    // is served from, so we need permissive CORS without credentials. The
+    // intake bodies are structured JSON (report shape + base64 blobs);
+    // xssValidator would false-flag them.
+    "/api/intake/**": {
+      security: {
+        corsHandler: {
+          origin: "*",
+          methods: ["POST", "OPTIONS"],
+          credentials: false,
+        },
+        xssValidator: false,
+      },
+    },
+  },
   nitro: {
     experimental: {
       tasks: true,
