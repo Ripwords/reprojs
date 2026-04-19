@@ -2,9 +2,16 @@ import tailwindcss from "@tailwindcss/vite"
 
 export default defineNuxtConfig({
   compatibilityDate: "2026-04-17",
-  future: { compatibilityVersion: 5 },
+  future: { compatibilityVersion: 4 },
   devtools: { enabled: process.env.NODE_ENV !== "production" },
+  modules: ["@nuxt/ui", "@nuxt/fonts"],
   css: ["~/assets/css/tailwind.css"],
+  fonts: {
+    families: [
+      { name: "Inter", provider: "fontsource", weights: ["400", "500", "600", "700"] },
+      { name: "JetBrains Mono", provider: "fontsource", weights: ["400", "500"] },
+    ],
+  },
   app: {
     head: {
       link: [
