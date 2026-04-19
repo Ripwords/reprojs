@@ -2,7 +2,6 @@ import tailwindcss from "@tailwindcss/vite"
 
 export default defineNuxtConfig({
   compatibilityDate: "2026-04-17",
-  future: { compatibilityVersion: 5 },
   modules: ["@nuxt/ui", "@nuxt/fonts", "nuxt-security"],
   css: ["~/assets/css/tailwind.css"],
 
@@ -55,7 +54,6 @@ export default defineNuxtConfig({
       include: ["better-auth/vue", "better-auth/client/plugins", "rrweb-player", "shiki"],
     },
   },
-  experimental: { nitroAutoImports: true },
 
   // nuxt-security defaults are fine for the dashboard itself (same-origin),
   // but its `xssValidator` consumes POST bodies in a way that trips up

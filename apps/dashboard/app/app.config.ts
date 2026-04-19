@@ -8,7 +8,7 @@ export default defineAppConfig({
       // Carries every neutral surface (backgrounds, cards, dividers, body
       // text) so the whole chrome reads as one cool-neutral scale rather
       // than multiple competing hues.
-      neutral: "mist",
+      neutral: "neutral",
     },
   },
 })
