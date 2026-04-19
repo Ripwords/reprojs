@@ -4,6 +4,25 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /*
+   * Type scale — bumped one step above Tailwind defaults to align with WCAG's
+   * 16px baseline for interactive + body text. Tailwind defaults (12/14/16/18)
+   * put `text-sm` (the most-used class in this codebase — table rows, form
+   * inputs, buttons) at 14px, which tests as cramped on standard desktop
+   * DPIs. The bump keeps ratios stable and leaves `text-base` at the WCAG
+   * baseline:
+   *
+   *   xs:   12 → 13  (table meta, tooltips)
+   *   sm:   14 → 15  (primary body, labels, inputs, buttons)
+   *   base: 16 → 16  (prose, empty-state descriptions — unchanged)
+   *   lg:   18 → 18  (card titles — unchanged)
+   *   xl+:  unchanged
+   */
+  --text-xs: 0.8125rem; /* 13px */
+  --text-xs--line-height: 1.125rem; /* 18px */
+  --text-sm: 0.9375rem; /* 15px */
+  --text-sm--line-height: 1.375rem; /* 22px */
 }
 
 html {
