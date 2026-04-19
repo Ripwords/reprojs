@@ -2,8 +2,7 @@ import tailwindcss from "@tailwindcss/vite"
 
 export default defineNuxtConfig({
   compatibilityDate: "2026-04-17",
-  future: { compatibilityVersion: 4 },
-  devtools: { enabled: process.env.NODE_ENV !== "production" },
+  future: { compatibilityVersion: 5 },
   modules: ["@nuxt/ui", "@nuxt/fonts"],
   css: ["~/assets/css/tailwind.css"],
   fonts: {
@@ -37,9 +36,10 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ["better-auth/vue", "better-auth/client/plugins"],
+      include: ["better-auth/vue", "better-auth/client/plugins", "rrweb-player", "shiki"],
     },
   },
+  experimental: { nitroAutoImports: true },
   nitro: {
     experimental: {
       tasks: true,
