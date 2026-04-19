@@ -39,11 +39,18 @@ const shortcutHint = computed(() => (isMac.value ? "⌘K" : "Ctrl K"))
     @click="openPalette"
   >
     <span class="truncate max-w-[14rem]">{{ currentProject?.name ?? "Feedback Tool" }}</span>
-    <kbd
-      class="hidden md:inline-flex items-center ml-2 px-1.5 py-0.5 rounded border border-default bg-muted/60 text-xs font-mono text-muted"
-      aria-hidden="true"
-    >
-      {{ shortcutHint }}
-    </kbd>
+    <!-- navigator.platform isn't available during SSR (renders "Ctrl K")
+         but becomes available post-mount (re-renders as "⌘K" on Mac),
+         which triggers Vue's hydration-mismatch warning. ClientOnly skips
+         server-rendering this tiny element entirely — visually silent
+         since SSR wouldn't render the right value anyway. -->
+    <ClientOnly>
+      <kbd
+        class="hidden md:inline-flex items-center ml-2 px-1.5 py-0.5 rounded border border-default bg-muted/60 text-xs font-mono text-muted"
+        aria-hidden="true"
+      >
+        {{ shortcutHint }}
+      </kbd>
+    </ClientOnly>
   </UButton>
 </template>

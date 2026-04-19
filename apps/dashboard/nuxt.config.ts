@@ -65,6 +65,8 @@ export default defineNuxtConfig({
   // cross-origin SDK POSTs to /api/intake/*. Scope the middleware down.
   security: {
     // Keep global defaults on; per-route overrides do the real work below.
+    // (Shiki on /settings/install runs on its JavaScript engine, not WASM, so
+    // we don't need to relax CSP's script-src for WebAssembly.)
   },
   routeRules: {
     // better-auth owns request/response shape for every /api/auth/* call —
