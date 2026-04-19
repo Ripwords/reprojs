@@ -29,8 +29,8 @@ That's the whole flow. Everything below is "what just happened" and "how do I do
 | Service     | Image                                        | Purpose                                                  |
 | ----------- | -------------------------------------------- | -------------------------------------------------------- |
 | `postgres`  | `postgres:17`                                | Database                                                 |
-| `migrator`  | `ghcr.io/ripwords/reprokit-dashboard:<ver>`  | `drizzle-kit migrate`, exits 0, blocks dashboard start   |
-| `dashboard` | `ghcr.io/ripwords/reprokit-dashboard:<ver>`  | Nuxt server on `:3000` — intake API + admin UI           |
+| `migrator`  | `ripwords/reprokit-dashboard:<ver>`  | `drizzle-kit migrate`, exits 0, blocks dashboard start   |
+| `dashboard` | `ripwords/reprokit-dashboard:<ver>`  | Nuxt server on `:3000` — intake API + admin UI           |
 
 Persistent state lives in two named Docker volumes: `postgres_data` (the DB) and `attachments_data` (local-disk screenshots / logs / replays, only used when `STORAGE_DRIVER=local`). Both survive `docker compose down`; only `docker compose down -v` drops them.
 

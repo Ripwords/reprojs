@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Repro dashboard image. Published as ghcr.io/ripwords/reprokit-dashboard.
+# Repro dashboard image. Published as ripwords/reprokit-dashboard on Docker Hub.
 #
 # Same image serves two purposes via the command:
 #   - default      : `bun .output/server/index.mjs` (starts the Nuxt server)
