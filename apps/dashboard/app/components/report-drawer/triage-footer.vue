@@ -4,7 +4,12 @@
      GitHub) separated by hairlines, with eyebrow labels + mid-weight
      select menus. Tags render as proper chips with a hover dismiss. -->
 <script setup lang="ts">
-import type { ReportPriority, ReportStatus, ReportSummaryDTO } from "@feedback-tool/shared"
+import type {
+  GithubConfigDTO,
+  ReportPriority,
+  ReportStatus,
+  ReportSummaryDTO,
+} from "@feedback-tool/shared"
 import UnlinkDialog from "~/components/integrations/github/unlink-dialog.vue"
 import { safeHref } from "~/composables/use-safe-href"
 
@@ -28,6 +33,17 @@ const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
 
 const { data: members } = useApi<Member[]>(
   `/api/projects/${props.projectId}/members?role=developer,owner`,
+)
+
+// Check GitHub integration state up-front so we can gate the "Create GitHub
+// issue" button on whether the app is actually installed + connected for this
+// project. Without this, clicking the button enqueues a sync job that quietly
+// fails when processed — the user sees a success toast and nothing happens.
+const { data: githubConfig } = useApi<GithubConfigDTO>(
+  `/api/projects/${props.projectId}/integrations/github`,
+)
+const githubReady = computed(
+  () => Boolean(githubConfig.value?.installed) && githubConfig.value?.status === "connected",
 )
 
 const tagDraft = ref("")
@@ -279,8 +295,13 @@ const assigneeItems = computed(() => [
           @click="unlinkOpen = true"
         />
       </template>
+      <!-- Three states for the unlinked case:
+           1. Integration ready → "Create GitHub issue" (primary action)
+           2. Integration missing / disconnected but viewer can edit →
+              soft prompt with a link to the integrations page
+           3. Viewer-only (no edit rights) → italic "Not linked" -->
       <UButton
-        v-else-if="canEdit"
+        v-else-if="canEdit && githubReady"
         size="md"
         color="neutral"
         variant="outline"
@@ -290,6 +311,27 @@ const assigneeItems = computed(() => [
         block
         @click="createIssue"
       />
+      <div
+        v-else-if="canEdit"
+        class="rounded-lg border border-dashed border-default bg-elevated/40 p-3 space-y-2"
+      >
+        <div class="flex items-start gap-2">
+          <UIcon name="i-heroicons-information-circle" class="size-4 text-muted shrink-0 mt-0.5" />
+          <p class="text-sm text-muted leading-relaxed">
+            Connect the GitHub App to this project to sync reports as issues.
+          </p>
+        </div>
+        <UButton
+          :to="`/projects/${projectId}/integrations`"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          icon="i-simple-icons-github"
+          label="Set up GitHub integration"
+          trailing-icon="i-heroicons-arrow-right"
+          block
+        />
+      </div>
       <span v-else class="text-sm text-muted italic">Not linked</span>
     </section>
 
