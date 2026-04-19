@@ -1,0 +1,46 @@
+# Keep the Docker build context small and free of secrets/artifacts.
+#
+# Anything here is excluded from `COPY . .` in the Dockerfile.
+
+# Dependencies (reinstalled inside the image)
+node_modules
+**/node_modules
+
+# Build outputs
+.output
+**/.output
+.nuxt
+**/.nuxt
+dist
+**/dist
+
+# Local data + logs
+.data
+**/.data
+*.log
+/tmp
+
+# Local dev env (never ship secrets into the image)
+.env
+.env.local
+.env.*.local
+
+# VCS / editor
+.git
+.gitignore
+.DS_Store
+.vscode
+.idea
+
+# CI / meta
+.github
+docs/superpowers
+
+# Tests + Docker meta (not needed in the image)
+**/*.test.ts
+**/tests/
+coverage
+docker-compose*.yml
+compose*.yaml
+Dockerfile
+.dockerignore

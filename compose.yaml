@@ -1,0 +1,86 @@
+# Repro — one-file self-host.
+#
+# Usage:
+#   1. Download this file and .env.example from the repo
+#   2. cp .env.example .env  # then edit .env and fill in the required secrets
+#   3. docker compose up -d
+#   4. Open http://localhost:3000 — the first user to sign up becomes admin
+#
+# For upgrades: `docker compose pull && docker compose up -d` (the migrator
+# runs automatically before the dashboard starts).
+#
+# For HTTPS / public deploys, put a reverse proxy (Caddy / Nginx) in front —
+# see docs/deployment.md for recipes.
+
+name: repro
+
+services:
+  # ────────────────────────────────────────────────────────────────
+  # Database
+  # ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-repro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required — set it in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-repro}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-repro} -d ${POSTGRES_DB:-repro}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ────────────────────────────────────────────────────────────────
+  # Migrator — runs drizzle-kit migrate, exits 0. The dashboard won't
+  # start until this service has completed successfully.
+  # ────────────────────────────────────────────────────────────────
+  migrator:
+    image: ghcr.io/ripwords/reprokit-dashboard:${REPRO_VERSION:-latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-repro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-repro}
+    command: ["bunx", "drizzle-kit", "migrate"]
+    restart: "no"
+
+  # ────────────────────────────────────────────────────────────────
+  # Dashboard — the Nuxt server
+  # ────────────────────────────────────────────────────────────────
+  dashboard:
+    image: ghcr.io/ripwords/reprokit-dashboard:${REPRO_VERSION:-latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      # Internal connection string: the one in .env (if any) is overridden so
+      # the container always talks to the postgres service above.
+      DATABASE_URL: postgres://${POSTGRES_USER:-repro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-repro}
+    volumes:
+      # Used when STORAGE_DRIVER=local (the default). Ignored when
+      # STORAGE_DRIVER=s3 — attachments go to your S3 bucket instead.
+      - attachments_data:/data/attachments
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'bun -e "fetch(''http://localhost:3000/api/health'').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  attachments_data:
