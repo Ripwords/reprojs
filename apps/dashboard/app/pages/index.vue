@@ -3,6 +3,22 @@ import type { ProjectDTO } from "@feedback-tool/shared"
 import AppEmptyState from "~/components/common/app-empty-state.vue"
 
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
+
+// If the project-exists middleware bounced us here, surface a toast once.
+onMounted(() => {
+  if (route.query.error === "project-not-found") {
+    toast.add({
+      title: "Project not found",
+      description: "The project you tried to open doesn't exist or you don't have access.",
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+    // Clean the URL so a refresh doesn't re-fire the toast.
+    router.replace({ query: {} })
+  }
+})
 const {
   data: projects,
   pending,
@@ -17,8 +33,10 @@ const newOpen = ref(false)
 const newName = ref("")
 const creating = ref(false)
 
-// Role gating — only admins can create projects (backend enforces, UI reflects).
-const { isAdmin } = useSession()
+// Any authenticated user can create a project — the server's POST /api/projects
+// only calls requireSession (not requireInstallAdmin). The UI mirrors that.
+const { session } = useSession()
+const canCreate = computed(() => Boolean(session.value?.data?.user))
 
 async function createProject() {
   if (!newName.value.trim()) return
@@ -59,7 +77,7 @@ async function createProject() {
         <p class="text-sm text-muted mt-1">All the apps and sites sending you reports.</p>
       </div>
       <UButton
-        v-if="isAdmin"
+        v-if="canCreate"
         label="New project"
         icon="i-heroicons-plus"
         color="primary"
@@ -73,7 +91,7 @@ async function createProject() {
       icon="i-heroicons-squares-plus"
       title="Create your first project"
       description="A project groups incoming reports from a single app or site. You'll get an SDK key once it's created."
-      :action-label="isAdmin ? 'New project' : undefined"
+      action-label="New project"
       @action="newOpen = true"
     />
 
@@ -88,7 +106,7 @@ async function createProject() {
         <p class="mt-1 text-sm text-muted">Role: {{ p.effectiveRole }}</p>
       </NuxtLink>
       <button
-        v-if="isAdmin"
+        v-if="canCreate"
         type="button"
         class="rounded-xl border-2 border-dashed border-default p-5 flex flex-col items-center justify-center text-muted hover:border-primary hover:text-primary transition-colors"
         @click="newOpen = true"
