@@ -99,7 +99,7 @@ Project keys are issued from the dashboard's project settings page. Each project
 Prerequisites: Bun, Docker.
 
 ```bash
-git clone https://github.com/Ripwords/repro.git
+git clone https://github.com/Ripwords/reprokit.git
 cd repro
 bun install
 
