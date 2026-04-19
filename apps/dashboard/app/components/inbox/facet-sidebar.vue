@@ -26,6 +26,8 @@ const emit = defineEmits<{
   tag: [string[]]
 }>()
 
+const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
+
 function togglePriority(p: ReportPriority) {
   const has = props.selectedPriority.includes(p)
   emit(
@@ -45,8 +47,6 @@ function toggleTag(name: string) {
   emit("tag", has ? props.selectedTags.filter((x) => x !== name) : [...props.selectedTags, name])
 }
 
-const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
-
 function isAssigneeSelected(a: Assignee): boolean {
   if (a.id === null) return props.selectedAssignee.includes("unassigned")
   if (a.id === props.sessionUserId) return props.selectedAssignee.includes("me")
@@ -62,63 +62,78 @@ function assigneeLabel(a: Assignee): string {
   if (a.id === props.sessionUserId) return "Me"
   return a.name ?? a.email ?? a.id
 }
+
+function priorityLabel(p: ReportPriority): string {
+  return p.charAt(0).toUpperCase() + p.slice(1)
+}
 </script>
 
 <template>
-  <aside class="space-y-5 text-sm p-3">
+  <aside class="space-y-6 text-sm">
     <section>
-      <h3 class="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Assignee</h3>
-      <ul class="space-y-1">
+      <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-2">Assignee</h3>
+      <ul class="space-y-0.5">
         <li v-for="a in assignees" :key="a.id ?? '__unassigned'">
-          <label
-            class="flex items-center gap-2 cursor-pointer hover:bg-neutral-50 rounded px-1 py-0.5"
+          <UButton
+            :label="assigneeLabel(a)"
+            :color="isAssigneeSelected(a) ? 'primary' : 'neutral'"
+            :variant="isAssigneeSelected(a) ? 'soft' : 'ghost'"
+            block
+            size="sm"
+            :ui="{ base: 'justify-between' }"
+            @click="toggleAssignee(assigneeToken(a))"
           >
-            <input
-              type="checkbox"
-              :checked="isAssigneeSelected(a)"
-              @change="toggleAssignee(assigneeToken(a))"
-            />
-            <span class="truncate flex-1">{{ assigneeLabel(a) }}</span>
-            <span class="text-xs text-neutral-400">{{ a.count }}</span>
-          </label>
+            <template #trailing>
+              <UBadge :label="String(a.count)" color="neutral" variant="subtle" size="xs" />
+            </template>
+          </UButton>
         </li>
       </ul>
     </section>
 
     <section>
-      <h3 class="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Priority</h3>
-      <ul class="space-y-1">
+      <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-2">Priority</h3>
+      <ul class="space-y-0.5">
         <li v-for="p in PRIORITIES" :key="p">
-          <label
-            class="flex items-center gap-2 cursor-pointer hover:bg-neutral-50 rounded px-1 py-0.5 capitalize"
+          <UButton
+            :label="priorityLabel(p)"
+            :color="selectedPriority.includes(p) ? 'primary' : 'neutral'"
+            :variant="selectedPriority.includes(p) ? 'soft' : 'ghost'"
+            block
+            size="sm"
+            :ui="{ base: 'justify-between' }"
+            @click="togglePriority(p)"
           >
-            <input
-              type="checkbox"
-              :checked="selectedPriority.includes(p)"
-              @change="togglePriority(p)"
-            />
-            <span class="flex-1">{{ p }}</span>
-            <span class="text-xs text-neutral-400">{{ priorityCounts[p] ?? 0 }}</span>
-          </label>
+            <template #trailing>
+              <UBadge
+                :label="String(priorityCounts[p] ?? 0)"
+                color="neutral"
+                variant="subtle"
+                size="xs"
+              />
+            </template>
+          </UButton>
         </li>
       </ul>
     </section>
 
     <section v-if="tags.length">
-      <h3 class="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Tags</h3>
-      <ul class="space-y-1">
+      <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-2">Tags</h3>
+      <ul class="space-y-0.5">
         <li v-for="t in tags" :key="t.name">
-          <label
-            class="flex items-center gap-2 cursor-pointer hover:bg-neutral-50 rounded px-1 py-0.5"
+          <UButton
+            :label="t.name"
+            :color="selectedTags.includes(t.name) ? 'primary' : 'neutral'"
+            :variant="selectedTags.includes(t.name) ? 'soft' : 'ghost'"
+            block
+            size="sm"
+            :ui="{ base: 'justify-between' }"
+            @click="toggleTag(t.name)"
           >
-            <input
-              type="checkbox"
-              :checked="selectedTags.includes(t.name)"
-              @change="toggleTag(t.name)"
-            />
-            <span class="truncate flex-1">{{ t.name }}</span>
-            <span class="text-xs text-neutral-400">{{ t.count }}</span>
-          </label>
+            <template #trailing>
+              <UBadge :label="String(t.count)" color="neutral" variant="subtle" size="xs" />
+            </template>
+          </UButton>
         </li>
       </ul>
     </section>
