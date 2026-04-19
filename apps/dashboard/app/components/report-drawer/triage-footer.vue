@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import type {
   GithubConfigDTO,
+  ProjectMemberDTO,
   ReportPriority,
   ReportStatus,
   ReportSummaryDTO,
@@ -13,11 +14,6 @@ import type {
 import UnlinkDialog from "~/components/integrations/github/unlink-dialog.vue"
 import { safeHref } from "~/composables/use-safe-href"
 
-interface Member {
-  userId: string
-  name: string | null
-  email: string
-}
 interface Props {
   projectId: string
   report: ReportSummaryDTO
@@ -31,7 +27,7 @@ const toast = useToast()
 const STATUSES: ReportStatus[] = ["open", "in_progress", "resolved", "closed"]
 const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
 
-const { data: members } = useApi<Member[]>(
+const { data: members } = useApi<ProjectMemberDTO[]>(
   `/api/projects/${props.projectId}/members?role=developer,owner`,
 )
 

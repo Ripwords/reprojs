@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
 
-const { session, signOut } = useSession()
+const { user, role: sessionRole, signOut } = useSession()
 const toast = useToast()
 const { confirm } = useConfirm()
 
-const email = computed(() => session.value?.data?.user?.email ?? "")
-const name = computed(() => session.value?.data?.user?.name ?? "")
-const role = computed(
-  () => (session.value?.data?.user as { role?: string } | undefined)?.role ?? "",
-)
+const email = computed(() => user.value?.email ?? "")
+const name = computed(() => user.value?.name ?? "")
+const role = computed(() => sessionRole.value ?? "")
 
 const signingOutOthers = ref(false)
 

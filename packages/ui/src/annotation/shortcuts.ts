@@ -45,16 +45,13 @@ function isInputElement(node: unknown): boolean {
 
 function isInsideInput(e: KeyboardEvent): boolean {
   // Check composedPath() so we detect input elements nested inside a Shadow
-  // DOM — without it, e.target retargets to the shadow host on window listeners
-  // and every letter pressed inside the wizard's <textarea> would trigger a
-  // tool shortcut like H or T. Fall back to e.target if composedPath is empty
-  // (e.g. synthetic test events).
-  const getPath = (e as unknown as { composedPath?: () => EventTarget[] }).composedPath
-  if (typeof getPath === "function") {
-    const path = getPath.call(e)
-    for (const node of path) {
-      if (isInputElement(node)) return true
-    }
+  // DOM — without it, e.target retargets to the shadow host on window
+  // listeners and every letter pressed inside the wizard's <textarea> would
+  // trigger a tool shortcut like H or T. Fall back to e.target if the
+  // composed path is empty (e.g. synthetic test events).
+  const path = typeof e.composedPath === "function" ? e.composedPath() : []
+  for (const node of path) {
+    if (isInputElement(node)) return true
   }
   return isInputElement(e.target)
 }

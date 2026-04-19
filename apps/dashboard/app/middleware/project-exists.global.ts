@@ -21,10 +21,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
       headers: import.meta.server ? useRequestHeaders(["cookie"]) : undefined,
     })
   } catch (err) {
-    const status =
-      err && typeof err === "object" && "statusCode" in err
-        ? (err as { statusCode: unknown }).statusCode
-        : null
+    // $fetch / ofetch throws a FetchError whose statusCode is always a number
+    // when the server actually responded; use a proper type guard so we don't
+    // accidentally redirect on a network error (where statusCode is absent).
+    const status = isFetchErrorWithStatus(err) ? err.statusCode : null
     if (status === 404 || status === 403) {
       return navigateTo("/?error=project-not-found")
     }
@@ -33,3 +33,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // transient outage.
   }
 })
+
+function isFetchErrorWithStatus(err: unknown): err is { statusCode: number } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "statusCode" in err &&
+    typeof (err as { statusCode: unknown }).statusCode === "number"
+  )
+}

@@ -49,9 +49,7 @@ function safeStringify(v: unknown): string {
     return `${v.name}: ${v.message}${v.stack ? `\n${v.stack}` : ""}`
   }
   if (ArrayBuffer.isView(v)) {
-    // ArrayBufferView in lib.dom doesn't expose .length/.byteLength directly; cast is required.
-    const ta = v as unknown as { length: number; constructor: { name: string } }
-    return `[${ta.constructor.name} length=${ta.length}]`
+    return `[${v.constructor.name} byteLength=${v.byteLength}]`
   }
   const seen = new WeakSet<object>()
   return JSON.stringify(v, (_key, value: unknown) => {

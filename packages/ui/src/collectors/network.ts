@@ -93,9 +93,7 @@ function describeBody(
     return `[ArrayBuffer: ${body.byteLength} bytes]`
   }
   if (ArrayBuffer.isView(body)) {
-    // ArrayBufferView in lib.dom doesn't expose .length/.byteLength directly; cast is required.
-    const v = body as unknown as { byteLength: number; constructor: { name: string } }
-    return `[${v.constructor.name}: ${v.byteLength} bytes]`
+    return `[${body.constructor.name}: ${body.byteLength} bytes]`
   }
   if (typeof ReadableStream !== "undefined" && body instanceof ReadableStream) {
     return "[ReadableStream]"
@@ -162,6 +160,11 @@ export function createNetworkCollector(_initial: NetworkConfig): NetworkCollecto
           requestHeaders = redactHeaders(raw, "request", {
             allowed: cfg.allowedHeaders,
             all: cfg.allHeaders,
+            // `allHeaders` is an explicit SDK-config opt-in documented as
+            // "you know Authorization / Set-Cookie may be captured" — pass
+            // the acknowledgement through to redactHeaders so its safeguard
+            // doesn't fire.
+            unsafe: cfg.allHeaders,
           })
         }
       }
@@ -172,6 +175,7 @@ export function createNetworkCollector(_initial: NetworkConfig): NetworkCollecto
         const responseHeaders = redactHeaders(headersToObject(res.headers), "response", {
           allowed: cfg.allowedHeaders,
           all: cfg.allHeaders,
+          unsafe: cfg.allHeaders,
         })
 
         // Size from Content-Length is free; fall back to body-read length only
