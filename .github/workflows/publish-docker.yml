@@ -6,8 +6,11 @@ name: Publish Docker image
 #   - Push of a semver tag (v*.*.*) → publishes versioned + major + major.minor + latest
 #   - Manual dispatch → publishes "edge" for testing
 #
-# Images are built multi-arch (linux/amd64 + linux/arm64) so they run on
-# x86_64 servers and Apple Silicon / Raspberry Pi alike.
+# amd64-only. ARM via QEMU emulation on x86 runners is 5-10× slower for
+# a Nuxt build and almost no self-host target needs it — VPS + Docker
+# Desktop on Intel is the common case. If ARM demand shows up, add a
+# second matrix leg on `ubuntu-24.04-arm` (native runner) rather than
+# emulation.
 
 on:
   push:
@@ -29,9 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up QEMU (for arm64 emulation)
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -64,7 +64,7 @@ jobs:
         with:
           context: .
           file: apps/dashboard/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
