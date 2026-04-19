@@ -65,8 +65,9 @@ const raw = {
     lang: "html" as const,
     code: `<script src="${SDK_ORIGIN}/sdk/repro.iife.js" async><\/script>
 <script>
-  window.feedbackTool.init({
+  Repro.init({
     projectKey: "${PROJECT_KEY_EXAMPLE}",
+    endpoint: "${SDK_ORIGIN}",
   })
 <\/script>`,
   },

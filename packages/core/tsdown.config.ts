@@ -21,6 +21,6 @@ export default defineConfig([
     outDir: "dist",
     minify: true,
     globalName: "Repro",
-    noExternal: [/@repro\//, /preact/, /modern-screenshot/, /zod/],
+    noExternal: [/@reprokit\//, /preact/, /modern-screenshot/, /zod/],
   },
 ])
