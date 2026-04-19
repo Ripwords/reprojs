@@ -1,6 +1,6 @@
 # SDK
 
-The SDK is one package — `@reprokit/core` — that bundles the widget UI, recorder, and all shared types. No matter how your app is built (React, Vue, Svelte, Angular, Nuxt, Next, vanilla, …), the install is identical.
+The SDK is one package — `@reprojs/core` — that bundles the widget UI, recorder, and all shared types. No matter how your app is built (React, Vue, Svelte, Angular, Nuxt, Next, vanilla, …), the install is identical.
 
 ## Install
 
@@ -21,12 +21,12 @@ The `/sdk/repro.iife.js` bundle is served by the dashboard itself, so you always
 ### ESM / bundler
 
 ```bash
-npm install @reprokit/core
+npm install @reprojs/core
 # or pnpm / yarn / bun
 ```
 
 ```ts
-import { init } from "@reprokit/core"
+import { init } from "@reprojs/core"
 
 init({
   projectKey: "rp_pk_xxxxxxxxxxxxxxxxxxxxxxxx",
@@ -74,7 +74,7 @@ Returns a `FeedbackHandle` with `pauseReplay()` / `resumeReplay()` methods.
 Open or close the widget programmatically. Useful if you want your own button instead of the default launcher (`launcher: false` + your handler calling `open()`).
 
 ```ts
-import { open, close } from "@reprokit/core"
+import { open, close } from "@reprojs/core"
 
 button.addEventListener("click", () => open())
 ```
@@ -84,7 +84,7 @@ button.addEventListener("click", () => open())
 Tell Repro who the current user is. Attached to any report submitted after.
 
 ```ts
-import { identify } from "@reprokit/core"
+import { identify } from "@reprojs/core"
 
 identify({
   userId: "user_123",
@@ -101,7 +101,7 @@ identify(null)
 Drop a breadcrumb into the rolling session log. Appears in the dashboard's Events tab of a report, with a timestamp.
 
 ```ts
-import { log } from "@reprokit/core"
+import { log } from "@reprojs/core"
 
 log("checkout.started", { cart_id: "c_9f2", items: 3 })
 log("payment.failed", { reason: "card_declined" }, "error")
@@ -133,9 +133,9 @@ Operators configure a cookie/header denylist on the dashboard. Report payloads s
 
 ## Bundle size
 
-`@reprokit/core@0.1.0`:
+`@reprojs/core@0.1.0`:
 
-- **ESM**: ~157 KB uncompressed (`@reprokit/*` deps inlined)
+- **ESM**: ~157 KB uncompressed (`@reprojs/*` deps inlined)
 - **IIFE** (minified): ~93 KB — the one your users download
 
 Typical real-world transfer once your CDN gzips it: ~32 KB.

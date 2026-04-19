@@ -1,6 +1,6 @@
 # Development
 
-Contributor guide for working in the `reprokit` monorepo.
+Contributor guide for working in the `reprojs` monorepo.
 
 ## Prereqs
 
@@ -11,8 +11,8 @@ Contributor guide for working in the `reprokit` monorepo.
 ## First-time setup
 
 ```bash
-git clone https://github.com/Ripwords/reprokit.git
-cd reprokit
+git clone https://github.com/Ripwords/reprojs.git
+cd reprojs
 bun install
 cp .env.example .env
 # Uncomment the LOCAL DEVELOPMENT line and point DATABASE_URL at the dev Postgres:
@@ -76,18 +76,18 @@ Write the failing test first, then the implementation. The project uses `bun:tes
 
 - **TypeScript strict**. No `any` to silence a type error. `as unknown as X` only when strictly necessary and justified inline.
 - **Conventional Commits**: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `test:`. One concern per commit.
-- **Contract types single-sourced** from `@reprokit/shared` — the SDK and dashboard UI both import from there rather than redeclaring.
+- **Contract types single-sourced** from `@reprojs/shared` — the SDK and dashboard UI both import from there rather than redeclaring.
 - **No React/Vue/Svelte imports in SDK packages** — the widget is framework-agnostic. Only Preact inside a Shadow DOM.
 - **Privacy-first replay** — masking defaults on; `data-repro-mask` / `data-repro-block` attributes on sensitive DOM nodes.
 
 ## Monorepo layout
 
 ```
-reprokit/
+reprojs/
 ├── apps/
 │   └── dashboard/              # Nuxt 4 — admin UI + intake API
 ├── packages/
-│   ├── core/                   # @reprokit/core — the published SDK
+│   ├── core/                   # @reprojs/core — the published SDK
 │   ├── ui/                     # widget UI (Preact + Shadow DOM)
 │   ├── recorder/               # 30s rolling DOM replay
 │   ├── shared/                 # contract types + Zod schemas
@@ -98,7 +98,7 @@ reprokit/
 └── compose.yaml                # self-host entry point
 ```
 
-`@reprokit/core` bundles every workspace package at build time. The others stay private and exist as build inputs only — they're never published standalone.
+`@reprojs/core` bundles every workspace package at build time. The others stay private and exist as build inputs only — they're never published standalone.
 
 ## Releases
 
@@ -111,8 +111,8 @@ bun run release:major
 bun run postrelease       # push tags to GitHub
 ```
 
-The `prerelease` hook runs lint, format:check, SDK build, and SDK tests. Pushing a `v*.*.*` tag triggers the `publish-docker` workflow which builds the multi-arch image and pushes to `ripwords/reprokit-dashboard`.
+The `prerelease` hook runs lint, format:check, SDK build, and SDK tests. Pushing a `v*.*.*` tag triggers the `publish-docker` workflow which builds the multi-arch image and pushes to `reprojs/dashboard`.
 
 ## Where to file bugs / ideas
 
-[github.com/Ripwords/reprokit/issues](https://github.com/Ripwords/reprokit/issues). PRs welcome.
+[github.com/Ripwords/reprojs/issues](https://github.com/Ripwords/reprojs/issues). PRs welcome.

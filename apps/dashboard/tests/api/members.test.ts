@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test"
-import type { ProjectDTO, ProjectMemberDTO } from "@reprokit/shared"
+import type { ProjectDTO, ProjectMemberDTO } from "@reprojs/shared"
 import { apiFetch, createUser, signIn, truncateDomain } from "../helpers"
 
 setDefaultTimeout(30000)

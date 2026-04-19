@@ -1,5 +1,5 @@
 import { createError, defineEventHandler } from "h3"
-import type { AppSettingsDTO } from "@reprokit/shared"
+import type { AppSettingsDTO } from "@reprojs/shared"
 import { db } from "../../db"
 import { appSettings } from "../../db/schema"
 import { requireInstallAdmin } from "../../lib/permissions"

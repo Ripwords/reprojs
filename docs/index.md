@@ -18,7 +18,7 @@ hero:
       link: /guide/sdk
     - theme: alt
       text: GitHub
-      link: https://github.com/Ripwords/reprokit
+      link: https://github.com/Ripwords/reprojs
 
 features:
   - title: Drop-in widget, any framework
@@ -26,7 +26,7 @@ features:
   - title: Rich context, zero config
     details: Every report bundles an annotated screenshot, rrweb-compatible replay of the last 30 seconds, console + network logs, cookies, and system info.
   - title: Self-hostable end to end
-    details: One compose file, four secrets, one command. Pulls the image from GHCR, runs migrations, exposes the dashboard on :3000. Reverse-proxy with Caddy for TLS.
+    details: One compose file, four secrets, one command. Pulls the image from Docker Hub, runs migrations, exposes the dashboard on :3000. Reverse-proxy with Caddy for TLS.
   - title: GitHub Issues sync
     details: Optional GitHub App. One-click "create issue" or auto-sync on intake, with two-way status reconciliation via webhooks.
   - title: Pluggable storage

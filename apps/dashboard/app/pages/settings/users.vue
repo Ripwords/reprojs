@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h, resolveComponent } from "vue"
 import type { TableColumn } from "@nuxt/ui"
-import type { InstallRole, UserDTO, UserStatus } from "@reprokit/shared"
+import type { InstallRole, UserDTO, UserStatus } from "@reprojs/shared"
 
 definePageMeta({ middleware: "admin-only" })
 

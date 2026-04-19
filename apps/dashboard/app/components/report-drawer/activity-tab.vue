@@ -1,6 +1,6 @@
 <!-- apps/dashboard/app/components/report-drawer/activity-tab.vue -->
 <script setup lang="ts">
-import type { ReportEventDTO, ReportSummaryDTO } from "@reprokit/shared"
+import type { ReportEventDTO, ReportSummaryDTO } from "@reprojs/shared"
 
 interface Props {
   projectId: string

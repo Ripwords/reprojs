@@ -1,5 +1,5 @@
 // packages/ui/src/collectors/index.ts
-import type { LogsAttachment, ReportContext } from "@reprokit/shared"
+import type { LogsAttachment, ReportContext } from "@reprojs/shared"
 import { type BreadcrumbLevel, createBreadcrumbsCollector } from "./breadcrumbs"
 import { createConsoleCollector } from "./console"
 import { createCookiesCollector } from "./cookies"

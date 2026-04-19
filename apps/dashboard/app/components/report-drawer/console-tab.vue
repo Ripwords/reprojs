@@ -1,6 +1,6 @@
 <!-- apps/dashboard/app/components/report-drawer/console-tab.vue -->
 <script setup lang="ts">
-import type { LogsAttachment } from "@reprokit/shared"
+import type { LogsAttachment } from "@reprojs/shared"
 
 const props = defineProps<{ logs: LogsAttachment | null }>()
 

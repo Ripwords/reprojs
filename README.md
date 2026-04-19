@@ -9,9 +9,9 @@
   <p><strong>Framework-agnostic embeddable feedback SDK + self-hostable triage dashboard.</strong></p>
 
   <p>
-    <a href="https://ripwords.github.io/reprokit/"><strong>Docs</strong></a> ·
-    <a href="https://ripwords.github.io/reprokit/self-hosting/"><strong>Self-host</strong></a> ·
-    <a href="https://ripwords.github.io/reprokit/guide/sdk"><strong>SDK</strong></a>
+    <a href="https://ripwords.github.io/reprojs/"><strong>Docs</strong></a> ·
+    <a href="https://ripwords.github.io/reprojs/self-hosting/"><strong>Self-host</strong></a> ·
+    <a href="https://ripwords.github.io/reprojs/guide/sdk"><strong>SDK</strong></a>
   </p>
 </div>
 
@@ -24,7 +24,7 @@ Repro gives end users of any web app a one-click way to report bugs from the pag
 ## Why Repro
 
 - **Framework-agnostic SDK** — drop-in widget for vanilla JS, React, Vue, Svelte, Angular, Nuxt, Next.js. No peer-dependency on the host's framework.
-- **Zero-config embed** — single `<script>` tag or `import { init } from "@reprokit/core"`. UI renders inside a Shadow DOM root so host styles can't leak in and vice-versa.
+- **Zero-config embed** — single `<script>` tag or `import { init } from "@reprojs/core"`. UI renders inside a Shadow DOM root so host styles can't leak in and vice-versa.
 - **Rich context, collected automatically** — every report bundles an annotated screenshot, rrweb-style DOM replay of the last 30s, console + network logs, cookies, and system info.
 - **Self-hostable end to end** — SDK, dashboard, and Postgres all run locally via Docker. Blob storage is a pluggable adapter (local disk by default; S3-compatible for AWS S3, R2, B2, Hetzner, MinIO, etc.).
 - **GitHub-Issues sync** — one-click "create issue" on a report, with two-way status sync via GitHub App webhooks.
@@ -38,7 +38,7 @@ Repro gives end users of any web app a one-click way to report bugs from the pag
 │   Host web app       │                 │   Repro Dashboard              │
 │                      │   POST report   │   (Nuxt 4: Vue UI + Nitro API) │
 │  ┌────────────────┐  │ ──────────────► │                                │
-│  │ @reprokit/core │  │    multipart    │  /api/intake/*   (SDK ingress) │
+│  │ @reprojs/core │  │    multipart    │  /api/intake/*   (SDK ingress) │
 │  │   SDK widget   │  │                 │  /api/tickets/*  (triage)      │
 │  └────────────────┘  │                 │  /api/auth/*     (better-auth) │
 └──────────────────────┘                 │  /api/integrations/github/*    │
@@ -79,11 +79,11 @@ Two first-class deliverables in one repo:
 ### ESM / bundler
 
 ```bash
-npm install @reprokit/core
+npm install @reprojs/core
 ```
 
 ```ts
-import { init } from "@reprokit/core"
+import { init } from "@reprojs/core"
 
 init({
   projectKey: "rp_pk_xxxxxxxxxxxxxxxxxxxxxxxx",
@@ -94,7 +94,7 @@ init({
 ### Optional: identify the reporter
 
 ```ts
-import { identify } from "@reprokit/core"
+import { identify } from "@reprojs/core"
 
 identify({
   userId: "user_123",
@@ -112,7 +112,7 @@ Project keys are issued from the dashboard's project settings page. Each project
 Prerequisites: Bun, Docker.
 
 ```bash
-git clone https://github.com/Ripwords/reprokit.git
+git clone https://github.com/Ripwords/reprojs.git
 cd repro
 bun install
 
@@ -144,12 +144,12 @@ repro/
 ├── apps/
 │   └── dashboard/              # Nuxt 4 — admin UI + intake API
 ├── packages/
-│   ├── core/                   # @reprokit/core — SDK entry (init / open / identify)
-│   ├── ui/                     # @reprokit/ui — widget UI (Preact + Shadow DOM)
-│   ├── recorder/               # @reprokit/recorder — 30s rolling DOM replay
-│   ├── shared/                 # @reprokit/shared — contract types + Zod schemas
+│   ├── core/                   # @reprojs/core — SDK entry (init / open / identify)
+│   ├── ui/                     # @reprojs/ui — widget UI (Preact + Shadow DOM)
+│   ├── recorder/               # @reprojs/recorder — 30s rolling DOM replay
+│   ├── shared/                 # @reprojs/shared — contract types + Zod schemas
 │   └── integrations/
-│       └── github/             # @reprokit/integrations-github — GitHub App adapter
+│       └── github/             # @reprojs/integrations-github — GitHub App adapter
 ├── scripts/
 ├── docs/
 └── .github/workflows/          # CI
@@ -180,7 +180,7 @@ bun install               # install workspace
 bun run dev:docker        # start Postgres
 bun run db:push           # create schema
 bun run dev               # start dashboard on :3000
-bun run sdk:build         # build @reprokit/core IIFE + ESM bundles
+bun run sdk:build         # build @reprojs/core IIFE + ESM bundles
 bun run demo              # run the SDK demo playground on :4000
 bun run check             # oxfmt --check + oxlint
 bun run test              # run all tests (SDK + dashboard)

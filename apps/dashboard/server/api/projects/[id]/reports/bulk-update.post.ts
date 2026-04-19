@@ -1,7 +1,7 @@
 // apps/dashboard/server/api/projects/[id]/reports/bulk-update.post.ts
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
 import { and, eq, inArray } from "drizzle-orm"
-import { BulkUpdateInput } from "@reprokit/shared"
+import { BulkUpdateInput } from "@reprojs/shared"
 import { db } from "../../../../db"
 import { projectMembers, reportEvents, reports } from "../../../../db/schema"
 import { buildReportEvents } from "../../../../lib/report-events"

@@ -1,6 +1,6 @@
 <!-- apps/dashboard/app/components/report-drawer/overview-tab.vue -->
 <script setup lang="ts">
-import type { ReportSummaryDTO } from "@reprokit/shared"
+import type { ReportSummaryDTO } from "@reprojs/shared"
 import { safeHref } from "~/composables/use-safe-href"
 import { parseBrowser, parseOs } from "~/composables/use-user-agent"
 

@@ -73,7 +73,7 @@ const raw = {
   },
   init: {
     lang: "typescript" as const,
-    code: `import { init } from "@reprokit/core"
+    code: `import { init } from "@reprojs/core"
 
 init({
   projectKey: "${PROJECT_KEY_EXAMPLE}",
@@ -114,15 +114,15 @@ const snippets = ref<Record<SnippetKey, Snippet>>({
   },
 })
 
-// Install commands per package manager. `@reprokit/core` bundles the widget
+// Install commands per package manager. `@reprojs/core` bundles the widget
 // UI, recorder, and shared types — consumers install a single package. Deno
 // uses `deno add` with an `npm:` specifier.
 const pmCommands = {
-  npm: "npm install @reprokit/core",
-  pnpm: "pnpm add @reprokit/core",
-  yarn: "yarn add @reprokit/core",
-  bun: "bun add @reprokit/core",
-  deno: "deno add npm:@reprokit/core",
+  npm: "npm install @reprojs/core",
+  pnpm: "pnpm add @reprojs/core",
+  yarn: "yarn add @reprojs/core",
+  bun: "bun add @reprojs/core",
+  deno: "deno add npm:@reprojs/core",
 } as const
 
 type PackageManager = keyof typeof pmCommands

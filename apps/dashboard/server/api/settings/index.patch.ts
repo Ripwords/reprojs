@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, readValidatedBody } from "h3"
 import { eq } from "drizzle-orm"
-import { UpdateAppSettingsInput } from "@reprokit/shared"
+import { UpdateAppSettingsInput } from "@reprojs/shared"
 import { db } from "../../db"
 import { appSettings } from "../../db/schema"
 import { requireInstallAdmin } from "../../lib/permissions"

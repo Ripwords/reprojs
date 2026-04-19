@@ -1,6 +1,6 @@
 # Configuration
 
-Every Repro setting is a single environment variable. The bundled `compose.yaml` reads them from `.env` in the same directory. This page is the exhaustive reference; grab [`.env.example`](https://github.com/Ripwords/reprokit/blob/main/.env.example) for a well-commented template.
+Every Repro setting is a single environment variable. The bundled `compose.yaml` reads them from `.env` in the same directory. This page is the exhaustive reference; grab [`.env.example`](https://github.com/Ripwords/reprojs/blob/main/.env.example) for a well-commented template.
 
 ## Required
 

@@ -5,8 +5,8 @@ export default defineConfig({
   title: "Repro",
   description: "Framework-agnostic embeddable feedback SDK + self-hostable triage dashboard.",
 
-  // Published to https://ripwords.github.io/reprokit/
-  base: "/reprokit/",
+  // Published to https://ripwords.github.io/reprojs/
+  base: "/reprojs/",
   cleanUrls: true,
   lastUpdated: true,
 
@@ -14,7 +14,7 @@ export default defineConfig({
   srcExclude: ["superpowers/**", "**/README.md"],
 
   head: [
-    ["link", { rel: "icon", type: "image/svg+xml", href: "/reprokit/favicon.svg" }],
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/reprojs/favicon.svg" }],
     ["meta", { name: "theme-color", content: "#10b981" }],
   ],
 
@@ -62,10 +62,10 @@ export default defineConfig({
       ],
     },
 
-    socialLinks: [{ icon: "github", link: "https://github.com/Ripwords/reprokit" }],
+    socialLinks: [{ icon: "github", link: "https://github.com/Ripwords/reprojs" }],
 
     editLink: {
-      pattern: "https://github.com/Ripwords/reprokit/edit/main/docs/:path",
+      pattern: "https://github.com/Ripwords/reprojs/edit/main/docs/:path",
       text: "Edit this page on GitHub",
     },
 

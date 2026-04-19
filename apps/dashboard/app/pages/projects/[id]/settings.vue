@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue"
-import type { ProjectDTO } from "@reprokit/shared"
+import type { ProjectDTO } from "@reprojs/shared"
 import ConfirmDeleteDialog from "~/components/common/confirm-delete-dialog.vue"
 
 const route = useRoute()

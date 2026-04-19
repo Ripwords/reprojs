@@ -38,7 +38,7 @@ services:
   # start until this service has completed successfully.
   # ────────────────────────────────────────────────────────────────
   migrator:
-    image: ripwords/reprokit-dashboard:${REPRO_VERSION:-latest}
+    image: reprojs/dashboard:${REPRO_VERSION:-latest}
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,7 +51,7 @@ services:
   # Dashboard — the Nuxt server
   # ────────────────────────────────────────────────────────────────
   dashboard:
-    image: ripwords/reprokit-dashboard:${REPRO_VERSION:-latest}
+    image: reprojs/dashboard:${REPRO_VERSION:-latest}
     depends_on:
       postgres:
         condition: service_healthy

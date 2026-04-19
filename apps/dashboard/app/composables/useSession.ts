@@ -1,4 +1,4 @@
-import type { InstallRole } from "@reprokit/shared"
+import type { InstallRole } from "@reprojs/shared"
 import { useAuthClient } from "../lib/auth-client"
 
 /**

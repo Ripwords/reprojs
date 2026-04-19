@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
 import { and, count, eq, sql } from "drizzle-orm"
-import { UpdateProjectMemberInput } from "@reprokit/shared"
+import { UpdateProjectMemberInput } from "@reprojs/shared"
 import { db } from "../../../../../db"
 import { projectMembers } from "../../../../../db/schema"
 import { requireProjectRole } from "../../../../../lib/permissions"

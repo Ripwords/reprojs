@@ -14,7 +14,7 @@
       don't dance as filters change.
 -->
 <script setup lang="ts">
-import type { ReportPriority } from "@reprokit/shared"
+import type { ReportPriority } from "@reprojs/shared"
 
 interface Assignee {
   id: string | null

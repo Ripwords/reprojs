@@ -1,4 +1,4 @@
-import type { IntakeResponse, LogsAttachment, ReportContext } from "@reprokit/shared"
+import type { IntakeResponse, LogsAttachment, ReportContext } from "@reprojs/shared"
 import type { ResolvedConfig } from "./config"
 
 export interface IntakeInput {

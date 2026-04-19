@@ -1,11 +1,11 @@
 import { defineConfig } from "tsdown"
 
-// Every runtime dep is bundled into @reprokit/core so consumers install
-// a single package (`npm install @reprokit/core`) with zero transitive
-// npm resolution. @reprokit/{shared,ui,recorder} stay private workspace
+// Every runtime dep is bundled into @reprojs/core so consumers install
+// a single package (`npm install @reprojs/core`) with zero transitive
+// npm resolution. @reprojs/{shared,ui,recorder} stay private workspace
 // packages — they exist as build inputs only, never shipped standalone.
 const INTERNAL_BUNDLE = [
-  /^@reprokit\//,
+  /^@reprojs\//,
   /^preact($|\/)/,
   /^@preact\//,
   /^modern-screenshot$/,
@@ -24,7 +24,7 @@ export default defineConfig([
     entry: { index: "src/index.ts" },
     format: ["esm"],
     outDir: "dist",
-    dts: { resolve: [/^@reprokit\//], eager: true },
+    dts: { resolve: [/^@reprojs\//], eager: true },
     noExternal: INTERNAL_BUNDLE,
   },
   {

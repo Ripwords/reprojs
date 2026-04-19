@@ -1,6 +1,6 @@
 // apps/dashboard/server/lib/github-reconcile.ts
 import { eq } from "drizzle-orm"
-import { type LogsAttachment, type ReportContext } from "@reprokit/shared"
+import { type LogsAttachment, type ReportContext } from "@reprojs/shared"
 import { env } from "./env"
 import { buildIssueBody, labelsFor, reportMarker } from "./github-helpers"
 import { getGithubClient } from "./github"

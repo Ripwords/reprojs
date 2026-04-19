@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
 import { eq } from "drizzle-orm"
-import { UpdateGithubConfigInput } from "@reprokit/shared"
+import { UpdateGithubConfigInput } from "@reprojs/shared"
 import { db } from "../../../../../db"
 import { githubIntegrations } from "../../../../../db/schema"
 import { requireProjectRole } from "../../../../../lib/permissions"

@@ -5,7 +5,7 @@
 │   Host web app       │                 │   Repro Dashboard              │
 │                      │   POST report   │   (Nuxt 4: Vue UI + Nitro API) │
 │  ┌────────────────┐  │ ──────────────► │                                │
-│  │ @reprokit/core │  │    multipart    │  /api/intake/*   (SDK ingress) │
+│  │ @reprojs/core │  │    multipart    │  /api/intake/*   (SDK ingress) │
 │  │   SDK widget   │  │                 │  /api/tickets/*  (triage)      │
 │  └────────────────┘  │                 │  /api/auth/*     (better-auth) │
 └──────────────────────┘                 │  /api/integrations/github/*    │
@@ -67,11 +67,11 @@
 ## Monorepo layout
 
 ```
-reprokit/
+reprojs/
 ├── apps/
 │   └── dashboard/              # Nuxt 4 — admin UI + intake API
 ├── packages/
-│   ├── core/                   # @reprokit/core — published SDK
+│   ├── core/                   # @reprojs/core — published SDK
 │   ├── ui/                     # widget UI (Preact, Shadow DOM) — workspace-only
 │   ├── recorder/               # 30s rolling DOM replay      — workspace-only
 │   ├── shared/                 # contract types + Zod schemas — workspace-only
@@ -81,4 +81,4 @@ reprokit/
 └── compose.yaml                # one-file self-host
 ```
 
-The sub-packages under `packages/` are bundled into `@reprokit/core` at build time — consumers install one package and get the full SDK.
+The sub-packages under `packages/` are bundled into `@reprojs/core` at build time — consumers install one package and get the full SDK.

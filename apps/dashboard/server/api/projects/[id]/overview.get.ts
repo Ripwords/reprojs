@@ -1,7 +1,7 @@
 // apps/dashboard/server/api/projects/[id]/overview.get.ts
 import { createError, defineEventHandler, getRouterParam } from "h3"
 import { and, count, desc, eq, gte, isNotNull, sql } from "drizzle-orm"
-import type { ProjectOverviewDTO } from "@reprokit/shared"
+import type { ProjectOverviewDTO } from "@reprojs/shared"
 import { db } from "../../../db"
 import { githubIntegrations, reportEvents, reportSyncJobs, reports, user } from "../../../db/schema"
 import { requireProjectRole } from "../../../lib/permissions"

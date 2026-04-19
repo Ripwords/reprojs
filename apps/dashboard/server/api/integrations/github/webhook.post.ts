@@ -1,7 +1,7 @@
 // apps/dashboard/server/api/integrations/github/webhook.post.ts
 import { createError, defineEventHandler, getHeader, readRawBody, setResponseStatus } from "h3"
 import { and, eq } from "drizzle-orm"
-import { verifyWebhookSignature } from "@reprokit/integrations-github"
+import { verifyWebhookSignature } from "@reprojs/integrations-github"
 import { db } from "../../../db"
 import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
 import { env } from "../../../lib/env"

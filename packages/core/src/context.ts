@@ -1,4 +1,4 @@
-import type { CookieEntry, ReportContext, ReporterIdentity, SystemInfo } from "@reprokit/shared"
+import type { CookieEntry, ReportContext, ReporterIdentity, SystemInfo } from "@reprojs/shared"
 
 export function gatherContext(
   reporter: ReporterIdentity | null,

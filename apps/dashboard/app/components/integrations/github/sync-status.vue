@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { GithubConfigDTO } from "@reprokit/shared"
+import type { GithubConfigDTO } from "@reprojs/shared"
 
 interface Props {
   projectId: string

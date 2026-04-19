@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { useRoute } from "vue-router"
-import type { ProjectDTO } from "@reprokit/shared"
+import type { ProjectDTO } from "@reprojs/shared"
 
 const route = useRoute()
 const { openPalette } = useCommandPalette()

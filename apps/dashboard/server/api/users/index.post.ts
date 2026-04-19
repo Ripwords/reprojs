@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, readValidatedBody } from "h3"
 import { eq } from "drizzle-orm"
-import { InviteUserInput } from "@reprokit/shared"
+import { InviteUserInput } from "@reprojs/shared"
 import { randomBytes } from "node:crypto"
 import { db } from "../../db"
 import { appSettings, user } from "../../db/schema"

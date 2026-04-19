@@ -10,7 +10,7 @@ import type {
   ReportPriority,
   ReportStatus,
   ReportSummaryDTO,
-} from "@reprokit/shared"
+} from "@reprojs/shared"
 import UnlinkDialog from "~/components/integrations/github/unlink-dialog.vue"
 import { safeHref } from "~/composables/use-safe-href"
 

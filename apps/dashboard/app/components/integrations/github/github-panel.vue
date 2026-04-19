@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { GithubConfigDTO } from "@reprokit/shared"
+import type { GithubConfigDTO } from "@reprojs/shared"
 import RepoPicker from "./repo-picker.vue"
 import SyncStatus from "./sync-status.vue"
 import UnlinkDialog from "./unlink-dialog.vue"

@@ -15,7 +15,7 @@ name: Publish Docker image
 # Requires two repo secrets (Settings → Secrets and variables → Actions):
 #   - DOCKERHUB_USERNAME : the Docker Hub login that owns the image
 #   - DOCKERHUB_TOKEN    : a Docker Hub access token with Read/Write/Delete on
-#                          the `ripwords/reprokit-dashboard` repo
+#                          the `reprojs/dashboard` repo
 
 on:
   push:
@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE: ripwords/reprokit-dashboard
+  IMAGE: reprojs/dashboard
 
 jobs:
   build:
@@ -60,7 +60,7 @@ jobs:
             org.opencontainers.image.title=Repro dashboard
             org.opencontainers.image.description=Self-hostable triage dashboard + intake API for the Repro feedback SDK
             org.opencontainers.image.licenses=MIT
-            org.opencontainers.image.source=https://github.com/Ripwords/reprokit
+            org.opencontainers.image.source=https://github.com/Ripwords/reprojs
 
       - name: Build + push
         uses: docker/build-push-action@v6

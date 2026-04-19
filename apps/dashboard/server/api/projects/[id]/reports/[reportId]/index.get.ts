@@ -5,7 +5,7 @@
 // DTO contract.
 import { createError, defineEventHandler, getRouterParam } from "h3"
 import { and, eq } from "drizzle-orm"
-import type { ReportAssigneeDTO, ReportContext, ReportSummaryDTO } from "@reprokit/shared"
+import type { ReportAssigneeDTO, ReportContext, ReportSummaryDTO } from "@reprojs/shared"
 import { db } from "../../../../../db"
 import { reportAttachments, reports } from "../../../../../db/schema"
 import { user as userTable } from "../../../../../db/schema/auth-schema"

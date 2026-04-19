@@ -8,7 +8,7 @@
   browser back button.
 -->
 <script setup lang="ts">
-import type { LogsAttachment, ReportSummaryDTO } from "@reprokit/shared"
+import type { LogsAttachment, ReportSummaryDTO } from "@reprojs/shared"
 import AppErrorState from "~/components/common/app-error-state.vue"
 import AppLoadingSkeleton from "~/components/common/app-loading-skeleton.vue"
 import ActivityTab from "~/components/report-drawer/activity-tab.vue"

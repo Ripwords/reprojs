@@ -1,5 +1,5 @@
 {
-  "name": "@reprokit/core",
+  "name": "@reprojs/core",
   "version": "0.1.1",
   "description": "Framework-agnostic embeddable feedback SDK — annotated screenshots, 30s session replay, and diagnostic context for any web app.",
   "keywords": [
@@ -11,15 +11,15 @@
     "sdk",
     "session-replay"
   ],
-  "homepage": "https://github.com/Ripwords/reprokit#readme",
+  "homepage": "https://github.com/Ripwords/reprojs#readme",
   "bugs": {
-    "url": "https://github.com/Ripwords/reprokit/issues"
+    "url": "https://github.com/Ripwords/reprojs/issues"
   },
   "license": "MIT",
   "author": "JJ Teoh",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ripwords/reprokit.git",
+    "url": "git+https://github.com/Ripwords/reprojs.git",
     "directory": "packages/core"
   },
   "files": [
@@ -45,9 +45,9 @@
   },
   "devDependencies": {
     "@preact/signals": "^1.3.0",
-    "@reprokit/recorder": "workspace:*",
-    "@reprokit/shared": "workspace:*",
-    "@reprokit/ui": "workspace:*",
+    "@reprojs/recorder": "workspace:*",
+    "@reprojs/shared": "workspace:*",
+    "@reprojs/ui": "workspace:*",
     "bun-types": "^1.3.12",
     "happy-dom": "^15.0.0",
     "modern-screenshot": "^4.6.0",

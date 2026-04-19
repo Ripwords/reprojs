@@ -1,6 +1,6 @@
 import { defineEventHandler } from "h3"
 import { desc } from "drizzle-orm"
-import type { UserDTO } from "@reprokit/shared"
+import type { UserDTO } from "@reprojs/shared"
 import { db } from "../../db"
 import { user } from "../../db/schema"
 import { requireInstallAdmin } from "../../lib/permissions"
