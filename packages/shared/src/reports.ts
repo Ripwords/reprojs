@@ -102,9 +102,6 @@ export type ReportStatus = z.infer<typeof ReportStatus>
 export const ReportPriority = z.enum(["low", "normal", "high", "urgent"])
 export type ReportPriority = z.infer<typeof ReportPriority>
 
-export const ProjectMemberRole = z.enum(["owner", "developer", "viewer"])
-export type ProjectMemberRole = z.infer<typeof ProjectMemberRole>
-
 export const ReportAssigneeDTO = z.object({
   id: z.string(),
   name: z.string().nullable(),

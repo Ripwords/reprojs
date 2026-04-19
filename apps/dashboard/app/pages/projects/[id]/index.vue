@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ProjectDTO, ProjectOverviewDTO, ReportSummaryDTO } from "@feedback-tool/shared"
 import AppEmptyState from "~/components/common/app-empty-state.vue"
+import { priorityColor, relativeTime } from "~/composables/use-report-format"
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))
@@ -37,22 +38,6 @@ const integration = computed(() => {
 
 const recentReports = computed<ReportSummaryDTO[]>(() => recentReportsResp.value?.items ?? [])
 const recentActivity = computed(() => overview.value?.recentEvents ?? [])
-
-function priorityColor(p: string): "error" | "warning" | "neutral" | "primary" {
-  if (p === "urgent") return "error"
-  if (p === "high") return "warning"
-  if (p === "normal") return "primary"
-  return "neutral"
-}
-
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const h = Math.floor(diffMs / 3_600_000)
-  if (h < 1) return "just now"
-  if (h < 24) return `${h}h ago`
-  const d = Math.floor(h / 24)
-  return `${d}d ago`
-}
 
 const EVENT_LABEL: Record<string, string> = {
   status_changed: "changed status",

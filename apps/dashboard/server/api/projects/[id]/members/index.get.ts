@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getQuery, getRouterParam } from "h3"
 import { and, eq, inArray } from "drizzle-orm"
-import { ProjectMemberRole, type ProjectMemberDTO } from "@feedback-tool/shared"
+import { ProjectRole, type ProjectMemberDTO } from "@feedback-tool/shared"
 import { db } from "../../../../db"
 import { projectMembers } from "../../../../db/schema"
 import { user } from "../../../../db/schema"
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<ProjectMemberDTO[]> => 
   const roleTokens = (typeof roleParam === "string" ? roleParam : "")
     .split(",")
     .map((s) => s.trim())
-    .filter((s) => ProjectMemberRole.safeParse(s).success)
+    .filter((s) => ProjectRole.safeParse(s).success)
     .slice(0, 3) as Array<ProjectMemberDTO["role"]>
 
   const rows = await db

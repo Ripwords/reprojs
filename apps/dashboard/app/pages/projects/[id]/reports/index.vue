@@ -10,6 +10,7 @@ import BulkActionBar from "~/components/inbox/bulk-action-bar.vue"
 import AppEmptyState from "~/components/common/app-empty-state.vue"
 import { useInboxQuery } from "~/composables/use-inbox-query"
 import { useKeyboardShortcuts } from "~/composables/useKeyboardShortcuts"
+import { priorityColor, relativeTime } from "~/composables/use-report-format"
 
 const UCheckbox = resolveComponent("UCheckbox")
 const UBadge = resolveComponent("UBadge")
@@ -196,23 +197,7 @@ useKeyboardShortcuts({
 })
 
 // ---- Columns ----
-function priorityColor(p: string): "error" | "warning" | "neutral" | "primary" {
-  if (p === "urgent") return "error"
-  if (p === "high") return "warning"
-  if (p === "normal") return "primary"
-  return "neutral"
-}
-
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diffMs / 60_000)
-  if (mins < 1) return "just now"
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  const days = Math.floor(hrs / 24)
-  return `${days}d`
-}
+const timeCompact = (iso: string) => relativeTime(iso, { compact: true })
 
 function initials(name: string | null, email: string): string {
   const base = name?.trim() || email
@@ -312,7 +297,7 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
         h(
           "span",
           { class: "text-xs text-muted whitespace-nowrap" },
-          relativeTime(row.original.receivedAt),
+          timeCompact(row.original.receivedAt),
         ),
       ),
   },

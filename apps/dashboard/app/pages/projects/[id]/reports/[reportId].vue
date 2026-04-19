@@ -19,6 +19,7 @@ import OverviewTab from "~/components/report-drawer/overview-tab.vue"
 import ReplayTab from "~/components/report-drawer/replay-tab.vue"
 import DrawerTabs from "~/components/report-drawer/tabs.vue"
 import TriageFooter from "~/components/report-drawer/triage-footer.vue"
+import { priorityColor, relativeTime } from "~/composables/use-report-format"
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))
@@ -125,24 +126,7 @@ function onKey(e: KeyboardEvent) {
 onMounted(() => window.addEventListener("keydown", onKey))
 onUnmounted(() => window.removeEventListener("keydown", onKey))
 
-function priorityColor(p: string | undefined): "error" | "warning" | "neutral" | "primary" {
-  if (p === "urgent") return "error"
-  if (p === "high") return "warning"
-  if (p === "normal") return "primary"
-  return "neutral"
-}
-
-function relativeTime(iso: string | undefined): string {
-  if (!iso) return ""
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diffMs / 60_000)
-  if (mins < 1) return "just now"
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
-}
+// priorityColor + relativeTime imported at the top from ~/composables/use-report-format
 </script>
 
 <template>
