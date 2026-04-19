@@ -332,7 +332,7 @@ export const ReportEventKind = z.enum([
 export type ReportEventKind = z.infer<typeof ReportEventKind>
 
 export const ReportEventDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   createdAt: z.string(),
   actor: ReportAssigneeDTO.nullable(),
   kind: ReportEventKind,
@@ -359,7 +359,7 @@ export type TriagePatchInput = z.infer<typeof TriagePatchInput>
 
 export const BulkUpdateInput = z
   .object({
-    reportIds: z.array(z.string().uuid()).min(1).max(100),
+    reportIds: z.array(z.uuid()).min(1).max(100),
     status: ReportStatus.optional(),
     assigneeId: z.string().nullable().optional(),
   })
@@ -375,7 +375,7 @@ Find the existing `export const ReportSummaryDTO = z.object({ ... })` block and 
 
 ```ts
 export const ReportSummaryDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   title: z.string(),
   description: z.string().nullable(),
   context: ReportContext,

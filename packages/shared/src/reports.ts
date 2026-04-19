@@ -123,7 +123,7 @@ export const ReportEventKind = z.enum([
 export type ReportEventKind = z.infer<typeof ReportEventKind>
 
 export const ReportEventDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   createdAt: z.string(),
   actor: ReportAssigneeDTO.nullable(),
   kind: ReportEventKind,
@@ -150,7 +150,7 @@ export type TriagePatchInput = z.infer<typeof TriagePatchInput>
 
 export const BulkUpdateInput = z
   .object({
-    reportIds: z.array(z.string().uuid()).min(1).max(100),
+    reportIds: z.array(z.uuid()).min(1).max(100),
     status: ReportStatus.optional(),
     assigneeId: z.string().nullable().optional(),
   })
@@ -176,7 +176,7 @@ export const AttachmentKind = z.enum(["screenshot", "annotated-screenshot", "rep
 export type AttachmentKind = z.infer<typeof AttachmentKind>
 
 export const AttachmentDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   kind: AttachmentKind,
   url: z.string(),
   contentType: z.string(),
@@ -185,7 +185,7 @@ export const AttachmentDTO = z.object({
 export type AttachmentDTO = z.infer<typeof AttachmentDTO>
 
 export const ReportSummaryDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   title: z.string(),
   description: z.string().nullable(),
   context: ReportContext,
@@ -210,7 +210,7 @@ export const ReportDetailDTO = ReportSummaryDTO.extend({
 export type ReportDetailDTO = z.infer<typeof ReportDetailDTO>
 
 export const IntakeResponse = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   /** True when the server silently dropped the replay part (per-project or per-deployment disable). */
   replayStored: z.boolean().optional(),
   replayDisabled: z.boolean().optional(),

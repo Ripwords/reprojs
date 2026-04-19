@@ -366,7 +366,7 @@ export const AttachmentKind = z.enum(["screenshot", "annotated-screenshot", "rep
 export type AttachmentKind = z.infer<typeof AttachmentKind>
 
 export const AttachmentDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   kind: AttachmentKind,
   url: z.string(),
   contentType: z.string(),
@@ -375,7 +375,7 @@ export const AttachmentDTO = z.object({
 export type AttachmentDTO = z.infer<typeof AttachmentDTO>
 
 export const ReportSummaryDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   title: z.string(),
   reporterEmail: z.string().nullable(),
   pageUrl: z.string(),
@@ -1516,7 +1516,7 @@ In `packages/shared/src/projects.ts`, replace the `ProjectDTO` and `UpdateProjec
 
 ```ts
 export const ProjectDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string(),
   slug: z.string(),
   createdBy: z.string(),

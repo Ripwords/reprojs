@@ -2109,7 +2109,7 @@ Append at the end of the file:
 
 ```ts
 export const IntakeResponse = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   /** True when the server silently dropped the replay part (per-project or per-deployment disable). */
   replayStored: z.boolean().optional(),
   replayDisabled: z.boolean().optional(),

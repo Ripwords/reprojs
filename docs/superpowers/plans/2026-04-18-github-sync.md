@@ -1359,7 +1359,7 @@ export const GithubConfigDTO = z.object({
   lastSyncedAt: z.string().nullable(),
   failedJobs: z.array(
     z.object({
-      reportId: z.string().uuid(),
+      reportId: z.uuid(),
       reportTitle: z.string(),
       attempts: z.number().int(),
       lastError: z.string().nullable(),

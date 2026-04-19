@@ -1521,7 +1521,7 @@ export const ProjectRole = z.enum(["viewer", "developer", "owner"])
 export type ProjectRole = z.infer<typeof ProjectRole>
 
 export const ProjectDTO = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string(),
   slug: z.string(),
   createdBy: z.string(),
