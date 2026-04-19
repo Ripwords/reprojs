@@ -189,14 +189,14 @@ async function confirmDelete() {
           </UFormField>
           <UFormField
             label="Allowed origins"
-            help="One origin per line. The SDK must send reports from one of these."
+            help="One origin per line (e.g. https://app.example.com). The SDK can only submit reports from an origin on this list. Leave empty to block all incoming reports — in production, an empty list means the project is inactive."
           >
             <UTextarea
               v-model="generalForm.originsText"
               :disabled="!isOwner"
               :rows="4"
               placeholder="https://app.example.com&#10;https://staging.example.com"
-              class="w-full font-mono text-xs"
+              class="w-full font-mono text-sm"
             />
           </UFormField>
           <UFormField

@@ -1,5 +1,6 @@
 import type { H3Event } from "h3"
 import { getHeader, setHeaders } from "h3"
+import { env } from "./env"
 
 /**
  * Headers for the CORS preflight (OPTIONS) on the intake endpoint.
@@ -35,11 +36,28 @@ export function applyIntakePostCors(event: H3Event, allowedOrigin: string) {
 
 /**
  * Returns true if `origin` is accepted by the project's allow-list.
- * Dev leniency: empty allow-list + localhost origin passes.
+ *
+ * Empty allow-list = reject everything in production. The previous
+ * "empty allow-list + localhost passes" leniency ran regardless of
+ * environment, which meant a production deployment where the operator
+ * hadn't configured any origins silently accepted any localhost-origin
+ * intake — and since the project key alone identifies the project, that
+ * was effectively an open endpoint whenever an attacker ran the SDK
+ * from a localhost page (file://, http://127.0.0.1/, a tunneled dev
+ * server, etc.).
+ *
+ * New contract:
+ *   - Non-empty allow-list → must contain the origin exactly.
+ *   - Empty allow-list in development → localhost / 127.0.0.1 passes
+ *     (so first-time local SDK testing doesn't require config).
+ *   - Empty allow-list in production → always reject. Operators must
+ *     set `allowedOrigins` on each project before it can receive
+ *     reports.
  */
 export function isOriginAllowed(origin: string | null | undefined, allowed: string[]): boolean {
   if (!origin) return false
   if (allowed.length > 0) return allowed.includes(origin)
+  if (env.NODE_ENV !== "development") return false
   try {
     const u = new URL(origin)
     return u.hostname === "localhost" || u.hostname === "127.0.0.1"
