@@ -1,23 +1,20 @@
 <script setup lang="ts">
-const { session, isAdmin, signOut } = useSession()
+import AppSidebar from "~/components/shell/app-sidebar.vue"
+import AppTopBar from "~/components/shell/app-top-bar.vue"
 </script>
 
 <template>
-  <div class="min-h-screen bg-neutral-50 text-neutral-900">
-    <header class="border-b bg-white">
-      <div class="max-w-6xl mx-auto flex items-center justify-between px-6 h-14">
-        <NuxtLink to="/" class="font-semibold">Feedback Tool</NuxtLink>
-        <nav class="flex gap-4 text-sm">
-          <NuxtLink to="/">Projects</NuxtLink>
-          <NuxtLink v-if="isAdmin" to="/settings/users">Users</NuxtLink>
-          <NuxtLink v-if="isAdmin" to="/settings/install">Install</NuxtLink>
-          <NuxtLink to="/settings/account">{{ session.data?.user?.email }}</NuxtLink>
-          <button class="text-neutral-500" @click="signOut()">Sign out</button>
-        </nav>
+  <UApp>
+    <div class="min-h-screen flex bg-muted text-default">
+      <AppSidebar />
+      <div class="flex-1 flex flex-col min-w-0">
+        <AppTopBar />
+        <main class="flex-1 overflow-y-auto">
+          <div class="p-6">
+            <slot />
+          </div>
+        </main>
       </div>
-    </header>
-    <main class="max-w-6xl mx-auto p-6">
-      <slot />
-    </main>
-  </div>
+    </div>
+  </UApp>
 </template>
