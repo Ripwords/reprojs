@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.2
+
+[compare changes](https://github.com/Ripwords/reprokit/compare/v0.1.1...v0.1.2)
+
+### 🤖 CI
+
+- **docker:** Migrate from GHCR to Docker Hub (ripwords/reprokit-dashboard) ([54ffb9c](https://github.com/Ripwords/reprokit/commit/54ffb9c))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.1
 
 [compare changes](https://github.com/Ripwords/reprokit/compare/v0.1.0...v0.1.1)
