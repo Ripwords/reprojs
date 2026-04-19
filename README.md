@@ -4,8 +4,6 @@
 
 Repro gives end users of any web app a one-click way to report bugs from the page — with an annotated screenshot, the last 30 seconds of session replay, and rich diagnostic context (console, network, cookies, system info) attached. Reports land in a self-hostable Nuxt dashboard where your team triages them, and optionally syncs them to GitHub Issues.
 
-Think [marker.io](https://marker.io), but open-source and self-hostable.
-
 ---
 
 ## Why Repro
