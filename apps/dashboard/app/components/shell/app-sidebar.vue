@@ -149,13 +149,11 @@ function isActive(to: string): boolean {
         class="flex items-center gap-2 text-sm font-semibold tracking-tight text-default hover:text-primary transition-colors"
         aria-label="Feedback Tool home"
       >
-        <!-- Brand mark: small teal square rotated 45° with a dot inside.
-             Distinctive enough to claim the corner without needing an
-             actual logo asset, and scales down cleanly for the collapsed
-             sidebar state (no text, just the mark). -->
-        <span
-          class="inline-block size-4 rotate-45 rounded-[3px] bg-gradient-to-br from-primary-400 to-primary-600 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]"
-        />
+        <!-- Product logo — viewfinder brackets + center dot. Swaps variants
+             via dark-mode class so the mark matches the surface on each
+             theme. -->
+        <img src="/icon-light.svg" alt="" class="size-5 rounded-[4px] dark:hidden" />
+        <img src="/icon-dark.svg" alt="" class="size-5 rounded-[4px] hidden dark:block" />
         <span>Feedback Tool</span>
       </NuxtLink>
       <UButton

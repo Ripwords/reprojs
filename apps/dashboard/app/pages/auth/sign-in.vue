@@ -75,13 +75,26 @@ const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.ha
 
 <template>
   <div class="space-y-8">
-    <!-- Product mark above the card — claims the page as "Feedback Tool"
-         without needing a wordmark inside the form. The rotated gradient
-         square mirrors the sidebar brand mark for visual continuity. -->
+    <!-- Product logo + wordmark above the card — same viewfinder used in
+         the sidebar + favicon, dropped onto a soft glow so it reads as
+         emblem rather than chrome. -->
     <div class="flex flex-col items-center gap-3">
-      <span
-        class="inline-block size-9 rotate-45 rounded-md bg-gradient-to-br from-primary-400 to-primary-600 shadow-[0_1px_0_0_rgba(255,255,255,0.3)_inset,0_8px_24px_-8px] shadow-primary/40"
-      />
+      <div class="relative">
+        <div
+          class="pointer-events-none absolute inset-0 -m-2 rounded-3xl bg-primary/20 blur-xl"
+          aria-hidden="true"
+        />
+        <img
+          src="/icon-light.svg"
+          alt=""
+          class="relative size-12 rounded-xl shadow-md dark:hidden"
+        />
+        <img
+          src="/icon-dark.svg"
+          alt=""
+          class="relative size-12 rounded-xl shadow-md hidden dark:block"
+        />
+      </div>
       <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
         Feedback Tool
       </span>
