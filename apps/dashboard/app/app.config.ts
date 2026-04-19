@@ -1,13 +1,15 @@
 export default defineAppConfig({
   ui: {
     colors: {
-      // Muted violet — used sparingly, Linear-style. Primary is only pulled
-      // in when an action is genuinely the primary intent on the page;
-      // most nav / interactive state uses neutral shades instead.
-      primary: "violet",
-      // Zinc is Tailwind's cool-neutral scale. Gives the surfaces a quiet
-      // greyscale feel instead of the warmer stone tones we started with.
-      neutral: "zinc",
+      // Slate is a de-saturated cool-grey: it reads as "cool neutral with a
+      // whisper of blue" rather than a hue, so `color="primary"` buttons
+      // come out near-monochrome — professional, Linear/Sentry/Vercel feel,
+      // no colored accent dominating the UI.
+      primary: "zinc",
+      // Zinc gives surfaces a clean cool-grey baseline. Paired with a
+      // slate primary, the whole chrome reads as a single cool-neutral
+      // scale rather than two competing hues.
+      neutral: "mist",
     },
   },
 })

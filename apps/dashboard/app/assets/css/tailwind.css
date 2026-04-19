@@ -1,6 +1,33 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+/*
+ * Custom `mist` color scale. Sits between Tailwind's `zinc` (near-pure
+ * grey) and `slate` (noticeable blue tilt) — a soft, cool-grey with a
+ * whisper of blue that reads as "hazy, professional" rather than
+ * "corporate blue" or "flat greyscale". Registered as a `static` theme
+ * so Tailwind 4 always emits these vars even if they aren't referenced
+ * directly in source (Nuxt UI references them at runtime through
+ * `ui.colors.neutral`).
+ *
+ * Each step uses the same hue (255, a very subtle blue-violet) and
+ * increasing chroma through the mid-tones — mirrors how Tailwind's own
+ * scales ramp perceptual saturation with lightness.
+ */
+@theme static {
+  --color-mist-50: oklch(0.985 0.003 255);
+  --color-mist-100: oklch(0.963 0.005 255);
+  --color-mist-200: oklch(0.921 0.008 255);
+  --color-mist-300: oklch(0.867 0.012 255);
+  --color-mist-400: oklch(0.723 0.018 255);
+  --color-mist-500: oklch(0.562 0.022 255);
+  --color-mist-600: oklch(0.449 0.02 255);
+  --color-mist-700: oklch(0.358 0.017 255);
+  --color-mist-800: oklch(0.265 0.014 255);
+  --color-mist-900: oklch(0.185 0.01 255);
+  --color-mist-950: oklch(0.122 0.008 255);
+}
+
 @theme {
   /*
    * Typography — Geist (variable) for sans, JetBrains Mono for mono.
