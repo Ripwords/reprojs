@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ProjectDTO, ProjectOverviewDTO, ReportSummaryDTO } from "@feedback-tool/shared"
+import AppEmptyState from "~/components/common/app-empty-state.vue"
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))

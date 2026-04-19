@@ -9,6 +9,8 @@
 -->
 <script setup lang="ts">
 import type { LogsAttachment, ReportSummaryDTO } from "@feedback-tool/shared"
+import AppErrorState from "~/components/common/app-error-state.vue"
+import AppLoadingSkeleton from "~/components/common/app-loading-skeleton.vue"
 import ActivityTab from "~/components/report-drawer/activity-tab.vue"
 import ConsoleTab from "~/components/report-drawer/console-tab.vue"
 import CookiesTab from "~/components/report-drawer/cookies-tab.vue"
