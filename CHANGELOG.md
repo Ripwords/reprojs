@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.1.1
+
+[compare changes](https://github.com/Ripwords/reprokit/compare/v0.1.0...v0.1.1)
+
+### 🚀 Enhancements
+
+- **dashboard:** Add session environment card to report overview ([83dc70d](https://github.com/Ripwords/reprokit/commit/83dc70d))
+- **deploy:** One-file self-host via Docker + GHCR ([fa6adcb](https://github.com/Ripwords/reprokit/commit/fa6adcb))
+- **docs:** Logo + flame/mist brand theming ([7253e6d](https://github.com/Ripwords/reprokit/commit/7253e6d))
+
+### 🩹 Fixes
+
+- **deploy:** Ship server/emails/ in the Docker image ([1611933](https://github.com/Ripwords/reprokit/commit/1611933))
+
+### 📖 Documentation
+
+- Update wiki + clone URLs to Ripwords/reprokit ([e9bffbb](https://github.com/Ripwords/reprokit/commit/e9bffbb))
+- Update README ([904b78d](https://github.com/Ripwords/reprokit/commit/904b78d))
+- VitePress site at ripwords.github.io/reprokit ([35a1eaa](https://github.com/Ripwords/reprokit/commit/35a1eaa))
+
+### 📦 Build
+
+- **sdk:** Make @reprokit/core a self-contained publishable package ([95d8992](https://github.com/Ripwords/reprokit/commit/95d8992))
+- **deploy:** Healthcheck script in the image instead of inline shell ([a77a113](https://github.com/Ripwords/reprokit/commit/a77a113))
+
+### 🤖 CI
+
+- Wire dummy GitHub App env vars for webhook signature tests ([c2c5646](https://github.com/Ripwords/reprokit/commit/c2c5646))
+- **docs:** Auto-enable Pages on first deploy ([24db132](https://github.com/Ripwords/reprokit/commit/24db132))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.0
 
 Initial public release of Repro — the framework-agnostic embeddable feedback SDK plus self-hostable triage dashboard, published under the `@reprokit/*` npm scope.
