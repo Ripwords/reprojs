@@ -10,6 +10,7 @@
     "declaration": true,
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "types": ["bun-types"]

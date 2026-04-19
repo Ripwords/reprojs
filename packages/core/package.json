@@ -1,35 +1,59 @@
 {
   "name": "@reprokit/core",
   "version": "0.1.0",
-  "private": true,
+  "description": "Framework-agnostic embeddable feedback SDK — annotated screenshots, 30s session replay, and diagnostic context for any web app.",
+  "keywords": [
+    "bug-report",
+    "feedback",
+    "feedback-widget",
+    "marker",
+    "screenshot-annotation",
+    "sdk",
+    "session-replay"
+  ],
+  "homepage": "https://github.com/Ripwords/reprokit#readme",
+  "bugs": {
+    "url": "https://github.com/Ripwords/reprokit/issues"
+  },
+  "license": "MIT",
+  "author": "JJ Teoh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ripwords/reprokit.git",
+    "directory": "packages/core"
+  },
   "files": [
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs"
-    }
+      "import": "./dist/index.js"
+    },
+    "./iife": "./dist/repro.iife.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@preact/signals": "^1.3.0",
+    "@reprokit/recorder": "workspace:*",
     "@reprokit/shared": "workspace:*",
     "@reprokit/ui": "workspace:*",
-    "modern-screenshot": "^4.6.0",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
     "bun-types": "^1.3.12",
     "happy-dom": "^15.0.0",
+    "modern-screenshot": "^4.6.0",
     "preact": "^10.23.0",
-    "tsdown": "^0.9.0",
-    "typescript": "^5.8"
+    "tsdown": "^0.21.9",
+    "typescript": "^5.8",
+    "zod": "^4.3.6"
   }
 }

@@ -114,15 +114,15 @@ const snippets = ref<Record<SnippetKey, Snippet>>({
   },
 })
 
-// Install commands per package manager. Both `@reprokit/core` (the
-// framework-agnostic init API) and `@reprokit/ui` (the widget UI) need
-// installing together. Deno uses `deno add` with an `npm:` specifier.
+// Install commands per package manager. `@reprokit/core` bundles the widget
+// UI, recorder, and shared types — consumers install a single package. Deno
+// uses `deno add` with an `npm:` specifier.
 const pmCommands = {
-  npm: "npm install @reprokit/core @reprokit/ui",
-  pnpm: "pnpm add @reprokit/core @reprokit/ui",
-  yarn: "yarn add @reprokit/core @reprokit/ui",
-  bun: "bun add @reprokit/core @reprokit/ui",
-  deno: "deno add npm:@reprokit/core npm:@reprokit/ui",
+  npm: "npm install @reprokit/core",
+  pnpm: "pnpm add @reprokit/core",
+  yarn: "yarn add @reprokit/core",
+  bun: "bun add @reprokit/core",
+  deno: "deno add npm:@reprokit/core",
 } as const
 
 type PackageManager = keyof typeof pmCommands

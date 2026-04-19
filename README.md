@@ -66,7 +66,7 @@ Two first-class deliverables in one repo:
 ### ESM / bundler
 
 ```bash
-npm install @reprokit/core @reprokit/ui
+npm install @reprokit/core
 ```
 
 ```ts
