@@ -11,6 +11,7 @@ const UDropdownMenu = resolveComponent("UDropdownMenu")
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))
 const toast = useToast()
+const { confirm } = useConfirm()
 
 const { data: project } = await useApi<ProjectDTO>(`/api/projects/${projectId.value}`)
 const {
@@ -99,8 +100,15 @@ async function removeMember(userId: string) {
   }
 }
 
-function confirmRemove(member: ProjectMemberDTO) {
-  if (!confirm(`Remove ${member.email} from this project?`)) return
+async function confirmRemove(member: ProjectMemberDTO) {
+  const ok = await confirm({
+    title: "Remove member?",
+    description: `${member.email} will lose access to this project.`,
+    confirmLabel: "Remove",
+    confirmColor: "error",
+    icon: "i-heroicons-user-minus",
+  })
+  if (!ok) return
   void removeMember(member.userId)
 }
 

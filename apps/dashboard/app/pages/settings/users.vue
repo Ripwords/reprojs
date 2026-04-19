@@ -12,6 +12,7 @@ const UDropdownMenu = resolveComponent("UDropdownMenu")
 const USelectMenu = resolveComponent("USelectMenu")
 
 const toast = useToast()
+const { confirm } = useConfirm()
 
 const {
   data: users,
@@ -104,8 +105,15 @@ async function setStatus(userId: string, status: UserStatus) {
   }
 }
 
-function confirmDisable(u: UserDTO) {
-  if (!confirm(`Disable ${u.email}? They will lose access to this install.`)) return
+async function confirmDisable(u: UserDTO) {
+  const ok = await confirm({
+    title: "Disable user?",
+    description: `${u.email} will lose access to this install.`,
+    confirmLabel: "Disable user",
+    confirmColor: "error",
+    icon: "i-heroicons-no-symbol",
+  })
+  if (!ok) return
   void setStatus(u.id, "disabled")
 }
 

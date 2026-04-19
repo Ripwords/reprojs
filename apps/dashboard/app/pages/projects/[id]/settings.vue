@@ -6,6 +6,7 @@ import ConfirmDeleteDialog from "~/components/common/confirm-delete-dialog.vue"
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { confirm } = useConfirm()
 const runtime = useRuntimeConfig()
 const dashboardUrl = runtime.public.betterAuthUrl
 const projectId = computed(() => String(route.params.id))
@@ -96,12 +97,15 @@ async function updateReplayEnabled(enabled: boolean) {
 }
 
 async function rotateKey() {
-  if (
-    !confirm(
-      "Rotating invalidates the current key immediately. Embeds using the old key will stop working. Continue?",
-    )
-  )
-    return
+  const ok = await confirm({
+    title: "Rotate project key?",
+    description:
+      "Rotating invalidates the current key immediately. Embeds using the old key will stop working.",
+    confirmLabel: "Rotate key",
+    confirmColor: "warning",
+    icon: "i-heroicons-key",
+  })
+  if (!ok) return
   rotating.value = true
   try {
     await $fetch(`/api/projects/${projectId.value}/rotate-key`, {

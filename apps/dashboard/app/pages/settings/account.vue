@@ -3,6 +3,7 @@ import { computed, ref } from "vue"
 
 const { session, signOut } = useSession()
 const toast = useToast()
+const { confirm } = useConfirm()
 
 const email = computed(() => session.value?.data?.user?.email ?? "")
 const name = computed(() => session.value?.data?.user?.name ?? "")
@@ -13,7 +14,14 @@ const role = computed(
 const signingOutOthers = ref(false)
 
 async function signOutOtherSessions() {
-  if (!confirm("Sign out of all other sessions? Other devices will have to sign in again.")) return
+  const ok = await confirm({
+    title: "Sign out other sessions?",
+    description: "Other devices will have to sign in again.",
+    confirmLabel: "Sign out others",
+    confirmColor: "warning",
+    icon: "i-heroicons-arrow-right-on-rectangle",
+  })
+  if (!ok) return
   signingOutOthers.value = true
   try {
     await $fetch("/api/auth/revoke-other-sessions", {
