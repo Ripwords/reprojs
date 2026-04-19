@@ -70,11 +70,7 @@ services:
       # STORAGE_DRIVER=s3 — attachments go to your S3 bucket instead.
       - attachments_data:/data/attachments
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'bun -e "fetch(''http://localhost:3000/api/health'').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"',
-        ]
+      test: ["CMD", "bun", "/app/healthcheck.mjs"]
       interval: 15s
       timeout: 5s
       retries: 5

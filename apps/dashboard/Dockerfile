@@ -56,7 +56,16 @@ COPY --from=build --chown=repro:repro /repo/apps/dashboard/server/db ./server/db
 # drizzle-kit standalone (for the migrator command); tiny, ~30MB with its deps
 RUN bun add --cwd /app drizzle-kit@latest drizzle-orm pg
 
-# Healthcheck uses the built-in /api/health route (see compose.yaml)
+# Healthcheck helper — reads NITRO_PORT so it stays in sync with the server
+# if the port ever changes. Kept inside the image so compose.yaml doesn't
+# carry escaped-quote soup.
+RUN printf '%s\n' \
+  'const port = process.env.NITRO_PORT ?? "3000"' \
+  'fetch(`http://127.0.0.1:${port}/api/health`)' \
+  '  .then((r) => process.exit(r.ok ? 0 : 1))' \
+  '  .catch(() => process.exit(1))' \
+  > /app/healthcheck.mjs \
+ && chown repro:repro /app/healthcheck.mjs
 
 USER repro
 
