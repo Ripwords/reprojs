@@ -150,7 +150,7 @@ const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.ha
         </form>
 
         <template v-if="!magicLinkSent && hasOAuth">
-          <UDivider label="or" />
+          <USeparator label="or" />
 
           <div class="space-y-2">
             <UButton
