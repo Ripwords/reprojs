@@ -1,12 +1,24 @@
 # Changelog
 
+## v0.1.3
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.2...v0.1.3)
+
+### 🏡 Chore
+
+- **brand:** Rename @reprokit → @reprojs across npm + Docker + GitHub ([cdd9dc7](https://github.com/Ripwords/reprojs/commit/cdd9dc7))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.2
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.1...v0.1.2)
 
 ### 🤖 CI
 
-- **docker:** Migrate from GHCR to Docker Hub (reprojs/dashboard) ([54ffb9c](https://github.com/Ripwords/reprojs/commit/54ffb9c))
+- **docker:** Migrate from GHCR to Docker Hub (ripwords/reprojs-dashboard) ([54ffb9c](https://github.com/Ripwords/reprojs/commit/54ffb9c))
 
 ### ❤️ Contributors
 

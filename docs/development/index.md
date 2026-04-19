@@ -111,7 +111,7 @@ bun run release:major
 bun run postrelease       # push tags to GitHub
 ```
 
-The `prerelease` hook runs lint, format:check, SDK build, and SDK tests. Pushing a `v*.*.*` tag triggers the `publish-docker` workflow which builds the multi-arch image and pushes to `reprojs/dashboard`.
+The `prerelease` hook runs lint, format:check, SDK build, and SDK tests. Pushing a `v*.*.*` tag triggers the `publish-docker` workflow which builds the multi-arch image and pushes to `ripwords/reprojs-dashboard`.
 
 ## Where to file bugs / ideas
 
