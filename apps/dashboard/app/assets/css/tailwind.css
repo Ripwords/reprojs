@@ -2,30 +2,49 @@
 @import "@nuxt/ui";
 
 /*
- * Custom `mist` color scale. Sits between Tailwind's `zinc` (near-pure
- * grey) and `slate` (noticeable blue tilt) — a soft, cool-grey with a
- * whisper of blue that reads as "hazy, professional" rather than
- * "corporate blue" or "flat greyscale". Registered as a `static` theme
- * so Tailwind 4 always emits these vars even if they aren't referenced
- * directly in source (Nuxt UI references them at runtime through
- * `ui.colors.neutral`).
+ * Brand palette. Four anchor colors picked by the operator, stretched
+ * across Nuxt UI's 50–950 scale so both light and dark surfaces stay
+ * consistent. Registered as `@theme static` so Tailwind 4 always emits
+ * these vars even when they aren't referenced directly in source (Nuxt
+ * UI wires them up at runtime via `ui.colors.primary` / `ui.colors.neutral`).
  *
- * Each step uses the same hue (255, a very subtle blue-violet) and
- * increasing chroma through the mid-tones — mirrors how Tailwind's own
- * scales ramp perceptual saturation with lightness.
+ * `mist` (cool blue-grey) is the neutral scale:
+ *   - 100 = #EAEFEF (operator's light anchor)
+ *   - 300 = #BFC9D1 (operator's mid anchor)
+ *   - 900 = #25343F (operator's deep anchor — primary dark surface)
+ * Hue holds at ~230° with chroma ramping from nearly zero at the tips
+ * to ~0.023 mid-tones, so the scale reads as "cool neutral with a hint
+ * of blue" rather than slate or steel.
+ *
+ * `flame` (warm orange) is the primary accent:
+ *   - 500 = #FF9B51 (operator's accent anchor)
+ * One accent, used sparingly. Gives the otherwise-cool UI a single warm
+ * signal for CTAs, focus states, and progress markers.
  */
 @theme static {
-  --color-mist-50: oklch(0.985 0.003 255);
-  --color-mist-100: oklch(0.963 0.005 255);
-  --color-mist-200: oklch(0.921 0.008 255);
-  --color-mist-300: oklch(0.867 0.012 255);
-  --color-mist-400: oklch(0.723 0.018 255);
-  --color-mist-500: oklch(0.562 0.022 255);
-  --color-mist-600: oklch(0.449 0.02 255);
-  --color-mist-700: oklch(0.358 0.017 255);
-  --color-mist-800: oklch(0.265 0.014 255);
-  --color-mist-900: oklch(0.185 0.01 255);
-  --color-mist-950: oklch(0.122 0.008 255);
+  --color-mist-50: oklch(0.975 0.002 220);
+  --color-mist-100: oklch(0.945 0.004 220);
+  --color-mist-200: oklch(0.895 0.01 228);
+  --color-mist-300: oklch(0.805 0.015 235);
+  --color-mist-400: oklch(0.7 0.018 237);
+  --color-mist-500: oklch(0.59 0.021 238);
+  --color-mist-600: oklch(0.48 0.023 239);
+  --color-mist-700: oklch(0.385 0.023 240);
+  --color-mist-800: oklch(0.31 0.021 240);
+  --color-mist-900: oklch(0.28 0.02 240);
+  --color-mist-950: oklch(0.2 0.015 240);
+
+  --color-flame-50: oklch(0.97 0.015 62);
+  --color-flame-100: oklch(0.94 0.035 60);
+  --color-flame-200: oklch(0.895 0.068 58);
+  --color-flame-300: oklch(0.85 0.1 56);
+  --color-flame-400: oklch(0.81 0.135 56);
+  --color-flame-500: oklch(0.767 0.155 55);
+  --color-flame-600: oklch(0.68 0.148 52);
+  --color-flame-700: oklch(0.575 0.128 48);
+  --color-flame-800: oklch(0.475 0.105 45);
+  --color-flame-900: oklch(0.38 0.08 42);
+  --color-flame-950: oklch(0.27 0.05 40);
 }
 
 @theme {

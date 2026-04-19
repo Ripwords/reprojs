@@ -1,14 +1,13 @@
 export default defineAppConfig({
   ui: {
     colors: {
-      // Slate is a de-saturated cool-grey: it reads as "cool neutral with a
-      // whisper of blue" rather than a hue, so `color="primary"` buttons
-      // come out near-monochrome — professional, Linear/Sentry/Vercel feel,
-      // no colored accent dominating the UI.
-      primary: "zinc",
-      // Zinc gives surfaces a clean cool-grey baseline. Paired with a
-      // slate primary, the whole chrome reads as a single cool-neutral
-      // scale rather than two competing hues.
+      // `flame` — warm orange anchored on #FF9B51. The only warm hue in the
+      // palette; used sparingly for CTAs, focus states, and status accents.
+      primary: "flame",
+      // `mist` — cool blue-grey neutral spanning #EAEFEF → #BFC9D1 → #25343F.
+      // Carries every neutral surface (backgrounds, cards, dividers, body
+      // text) so the whole chrome reads as one cool-neutral scale rather
+      // than multiple competing hues.
       neutral: "mist",
     },
   },
