@@ -46,3 +46,5 @@ docs/.vitepress/cache
 
 # Git worktrees (isolated feature workspaces)
 .worktrees/
+
+apps/extension/public/repro.iife.js
