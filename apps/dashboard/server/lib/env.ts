@@ -28,6 +28,12 @@ const Schema = z.object({
   BETTER_AUTH_SECRET: z.string().min(1),
   DATABASE_URL: z.string().min(1),
   ATTACHMENT_URL_SECRET: z.string().min(1),
+  // Base64-encoded 32-byte key used by `encryptedText` columns (AES-256-GCM
+  // via HKDF). Generate with `openssl rand -base64 32`. Required iff any
+  // encrypted row is written — we keep it optional so local/dev tooling that
+  // never touches encrypted tables doesn't need it set. The custom type
+  // throws a clear error at first encrypted read/write if it's missing.
+  ENCRYPTION_KEY: z.string().optional().default(""),
 
   // DB pool
   DB_POOL_MAX: intString(10),
@@ -45,6 +51,8 @@ const Schema = z.object({
   GITHUB_APP_PRIVATE_KEY: z.string().optional().default(""),
   GITHUB_APP_WEBHOOK_SECRET: z.string().optional().default(""),
   GITHUB_APP_SLUG: z.string().default("repro"),
+  GITHUB_APP_CLIENT_ID: z.string().optional().default(""),
+  GITHUB_APP_CLIENT_SECRET: z.string().optional().default(""),
   GITHUB_WEBHOOK_MAX_BYTES: intString(1_048_576),
 
   // Mail
