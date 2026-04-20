@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.1.4
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.3...v0.1.4)
+
+### 🚀 Enhancements
+
+- **dashboard:** Encryption foundation — AES-256-GCM helper + encryptedText column ([8f9d128](https://github.com/Ripwords/reprojs/commit/8f9d128))
+- **dashboard:** Github_app singleton table + credential resolver with env→db fallback ([82e6f0b](https://github.com/Ripwords/reprojs/commit/82e6f0b))
+- **github-integration:** Shared buildGithubAppManifest ([f7dff95](https://github.com/Ripwords/reprojs/commit/f7dff95))
+- **dashboard:** GitHub App manifest wizard — start/callback routes, status API, admin UI ([170a2d9](https://github.com/Ripwords/reprojs/commit/170a2d9))
+
+### 💅 Refactors
+
+- **dashboard:** Make github.ts helpers async via credential resolver ([1bc0789](https://github.com/Ripwords/reprojs/commit/1bc0789))
+
+### 📖 Documentation
+
+- **self-hosting:** Document in-app GitHub App manifest wizard ([8dfdfee](https://github.com/Ripwords/reprojs/commit/8dfdfee))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.3
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.2...v0.1.3)
