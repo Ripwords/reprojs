@@ -34,6 +34,183 @@ init({
 })
 ```
 
+The example above assumes a browser-only entry point (Vite SPA, CRA, plain `<script type="module">`). If you're using **Next.js, Nuxt, Remix, SvelteKit, Astro, or any other SSR / React Server Components framework**, read the next section — calling `init()` at module scope will throw `ReferenceError: document is not defined` during server rendering.
+
+## Using with SSR frameworks
+
+The SDK touches `document` and `window` to mount the widget and start the replay recorder, so it must only run in the browser. SSR frameworks evaluate your modules on the server too, which means a top-level `init(...)` call — like you'd write in a pure SPA — will crash the server render.
+
+The fix is the same shape everywhere: **defer `init()` until after the component has mounted in the browser.** Import is always safe; only the call needs to be client-side.
+
+### Next.js — App Router (`app/`)
+
+Create a tiny client component and render it once in your root layout.
+
+```tsx
+// app/repro-client.tsx
+"use client"
+
+import { useEffect } from "react"
+import { init } from "@reprojs/core"
+
+export function ReproClient() {
+  useEffect(() => {
+    init({
+      projectKey: process.env.NEXT_PUBLIC_REPRO_PROJECT_KEY!,
+      endpoint: process.env.NEXT_PUBLIC_REPRO_ENDPOINT!,
+    })
+  }, [])
+  return null
+}
+```
+
+```tsx
+// app/layout.tsx
+import { ReproClient } from "./repro-client"
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <ReproClient />
+      </body>
+    </html>
+  )
+}
+```
+
+> Note: `'use client'` alone isn't enough — client components still pre-render on the server unless you also defer the browser API behind `useEffect` or lazy-load with `next/dynamic`. See the Pages Router recipe for the `dynamic` variant.
+
+### Next.js — Pages Router (`pages/`)
+
+Use `next/dynamic` with `ssr: false`, or call `init()` from `useEffect` in `pages/_app.tsx`.
+
+```tsx
+// pages/_app.tsx
+import type { AppProps } from "next/app"
+import { useEffect } from "react"
+
+export default function App({ Component, pageProps }: AppProps) {
+  useEffect(() => {
+    import("@reprojs/core").then(({ init }) => {
+      init({
+        projectKey: process.env.NEXT_PUBLIC_REPRO_PROJECT_KEY!,
+        endpoint: process.env.NEXT_PUBLIC_REPRO_ENDPOINT!,
+      })
+    })
+  }, [])
+  return <Component {...pageProps} />
+}
+```
+
+The dynamic `import()` keeps the SDK out of the server bundle entirely.
+
+### Nuxt 3 / 4
+
+Put the init call in a `.client.ts` plugin — Nuxt only runs these in the browser.
+
+```ts
+// plugins/repro.client.ts
+import { init } from "@reprojs/core"
+
+export default defineNuxtPlugin(() => {
+  init({
+    projectKey: useRuntimeConfig().public.reproProjectKey,
+    endpoint: useRuntimeConfig().public.reproEndpoint,
+  })
+})
+```
+
+```ts
+// nuxt.config.ts
+export default defineNuxtConfig({
+  runtimeConfig: {
+    public: {
+      reproProjectKey: "",   // fed from NUXT_PUBLIC_REPRO_PROJECT_KEY
+      reproEndpoint: "",     // fed from NUXT_PUBLIC_REPRO_ENDPOINT
+    },
+  },
+})
+```
+
+Alternative: call `init()` inside `onMounted()` in `app.vue` or a layout `<script setup>` block.
+
+### Remix / React Router v7 (framework mode)
+
+Use a `.client.ts` module so the bundler strips it from the server build, or call from `useEffect` in the root route.
+
+```tsx
+// app/root.tsx
+import { useEffect } from "react"
+
+export default function App() {
+  useEffect(() => {
+    import("@reprojs/core").then(({ init }) => {
+      init({
+        projectKey: window.ENV.REPRO_PROJECT_KEY,
+        endpoint: window.ENV.REPRO_ENDPOINT,
+      })
+    })
+  }, [])
+  // …rest of your root component
+}
+```
+
+### SvelteKit
+
+Use `onMount` (SvelteKit guarantees it's browser-only) or gate on the `browser` constant from `$app/environment`.
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script lang="ts">
+  import { onMount } from "svelte"
+  import { PUBLIC_REPRO_PROJECT_KEY, PUBLIC_REPRO_ENDPOINT } from "$env/static/public"
+
+  onMount(async () => {
+    const { init } = await import("@reprojs/core")
+    init({
+      projectKey: PUBLIC_REPRO_PROJECT_KEY,
+      endpoint: PUBLIC_REPRO_ENDPOINT,
+    })
+  })
+</script>
+
+<slot />
+```
+
+### Astro
+
+Put the init call in a `<script>` tag (Astro ships those to the client by default) or in a client-only island component.
+
+```astro
+---
+// src/layouts/Base.astro
+---
+<html>
+  <body>
+    <slot />
+    <script>
+      import { init } from "@reprojs/core"
+      init({
+        projectKey: import.meta.env.PUBLIC_REPRO_PROJECT_KEY,
+        endpoint: import.meta.env.PUBLIC_REPRO_ENDPOINT,
+      })
+    </script>
+  </body>
+</html>
+```
+
+### Vanilla SPA (Vite, CRA, Parcel, …)
+
+No server rendering, no guards needed — the top-level call in the ESM example above works as-is.
+
+### Troubleshooting
+
+- **`ReferenceError: document is not defined`** — `init()` is running during server render. Move the call into a client-only hook/plugin as shown above.
+- **Widget renders twice or collectors double up** — you're calling `init()` more than once (e.g. on every re-render). Keep it inside `useEffect(..., [])` / `onMounted` / `onMount` so it fires once per page load.
+- **Works in dev but breaks in prod** — usually a prod-only minifier or bundler hoisting the import. Use the dynamic `import()` variant so the SDK never enters the server bundle.
+
 ## Where to get a project key
 
 Sign in to your dashboard, create a project, open **Project → Settings**. Each project has:
@@ -47,7 +224,7 @@ You can rotate the key any time.
 
 ### `init(options)`
 
-Boots the widget. Call it once, as early as you can — typically at app startup.
+Boots the widget. Call it once per page load, from a browser-only context (e.g. `useEffect` in React, `onMounted` in Vue, `onMount` in Svelte, or a `.client.ts` entry in Nuxt / Remix). See [Using with SSR frameworks](#using-with-ssr-frameworks) if you're on Next.js, Nuxt, Remix, SvelteKit, or Astro.
 
 ```ts
 interface InitOptions {
