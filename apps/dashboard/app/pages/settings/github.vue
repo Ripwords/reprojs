@@ -14,9 +14,83 @@ interface AppStatus {
   source?: "env" | "db"
   slug?: string
   appId?: string
+  clientId?: string
 }
 
 const { data: status, refresh } = await useApi<AppStatus>("/api/integrations/github/app-status")
+
+interface OAuthCredentials {
+  clientId: string
+  clientSecret: string
+}
+
+interface AuthProviders {
+  github: boolean
+  google: boolean
+}
+
+const { data: providers, refresh: refreshProviders } =
+  await useApi<AuthProviders>("/api/auth/providers")
+
+const revealed = ref<OAuthCredentials | null>(null)
+const revealing = ref(false)
+const revealError = ref<string | null>(null)
+const remainingSec = ref(0)
+const copyFailed = ref(false)
+let hideTimer: ReturnType<typeof setTimeout> | null = null
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+// clientId comes from the non-audited /api/integrations/github/app-status
+// endpoint, which is already fetched on page load. The reveal endpoint also
+// returns clientId (for completeness on the one-click reveal flow), but we
+// prefer the already-fetched value so re-rendering never hits the audited
+// endpoint without an explicit admin click.
+const clientIdDisplay = computed(() => revealed.value?.clientId ?? status.value?.clientId ?? "")
+
+function clearRevealed() {
+  revealed.value = null
+  remainingSec.value = 0
+  copyFailed.value = false
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+}
+
+async function revealSecret() {
+  revealing.value = true
+  revealError.value = null
+  copyFailed.value = false
+  try {
+    const creds = await $fetch<OAuthCredentials>("/api/integrations/github/oauth-credentials")
+    revealed.value = creds
+    remainingSec.value = 30
+    countdownTimer = setInterval(() => {
+      remainingSec.value = Math.max(0, remainingSec.value - 1)
+    }, 1000)
+    hideTimer = setTimeout(clearRevealed, 30_000)
+  } catch (e: unknown) {
+    const err = e as { statusCode?: number; statusMessage?: string; message?: string }
+    revealError.value = err.statusMessage ?? err.message ?? "Failed to reveal — try again"
+  } finally {
+    revealing.value = false
+  }
+}
+
+async function copyToClipboard(value: string) {
+  try {
+    await navigator.clipboard.writeText(value)
+    copyFailed.value = false
+  } catch {
+    copyFailed.value = true
+  }
+}
+
+onBeforeUnmount(clearRevealed)
 
 const justCreated = computed(() => route.query.created === "1")
 
@@ -162,6 +236,102 @@ const githubAppPublicUrl = computed(() => {
         <p class="text-xs text-muted">
           The webhook secret was already generated and stored during setup — no need to change it.
         </p>
+      </div>
+    </UCard>
+
+    <UCard v-if="status?.configured && status.source === 'db'">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-default">GitHub sign-in credentials</h2>
+          <UBadge :color="providers?.github ? 'success' : 'warning'" variant="subtle">
+            {{ providers?.github ? "Sign-in enabled" : "Sign-in not configured" }}
+          </UBadge>
+        </div>
+      </template>
+      <div class="space-y-4 text-sm">
+        <p class="text-muted">
+          Your GitHub App can also power "Sign in with GitHub" in the dashboard. Copy the values
+          below into your <code class="font-mono px-1 rounded bg-muted">.env</code> file and restart
+          the dashboard.
+        </p>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">Client ID</label>
+            <div class="flex gap-2">
+              <UInput :model-value="clientIdDisplay" readonly class="font-mono flex-1" />
+              <UButton
+                variant="subtle"
+                color="neutral"
+                icon="i-heroicons-clipboard"
+                :disabled="!clientIdDisplay"
+                @click="() => clientIdDisplay && copyToClipboard(clientIdDisplay)"
+              >
+                Copy
+              </UButton>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">Client Secret</label>
+            <div class="flex gap-2">
+              <UInput
+                :model-value="revealed ? revealed.clientSecret : '••••••••••••••••'"
+                readonly
+                :type="revealed ? 'text' : 'password'"
+                class="font-mono flex-1"
+              />
+              <UButton
+                v-if="!revealed"
+                :loading="revealing"
+                variant="subtle"
+                color="primary"
+                icon="i-heroicons-eye"
+                @click="revealSecret"
+              >
+                Reveal
+              </UButton>
+              <template v-else>
+                <UButton
+                  variant="subtle"
+                  color="neutral"
+                  icon="i-heroicons-clipboard"
+                  @click="() => revealed && copyToClipboard(revealed.clientSecret)"
+                >
+                  Copy
+                </UButton>
+                <UButton
+                  variant="subtle"
+                  color="neutral"
+                  icon="i-heroicons-eye-slash"
+                  @click="clearRevealed"
+                >
+                  Hide ({{ remainingSec }}s)
+                </UButton>
+              </template>
+            </div>
+            <p v-if="copyFailed" class="text-xs text-warning mt-1">
+              Copy failed — select and copy the value manually.
+            </p>
+            <p v-if="revealError" class="text-xs text-error mt-1">
+              {{ revealError }}
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-muted/50 rounded p-3 text-xs text-muted space-y-1">
+          <p class="font-medium text-default">Add to your .env and restart:</p>
+          <pre class="font-mono whitespace-pre-wrap">
+GITHUB_CLIENT_ID=&lt;your client id&gt;
+GITHUB_CLIENT_SECRET=&lt;your client secret&gt;</pre
+          >
+        </div>
+
+        <div v-if="!providers?.github" class="flex gap-2">
+          <UButton variant="subtle" color="neutral" @click="() => refreshProviders()">
+            I've restarted — re-check
+          </UButton>
+        </div>
       </div>
     </UCard>
   </div>
