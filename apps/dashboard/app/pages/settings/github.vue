@@ -264,6 +264,7 @@ const githubAppPublicUrl = computed(() => {
                 variant="subtle"
                 color="neutral"
                 icon="i-heroicons-clipboard"
+                aria-label="Copy Client ID"
                 :disabled="!clientIdDisplay"
                 @click="() => clientIdDisplay && copyToClipboard(clientIdDisplay)"
               >
@@ -296,6 +297,7 @@ const githubAppPublicUrl = computed(() => {
                   variant="subtle"
                   color="neutral"
                   icon="i-heroicons-clipboard"
+                  aria-label="Copy Client Secret"
                   @click="() => revealed && copyToClipboard(revealed.clientSecret)"
                 >
                   Copy
@@ -304,6 +306,7 @@ const githubAppPublicUrl = computed(() => {
                   variant="subtle"
                   color="neutral"
                   icon="i-heroicons-eye-slash"
+                  :aria-label="`Hide Client Secret (${remainingSec} seconds remaining)`"
                   @click="clearRevealed"
                 >
                   Hide ({{ remainingSec }}s)
