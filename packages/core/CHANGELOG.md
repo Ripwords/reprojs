@@ -1,5 +1,25 @@
 # Changelog
 
+## sdk-v0.2.1
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/sdk-v0.2.0...sdk-v0.2.1)
+
+### 🚀 Enhancements
+
+- **sdk:** Pause replay buffer while the report wizard is open ([bd64ef3](https://github.com/Ripwords/reprojs/commit/bd64ef3))
+
+### 🩹 Fixes
+
+- **sdk:** Close lifecycle gaps in pause/resume, capture, and reporter ([dce4455](https://github.com/Ripwords/reprojs/commit/dce4455))
+
+### 💅 Refactors
+
+- **recorder:** Drop unjustified \`as unknown as\` on stylesheet read ([4889dcd](https://github.com/Ripwords/reprojs/commit/4889dcd))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## sdk-v0.2.0
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/sdk-v0.1.6...sdk-v0.2.0)
