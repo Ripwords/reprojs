@@ -1,4 +1,5 @@
 import type { CollectorConfig } from "@reprojs/ui"
+import type { CaptureMethod } from "./screenshot"
 
 export interface ReplayInitConfig {
   enabled?: boolean
@@ -9,10 +10,19 @@ export interface ReplayInitConfig {
 }
 
 export interface ScreenshotConfig {
-  // CSS selectors for elements to omit from the screenshot in addition to
-  // the widget itself and known-bad overlays (e.g. <nextjs-portal>).
-  // Pass selectors for any third-party widgets that stall modern-screenshot:
-  // Vercel toolbar, Intercom, Storybook addons, hot-reload portals, etc.
+  // Which capture path to use:
+  //   "auto" (default) — try the browser's getDisplayMedia first
+  //     (pixel-perfect, ~50ms after the user accepts the "Share this tab?"
+  //     prompt), fall back to the DOM path on denial / unavailability.
+  //   "display-media" — require getDisplayMedia; return null if missing
+  //     or denied. No fallback.
+  //   "dom" — skip the prompt entirely; use modern-screenshot. Slower on
+  //     heavy pages but no permission flow.
+  method?: CaptureMethod
+  // CSS selectors for elements to omit from the DOM-path snapshot. No
+  // effect on the display-media path (which captures real pixels and
+  // doesn't traverse the DOM). Useful for third-party widgets that stall
+  // modern-screenshot: Vercel toolbar, Intercom, Storybook addons, etc.
   excludeSelectors?: string[]
 }
 
