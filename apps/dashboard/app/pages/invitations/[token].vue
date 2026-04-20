@@ -6,6 +6,7 @@ definePageMeta({ middleware: [] })
 const route = useRoute()
 const token = computed(() => String(route.params.token))
 const toast = useToast()
+const { signOut } = useSession()
 
 const invite = ref<InvitationDetailDTO | null>(null)
 const errorCode = ref<"email_mismatch" | "expired" | "revoked" | "accepted" | "not_found" | null>(
@@ -105,7 +106,10 @@ async function decline() {
         This invitation was sent to a different email. Please sign out and sign in as the invited
         address.
       </p>
-      <UButton label="Sign out" to="/api/auth/sign-out" />
+      <UButton
+        label="Sign out"
+        @click="signOut({ redirectTo: `/auth/sign-in?returnTo=/invitations/${token}` })"
+      />
     </UCard>
 
     <UCard v-else-if="errorCode === 'expired'">

@@ -25,12 +25,22 @@ export const useSession = () => {
   const role = computed<InstallRole | null>(() => user.value?.role ?? null)
   const isAdmin = computed(() => role.value === "admin")
 
+  // better-auth's client.signOut resolves without navigating. Every call site
+  // wants to land on the sign-in page afterwards, so bake the redirect in
+  // here rather than repeat `await signOut(); await navigateTo(...)` at each
+  // button. Accepts an optional redirect target for flows that want to
+  // bounce somewhere other than the default sign-in page.
+  async function signOut(opts?: { redirectTo?: string }) {
+    await client.signOut()
+    await navigateTo(opts?.redirectTo ?? "/auth/sign-in")
+  }
+
   return {
     session,
     user,
     role,
     isAdmin,
     signIn: client.signIn,
-    signOut: client.signOut,
+    signOut,
   }
 }
