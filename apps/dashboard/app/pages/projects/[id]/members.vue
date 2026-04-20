@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { h, resolveComponent } from "vue"
 import type { TableColumn } from "@nuxt/ui"
-import type { ProjectDTO, ProjectMemberDTO, ProjectRole } from "@reprojs/shared"
+import type {
+  ProjectDTO,
+  ProjectInvitationDTO,
+  ProjectMemberDTO,
+  ProjectRole,
+} from "@reprojs/shared"
 
 const UAvatar = resolveComponent("UAvatar")
 const USelectMenu = resolveComponent("USelectMenu")
@@ -19,6 +24,10 @@ const {
   pending,
   refresh,
 } = await useApi<ProjectMemberDTO[]>(`/api/projects/${projectId.value}/members`)
+const { data: invitations, refresh: refreshInvites } = await useApi<ProjectInvitationDTO[]>(
+  `/api/projects/${projectId.value}/invitations`,
+  { default: () => [] },
+)
 
 useHead({ title: () => (project.value?.name ? `${project.value.name} · Members` : "Members") })
 
@@ -40,7 +49,7 @@ async function sendInvite() {
   if (!inviteEmail.value) return
   inviting.value = true
   try {
-    await $fetch(`/api/projects/${projectId.value}/members`, {
+    await $fetch(`/api/projects/${projectId.value}/invitations`, {
       method: "POST",
       credentials: "include",
       body: { email: inviteEmail.value, role: inviteRole.value },
@@ -49,7 +58,7 @@ async function sendInvite() {
     inviteEmail.value = ""
     inviteRole.value = "developer"
     toast.add({ title: "Invite sent", color: "success", icon: "i-heroicons-check-circle" })
-    await refresh()
+    await Promise.all([refresh(), refreshInvites()])
   } catch (err) {
     toast.add({
       title: "Could not send invite",
@@ -92,6 +101,49 @@ async function removeMember(userId: string) {
   } catch (err) {
     toast.add({
       title: "Could not remove member",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
+}
+
+async function resendInvite(id: string) {
+  try {
+    await $fetch(`/api/projects/${projectId.value}/invitations/${id}/resend`, {
+      method: "POST",
+      credentials: "include",
+    })
+    toast.add({ title: "Invitation re-sent", color: "success", icon: "i-heroicons-check-circle" })
+    await refreshInvites()
+  } catch (err) {
+    toast.add({
+      title: "Could not resend",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  }
+}
+
+async function revokeInvite(id: string) {
+  const ok = await confirm({
+    title: "Revoke invitation?",
+    description: "The invitation link will stop working.",
+    confirmLabel: "Revoke",
+    confirmColor: "error",
+  })
+  if (!ok) return
+  try {
+    await $fetch(`/api/projects/${projectId.value}/invitations/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    })
+    toast.add({ title: "Invitation revoked", color: "success", icon: "i-heroicons-check-circle" })
+    await refreshInvites()
+  } catch (err) {
+    toast.add({
+      title: "Could not revoke",
       description: err instanceof Error ? err.message : undefined,
       color: "error",
       icon: "i-heroicons-exclamation-triangle",
@@ -240,6 +292,43 @@ const columns = computed<TableColumn<ProjectMemberDTO>[]>(() => [
         :loading="pending"
         :ui="{ td: 'text-sm', th: 'text-xs font-medium text-muted uppercase' }"
       />
+    </UCard>
+
+    <UCard v-if="isOwner && (invitations ?? []).length > 0" :ui="{ body: 'p-0' }">
+      <template #header>
+        <div class="px-4 py-3 text-sm font-medium">Pending invitations</div>
+      </template>
+      <ul class="divide-y divide-default">
+        <li
+          v-for="inv in invitations"
+          :key="inv.id"
+          class="flex items-center justify-between px-4 py-3"
+        >
+          <div>
+            <div class="text-sm font-medium">{{ inv.email }}</div>
+            <div class="text-xs text-muted">
+              Invited as {{ inv.role }} · expires
+              {{ new Date(inv.expiresAt).toLocaleDateString() }}
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              label="Resend"
+              @click="resendInvite(inv.id)"
+            />
+            <UButton
+              size="xs"
+              color="error"
+              variant="ghost"
+              label="Revoke"
+              @click="revokeInvite(inv.id)"
+            />
+          </div>
+        </li>
+      </ul>
     </UCard>
 
     <UModal v-model:open="inviteOpen" :ui="{ content: 'max-w-md' }">
