@@ -19,5 +19,6 @@ export default defineEventHandler(async (event) => {
     source: creds.source,
     slug: creds.slug,
     appId: creds.appId,
+    clientId: creds.clientId,
   }
 })

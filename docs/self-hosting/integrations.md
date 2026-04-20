@@ -109,6 +109,10 @@ GitHub and Google OAuth via `better-auth`. Leave the secrets blank to hide the b
 
 ### GitHub OAuth App
 
+If you already installed a GitHub App via the manifest wizard above, skip creating a separate OAuth App — the GitHub App's own `client_id` / `client_secret` can power "Sign in with GitHub". Open **Settings → GitHub** in the dashboard, scroll to the **GitHub sign-in credentials** card, reveal the secret, and paste both values into `.env` as `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`. Restart the dashboard and the "Sign in with GitHub" button appears.
+
+Otherwise, create a standalone OAuth App:
+
 1. [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps** → **New OAuth App**
 2. **Application name**: Repro (or whatever)
 3. **Homepage URL**: your `BETTER_AUTH_URL`
