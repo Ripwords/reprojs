@@ -63,9 +63,12 @@ describe("GET /api/integrations/github/oauth-credentials", () => {
     const infoSpy = spyOn(console, "info").mockImplementation(() => {})
 
     const cookie = await signIn("admin@example.com")
-    const res = await fetch(`${process.env.TEST_BASE_URL ?? "http://localhost:3000"}/api/integrations/github/oauth-credentials`, {
-      headers: { cookie },
-    })
+    const res = await fetch(
+      `${process.env.TEST_BASE_URL ?? "http://localhost:3000"}/api/integrations/github/oauth-credentials`,
+      {
+        headers: { cookie },
+      },
+    )
     expect(res.status).toBe(200)
     expect(res.headers.get("cache-control")).toContain("no-store")
 
