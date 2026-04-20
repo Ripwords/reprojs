@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.9
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.8...v0.1.9)
+
+### 🩹 Fixes
+
+- **dashboard:** Auto-redirect to sign-in after sign-out ([f946968](https://github.com/Ripwords/reprojs/commit/f946968))
+- **github:** Manifest OAuth callback points at better-auth social route ([d38ad91](https://github.com/Ripwords/reprojs/commit/d38ad91))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.8
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.7...v0.1.8)
