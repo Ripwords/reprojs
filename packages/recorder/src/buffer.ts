@@ -21,10 +21,17 @@ interface Entry {
  *
  * Byte cost is estimated via JSON.stringify length at push time — accurate
  * enough for budgeting without paying the cost twice (we re-stringify at flush).
+ *
+ * Supports pause/resume to freeze the rolling window. Used by the recorder
+ * when the report wizard opens — without this, a 60s pause for the user to
+ * annotate would shift the cutoff forward by 60s and evict all pre-pause
+ * activity on the very next push after resume.
  */
 export class EventBuffer {
   private entries: Entry[] = []
   private totalBytes = 0
+  private pausedAt: number | null = null
+  private accumulatedPauseMs = 0
   private readonly windowMs: number
   private readonly maxBytes: number
   private readonly now: () => number
@@ -43,8 +50,22 @@ export class EventBuffer {
     this.evictToFitSize()
   }
 
+  pause(): void {
+    if (this.pausedAt !== null) return
+    this.pausedAt = this.now()
+  }
+
+  resume(): void {
+    if (this.pausedAt === null) return
+    this.accumulatedPauseMs += this.now() - this.pausedAt
+    this.pausedAt = null
+  }
+
   private evictOldTimestamps(): void {
-    const cutoff = this.now() - this.windowMs
+    // Subtract paused time so the window measures *recording* age, not
+    // wall-clock age. Without this, a long pause+resume would evict every
+    // pre-pause event on the next push.
+    const cutoff = this.now() - this.accumulatedPauseMs - this.windowMs
     while (this.entries.length > 0) {
       const first = this.entries[0]
       if (!first || first.event.timestamp >= cutoff) return

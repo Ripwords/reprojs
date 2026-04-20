@@ -49,15 +49,24 @@ export async function captureViaDisplayMedia(): Promise<Blob | null> {
   }
 }
 
+// `ImageCapture` lives in lib.dom.d.ts only behind the WICG types, which
+// some TS configs don't include. Declare a minimal local shape so the
+// feature-detection branch type-checks without an `as unknown as` cast.
+// Read it off `globalThis` (not `window`) so the test environment can stub
+// it: in happy-dom these aren't the same object.
+interface ImageCaptureCtor {
+  new (track: MediaStreamTrack): { grabFrame(): Promise<ImageBitmap> }
+}
+
+declare global {
+  // eslint-disable-next-line vars-on-top, no-var
+  var ImageCapture: ImageCaptureCtor | undefined
+}
+
 async function grabFrame(track: MediaStreamTrack, stream: MediaStream): Promise<Blob | null> {
-  const ImageCaptureCtor = (
-    globalThis as unknown as {
-      ImageCapture?: new (track: MediaStreamTrack) => { grabFrame(): Promise<ImageBitmap> }
-    }
-  ).ImageCapture
-  if (ImageCaptureCtor) {
-    const ic = new ImageCaptureCtor(track)
-    const bitmap = await ic.grabFrame()
+  const Ctor = globalThis.ImageCapture
+  if (Ctor) {
+    const bitmap = await new Ctor(track).grabFrame()
     return await bitmapToBlob(bitmap)
   }
   // Safari and older Firefox don't expose ImageCapture. Fall back to a
@@ -85,18 +94,47 @@ async function videoFrameToBlob(stream: MediaStream): Promise<Blob | null> {
   const video = document.createElement("video")
   video.srcObject = stream
   video.muted = true
-  await video.play().catch(() => {})
-  await new Promise<void>((resolve) => {
-    if (video.readyState >= 2) resolve()
-    else video.addEventListener("loadeddata", () => resolve(), { once: true })
-  })
-  const canvas = document.createElement("canvas")
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-  const ctx = canvas.getContext("2d")
-  if (!ctx) return null
-  ctx.drawImage(video, 0, 0)
-  return await canvasToBlob(canvas)
+  try {
+    await video.play().catch(() => {})
+    // videoWidth/Height are populated at `loadedmetadata` (readyState >= 1),
+    // not `loadeddata` (>= 2). Gating on the latter on Safari can leave us
+    // drawing onto a 0×0 canvas. Also race against a 5s timeout so a stuck
+    // metadata event can't hang the whole capture.
+    await new Promise<void>((resolve, reject) => {
+      if (video.readyState >= 1 && video.videoWidth > 0) {
+        resolve()
+        return
+      }
+      const onMeta = () => {
+        cleanup()
+        resolve()
+      }
+      const onErr = () => {
+        cleanup()
+        reject(new Error("video metadata never loaded"))
+      }
+      const timer = setTimeout(onErr, 5_000)
+      const cleanup = () => {
+        clearTimeout(timer)
+        video.removeEventListener("loadedmetadata", onMeta)
+        video.removeEventListener("error", onErr)
+      }
+      video.addEventListener("loadedmetadata", onMeta, { once: true })
+      video.addEventListener("error", onErr, { once: true })
+    })
+    if (video.videoWidth === 0 || video.videoHeight === 0) return null
+    const canvas = document.createElement("canvas")
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+    ctx.drawImage(video, 0, 0)
+    return await canvasToBlob(canvas)
+  } finally {
+    // Drop the strong stream reference so GC can reclaim the <video> and
+    // its decoded frames promptly — the caller stops the tracks separately.
+    video.srcObject = null
+  }
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {

@@ -98,12 +98,19 @@ export function createRecorder(opts: RecorderOptions): Recorder {
   function pause(): void {
     if (paused || stopped) return
     paused = true
+    // Push the marker first (still receives eviction at current wall-clock
+    // time), then freeze the buffer's window so the upcoming pause duration
+    // doesn't shift the cutoff and silently nuke pre-pause events on resume.
     buffer.push({ type: EventType.Custom, data: { tag: "paused", payload: {} }, timestamp: now() })
+    buffer.pause()
   }
 
   function resume(): void {
     if (!paused || stopped) return
     paused = false
+    // Unfreeze the window first (records the elapsed pause duration), then
+    // push the resumed marker so it lands inside the now-corrected window.
+    buffer.resume()
     buffer.push({ type: EventType.Custom, data: { tag: "resumed", payload: {} }, timestamp: now() })
   }
 

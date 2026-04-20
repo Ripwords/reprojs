@@ -1,6 +1,6 @@
 // packages/ui/src/mount.ts
 import { h, render } from "preact"
-import { useEffect, useState } from "preact/hooks"
+import { useEffect, useRef, useState } from "preact/hooks"
 import { Launcher } from "./launcher"
 import { Reporter, type ReporterSubmitResult } from "./reporter"
 import { createShadowHost, injectStyles, unmountShadowHost } from "./shadow"
@@ -53,8 +53,16 @@ function App() {
   // Fire onOpen/onClose on every transition. useEffect on the boolean
   // means a single source of truth regardless of which path triggered the
   // change (launcher click, programmatic open(), Reporter cancel button,
-  // or post-submit auto-close).
+  // or post-submit auto-close). Skip the initial mount so we don't fire
+  // onClose before the user has done anything — that would resume a
+  // recording the user never paused, defeating any future "start paused"
+  // flow.
+  const mounted = useRef(false)
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
     if (isOpen) _onOpen?.()
     else _onClose?.()
   }, [isOpen])
@@ -112,4 +120,11 @@ export function unmount() {
   _root = null
   _setOpenExternal = null
   _setOpenedAtExternal = null
+  _openedAt = 0
+  _capture = async () => null
+  _onSubmit = async () => ({ ok: false, message: "not mounted" })
+  _onOpen = undefined
+  _onClose = undefined
+  _position = "bottom-right"
+  _launcher = true
 }

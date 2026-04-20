@@ -33,6 +33,12 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
   useEffect(() => {
     let revoked = false
     let url: string | null = null
+    const revokeOnce = () => {
+      if (url) {
+        URL.revokeObjectURL(url)
+        url = null
+      }
+    }
     ;(async () => {
       const blob = await onCapture()
       if (!blob) {
@@ -42,14 +48,19 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
       setRawScreenshot(blob)
       url = URL.createObjectURL(blob)
       const img = new Image()
+      // Revoke once the <img> has the bytes in memory (or has given up) so
+      // the blob is freed eagerly. The cleanup below is a safety net for
+      // the wizard-cancelled-mid-load path.
       img.addEventListener("load", () => {
         if (!revoked) setBg(img)
+        revokeOnce()
       })
+      img.addEventListener("error", revokeOnce)
       img.src = url
     })()
     return () => {
       revoked = true
-      if (url) URL.revokeObjectURL(url)
+      revokeOnce()
       reset()
     }
   }, [])
