@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs"
 import { isAbsolute, resolve } from "node:path"
 import { createInstallationClient } from "@reprojs/integrations-github"
 import type { GitHubInstallationClient } from "@reprojs/integrations-github"
-import { env } from "./env"
+import { getGithubAppCredentials } from "./github-app-credentials"
 
 function resolvePrivateKey(raw: string): string {
   if (raw.includes("-----BEGIN")) return raw.replace(/\\n/g, "\n")
@@ -22,23 +22,28 @@ export function __setClientOverride(
   overrideFactory = factory
 }
 
-export function getGithubClient(installationId: number): GitHubInstallationClient {
+export async function getGithubClient(installationId: number): Promise<GitHubInstallationClient> {
   if (overrideFactory) return overrideFactory(installationId)
-  const appId = env.GITHUB_APP_ID
-  const raw = env.GITHUB_APP_PRIVATE_KEY
-  if (!appId || !raw) {
-    throw new Error("GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY must be set")
+  const creds = await getGithubAppCredentials()
+  if (!creds) {
+    throw new Error(
+      "GitHub App is not configured. Set GITHUB_APP_ID/PRIVATE_KEY/WEBHOOK_SECRET or run the in-app manifest setup.",
+    )
   }
-  return createInstallationClient({ appId, privateKey: resolvePrivateKey(raw), installationId })
+  return createInstallationClient({
+    appId: creds.appId,
+    privateKey: resolvePrivateKey(creds.privateKey),
+    installationId,
+  })
 }
 
-export function getWebhookSecret(): string {
-  const s = env.GITHUB_APP_WEBHOOK_SECRET
-  if (!s) throw new Error("GITHUB_APP_WEBHOOK_SECRET must be set")
-  return s
+export async function getWebhookSecret(): Promise<string> {
+  const creds = await getGithubAppCredentials()
+  if (!creds) throw new Error("GitHub App is not configured — cannot load webhook secret")
+  return creds.webhookSecret
 }
 
-// === Install-state signing (used by G-18 install-redirect + install-callback) ===
+// === Install-state signing (used by install-redirect + install-callback) ===
 
 interface InstallStateClaims {
   projectId: string
@@ -46,17 +51,17 @@ interface InstallStateClaims {
   exp: number // UNIX seconds
 }
 
-export function signInstallState(claims: InstallStateClaims): string {
+export async function signInstallState(claims: InstallStateClaims): Promise<string> {
   const body = Buffer.from(JSON.stringify(claims)).toString("base64url")
-  const secret = getWebhookSecret() // reuse webhook secret for state HMAC
+  const secret = await getWebhookSecret() // reuse webhook secret for state HMAC
   const hmac = createHmac("sha256", secret).update(body).digest("base64url")
   return `${body}.${hmac}`
 }
 
-export function verifyInstallState(state: string): InstallStateClaims | null {
+export async function verifyInstallState(state: string): Promise<InstallStateClaims | null> {
   const [body, sig] = state.split(".")
   if (!body || !sig) return null
-  const secret = getWebhookSecret()
+  const secret = await getWebhookSecret()
   const expected = createHmac("sha256", secret).update(body).digest("base64url")
   if (expected.length !== sig.length) return null
   try {
@@ -70,10 +75,6 @@ export function verifyInstallState(state: string): InstallStateClaims | null {
   } catch {
     return null
   }
-  // Shape check: HMAC only proves the payload was signed by us, not that it has
-  // the expected fields. A future bug that signs a different shape would
-  // otherwise silently yield `claims.projectId === undefined`, which would
-  // query `WHERE project_id = NULL` (always false) rather than erroring.
   if (
     !parsed ||
     typeof parsed !== "object" ||

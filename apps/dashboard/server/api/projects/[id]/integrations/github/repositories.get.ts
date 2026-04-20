@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: "integration not connected" })
   }
 
-  const client = getGithubClient(gi.installationId)
+  const client = await getGithubClient(gi.installationId)
   const repos = await client.listInstallationRepositories()
   return { repos }
 })

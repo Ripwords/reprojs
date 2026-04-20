@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
   if (typeof stateRaw !== "string") {
     throw createError({ statusCode: 400, statusMessage: "missing state" })
   }
-  const claims = verifyInstallState(stateRaw)
+  const claims = await verifyInstallState(stateRaw)
   if (!claims) {
     throw createError({ statusCode: 401, statusMessage: "invalid or expired state" })
   }

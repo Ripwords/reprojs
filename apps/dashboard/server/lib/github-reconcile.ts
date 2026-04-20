@@ -34,7 +34,7 @@ export async function reconcileReport(reportId: string): Promise<void> {
 
   const report = row.r
   const gi = row.gi
-  const client = getGithubClient(gi.installationId)
+  const client = await getGithubClient(gi.installationId)
 
   const desiredLabels = labelsFor(
     { priority: report.priority, tags: report.tags },

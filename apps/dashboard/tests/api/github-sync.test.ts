@@ -102,7 +102,7 @@ describe("github integration — install + config", () => {
       allowedOrigins: [ORIGIN],
       createdBy: owner,
     })
-    const state = signInstallState({
+    const state = await signInstallState({
       projectId: pid,
       userId: owner,
       exp: Math.floor(Date.now() / 1000) + 600,

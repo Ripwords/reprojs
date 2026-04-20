@@ -44,7 +44,11 @@ export default defineEventHandler(async (event) => {
   const sig = getHeader(event, "x-hub-signature-256")
   if (
     !sig ||
-    !verifyWebhookSignature({ secret: getWebhookSecret(), payload: raw, signatureHeader: sig })
+    !verifyWebhookSignature({
+      secret: await getWebhookSecret(),
+      payload: raw,
+      signatureHeader: sig,
+    })
   ) {
     throw createError({ statusCode: 401, statusMessage: "invalid signature" })
   }
