@@ -43,3 +43,6 @@ apps/dashboard/.data/
 .claude/
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# Git worktrees (isolated feature workspaces)
+.worktrees/
