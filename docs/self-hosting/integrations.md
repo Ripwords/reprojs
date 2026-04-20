@@ -9,27 +9,63 @@ A GitHub App (not OAuth) that lets the dashboard:
 - Create an issue from a report with one click, or automatically on intake
 - Mirror status two ways: close a Repro ticket → close the issue; close the issue → resolve the ticket
 
-### Creating the GitHub App
+### Creating the GitHub App (recommended: in-app manifest wizard)
+
+Repro generates the entire GitHub App for you — no manual form-filling. Each self-hosted instance creates its own app tied to its own domain, so your credentials never pass through any third-party server.
+
+**Prerequisites**
+
+- `ENCRYPTION_KEY` is set in your `.env` (generate with `openssl rand -base64 32`). Required because the app's private key, webhook secret, and client secret are stored encrypted at rest in the `github_app` table.
+- You're signed in to the dashboard as an **admin** (not a project-scoped role).
+
+**Steps**
+
+1. Open **Settings → GitHub** in the dashboard sidebar.
+2. Optionally type a GitHub **organization** slug (e.g. `acme`). Leave empty to create the app on your personal GitHub account.
+3. Click **Create GitHub App**. You'll be redirected to GitHub.
+4. Review the app details on GitHub's page and click **Create GitHub App for…**. GitHub creates the app and redirects back to Repro with a one-time code.
+5. Repro exchanges the code, stores the credentials encrypted, and redirects you to the GitHub settings page with a success banner.
+
+That's it — no env vars to set.
+
+#### Enable webhooks (one manual step)
+
+GitHub refuses to create an app whose webhook URL isn't publicly reachable, so Repro creates the app with webhooks **disabled**. Two-way sync (GitHub issue closed → Repro ticket closed) needs webhooks enabled. Enable them after the app is created:
+
+1. On the success page, click **your GitHub App settings page** (or open `https://github.com/settings/apps/<slug>` directly).
+2. Scroll to the **Webhook** section.
+3. Set the **Webhook URL** to `<BETTER_AUTH_URL>/api/integrations/github/webhook` (for example, `https://feedback.example.com/api/integrations/github/webhook`).
+4. Check **Active** and click **Save changes**.
+
+The webhook secret was generated and stored during setup — leave that field alone.
+
+> **Local dev note.** If `BETTER_AUTH_URL` is `http://localhost:3000`, the manifest wizard fills `example.com` as a placeholder webhook URL so GitHub's reachability check passes. Once you deploy to a real domain, update both the URL and the **Active** checkbox on GitHub.
+
+### Creating the GitHub App (legacy: env vars)
+
+Skip this section if you used the manifest wizard above.
+
+For deployments that prefer static configuration (Infrastructure-as-Code, secrets managers, etc.), you can create the app manually and wire it via env vars. The credential resolver prefers env vars over the in-app setup when both are present.
 
 1. Open [github.com/settings/apps](https://github.com/settings/apps) (or your org's App settings)
 2. Click **New GitHub App**
 3. Fill in:
    - **GitHub App name**: `Repro` (or whatever — the slug becomes public)
    - **Homepage URL**: your `BETTER_AUTH_URL` (e.g. `https://feedback.example.com`)
-   - **Callback URL**: `<BETTER_AUTH_URL>/api/integrations/github/callback`
+   - **Callback URL**: `<BETTER_AUTH_URL>/api/integrations/github/install-callback`
+   - **Setup URL**: `<BETTER_AUTH_URL>/api/integrations/github/install-callback` (and tick **Redirect on update**)
    - **Webhook URL**: `<BETTER_AUTH_URL>/api/integrations/github/webhook`
    - **Webhook secret**: run `openssl rand -hex 32`, paste here AND save it for `.env`
 4. **Repository permissions**:
    - **Issues**: Read + write
    - **Metadata**: Read-only (required — GitHub auto-checks)
-   - **Contents**: Read-only (for listing repos the user can attach)
-5. **Subscribe to events**: `Issues`, `Installation`
+5. **Subscribe to events**: `Issues` only. `Installation` and `Installation repositories` are auto-delivered — if you check them, GitHub rejects the form with "Default events unsupported".
 6. **Where can this GitHub App be installed**: your choice — *Only on this account* keeps it private
 7. Click **Create GitHub App**
 8. On the new App's settings page, scroll to **Private keys** → **Generate a private key** → a `.pem` file downloads
 9. Note the **App ID** at the top of the settings page
 
-### Wiring it up
+Wire it up:
 
 ```ini
 GITHUB_APP_ID=12345
@@ -57,7 +93,7 @@ Then `GITHUB_APP_PRIVATE_KEY=/secrets/github-app.pem`.
 
 ### Installing the App on a repo
 
-Once the dashboard is running with the App creds, open the dashboard → Project settings → **GitHub**. Click **Install**. GitHub walks you through picking the repo to install on. The dashboard receives the installation via webhook and saves it to the project's config.
+Once the app is set up (either path), open the dashboard → Project settings → **GitHub**. Click **Install**. GitHub walks you through picking the repo to install on. The dashboard receives the installation via webhook and saves it to the project's config.
 
 ### Troubleshooting
 
