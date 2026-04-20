@@ -14,7 +14,7 @@ export default defineConfig({
   srcExclude: ["superpowers/**", "**/README.md"],
 
   head: [
-    ["link", { rel: "icon", type: "image/svg+xml", href: "/reprojs/favicon.svg" }],
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
     ["meta", { name: "theme-color", content: "#10b981" }],
   ],
 
