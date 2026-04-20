@@ -2,17 +2,19 @@ import { createError, defineEventHandler } from "h3"
 import { count, eq } from "drizzle-orm"
 import { db } from "../../../db"
 import { githubApp, githubIntegrations, reportSyncJobs } from "../../../db/schema"
-import { env } from "../../../lib/env"
 import { invalidateGithubAppCache } from "../../../lib/github-app-credentials"
 import { requireInstallAdmin } from "../../../lib/permissions"
 
 /**
  * Admin-only: drop the DB-resident GitHub App singleton + cascade to every
  * project integration and pending sync job that authenticated against it.
+ * Leaves `report_events` untouched so triage history survives a reconnect.
  *
- * Refuses when credentials come from env vars — those must be unset from the
- * deployment's environment, not deleted through the API. Also leaves
- * `report_events` untouched so the triage history survives a reconnect.
+ * Scope note: the endpoint only removes the DB row. Env-var-sourced credentials
+ * (GITHUB_APP_* in the deployment's environment) always win at resolve time —
+ * the settings UI hides the Disconnect button in that case, so a programmatic
+ * DELETE hitting a deployment whose creds come from env will either 404 (no
+ * row) or drop an orphaned row without affecting runtime behavior.
  *
  * GitHub still hosts the App on the owner's account after this call; operators
  * who want to fully remove it must visit the App's Advanced settings page in
@@ -20,20 +22,6 @@ import { requireInstallAdmin } from "../../../lib/permissions"
  */
 export default defineEventHandler(async (event) => {
   await requireInstallAdmin(event)
-
-  // Refuse early if the env-var path is active — an insert via the manifest
-  // flow can coexist with stale env vars, but the resolver always prefers
-  // env, so deleting the DB row would be silently ineffective.
-  const envComplete = Boolean(
-    env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_WEBHOOK_SECRET,
-  )
-  if (envComplete) {
-    throw createError({
-      statusCode: 400,
-      statusMessage:
-        "GitHub App credentials are set via environment variables — unset them from your environment and redeploy instead of deleting via the API.",
-    })
-  }
 
   // Read the row directly rather than via the cached `getGithubAppCredentials`
   // — its module-level cache can legitimately be stale in-between a manifest
