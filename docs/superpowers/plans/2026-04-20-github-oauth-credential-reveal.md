@@ -261,6 +261,57 @@ git commit -m "feat(dashboard): admin endpoint to reveal GitHub OAuth client_id/
 
 ---
 
+## Task 3.5: Expose `clientId` via `app-status`
+
+**Files:**
+- Modify: `apps/dashboard/server/api/integrations/github/app-status.get.ts`
+
+The settings page needs to display `clientId` on every load, but routing that read through `oauth-credentials.get.ts` would fire the audit-log line on every page visit — polluting the "someone viewed the secret" signal. `clientId` is semi-public metadata (same class as `slug`, `appId` — appears in OAuth redirect URLs), so we expose it via the existing, unaudited `app-status` endpoint.
+
+- [ ] **Step 1: Add `clientId` to the response**
+
+Edit `apps/dashboard/server/api/integrations/github/app-status.get.ts`. Change:
+
+```ts
+  return {
+    configured: true as const,
+    source: creds.source,
+    slug: creds.slug,
+    appId: creds.appId,
+  }
+```
+
+to:
+
+```ts
+  return {
+    configured: true as const,
+    source: creds.source,
+    slug: creds.slug,
+    appId: creds.appId,
+    clientId: creds.clientId,
+  }
+```
+
+No other changes needed — `getGithubAppCredentials()` already returns `clientId` on both the env and DB paths, so env-var deployments also get this field populated.
+
+- [ ] **Step 2: Smoke-test the endpoint by hand**
+
+With the dev server running, sign in as admin and check:
+```bash
+curl -s -b "<admin session cookie>" http://localhost:3000/api/integrations/github/app-status | jq .
+```
+Expected: JSON includes a non-empty `clientId` field when `configured: true`. If you don't have a `github_app` row yet, `configured: false` is the expected response (no clientId).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/dashboard/server/api/integrations/github/app-status.get.ts
+git commit -m "feat(dashboard): include clientId in github app-status response"
+```
+
+---
+
 ## Task 4: Add the credentials panel to the settings page
 
 **Files:**
@@ -268,9 +319,23 @@ git commit -m "feat(dashboard): admin endpoint to reveal GitHub OAuth client_id/
 
 The panel lives inside the same `<template>` as the existing "GitHub App configured" card and the "Enable webhooks" instructions. It only renders when the app is connected via the in-app flow (`status.source === 'db'`) — env-var deployments already have the values in their environment files, so there's nothing to reveal.
 
-- [ ] **Step 1: Add all `<script setup>` state, fetch, timers, and lifecycle hooks**
+- [ ] **Step 1: Widen the `AppStatus` interface to include `clientId`**
 
-In the `<script setup>` block of `apps/dashboard/app/pages/settings/github.vue`, just below the existing `const { data: status, refresh } = await useApi<AppStatus>(...)` line (~line 19), add the following. This is one coherent block — all of it lands before the template changes in Step 2 so every identifier the template references is already defined.
+At the top of the `<script setup>` block, find the existing `AppStatus` interface (~line 12) and add the new optional field:
+
+```ts
+interface AppStatus {
+  configured: boolean
+  source?: "env" | "db"
+  slug?: string
+  appId?: string
+  clientId?: string
+}
+```
+
+- [ ] **Step 2: Add all `<script setup>` state, fetch, timers, and lifecycle hooks**
+
+Just below the existing `const { data: status, refresh } = await useApi<AppStatus>(...)` line (~line 19), add the following. This is one coherent block — all of it lands before the template changes in Step 3 so every identifier the template references is already defined.
 
 ```ts
 interface OAuthCredentials {
@@ -292,15 +357,16 @@ const revealing = ref(false)
 const revealError = ref<string | null>(null)
 const remainingSec = ref(0)
 const copyFailed = ref(false)
-const fetchedClientId = ref<string | null>(null)
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
-// Client ID is safe to show eagerly — it's semi-public (appears in OAuth
-// redirect URLs and on the GitHub App settings page). Client secret stays
-// out of the reactive tree until the admin explicitly clicks Reveal.
+// clientId comes from the non-audited /api/integrations/github/app-status
+// endpoint, which is already fetched on page load. The reveal endpoint also
+// returns clientId (for completeness on the one-click reveal flow), but we
+// prefer the already-fetched value so re-rendering never hits the audited
+// endpoint without an explicit admin click.
 const clientIdDisplay = computed(
-  () => revealed.value?.clientId ?? fetchedClientId.value ?? "",
+  () => revealed.value?.clientId ?? status.value?.clientId ?? "",
 )
 
 function clearRevealed() {
@@ -348,27 +414,10 @@ async function copyToClipboard(value: string) {
   }
 }
 
-onMounted(async () => {
-  if (status.value?.configured && status.value.source === "db") {
-    try {
-      // Eager fetch of clientId only — we read clientSecret from the same
-      // payload but throw it away here. The reveal flow re-fetches when the
-      // admin clicks to ensure the plaintext only enters the reactive tree
-      // as a result of an explicit action.
-      const creds = await $fetch<OAuthCredentials>(
-        "/api/integrations/github/oauth-credentials",
-      )
-      fetchedClientId.value = creds.clientId
-    } catch {
-      fetchedClientId.value = null
-    }
-  }
-})
-
 onBeforeUnmount(clearRevealed)
 ```
 
-- [ ] **Step 2: Add the credentials panel to the template**
+- [ ] **Step 3: Add the credentials panel to the template**
 
 In the same file, just after the "Enable webhooks (manual step)" `<UCard>` (around line 166, before the closing `</div>`), add:
 
@@ -471,7 +520,7 @@ GITHUB_CLIENT_SECRET=&lt;your client secret&gt;</pre>
     </UCard>
 ```
 
-- [ ] **Step 3: Confirm Nuxt auto-imports**
+- [ ] **Step 4: Confirm Nuxt auto-imports**
 
 The script block uses `ref`, `computed`, `onMounted`, `onBeforeUnmount`, `useApi`, and `$fetch` without explicit imports. Nuxt 4's auto-imports cover all of them. No `import` lines are needed.
 
@@ -481,20 +530,20 @@ bun --bun nuxi typecheck 2>&1 | grep -E "settings/github\.vue" || echo "OK — n
 ```
 Expected: `OK — no type errors in settings/github.vue`.
 
-- [ ] **Step 4: Manual smoke test — non-connected path**
+- [ ] **Step 5: Manual smoke test — non-connected path**
 
 1. Open the dev server in a browser: `http://localhost:3000/settings/github` as an admin user.
 2. If the app isn't connected yet: the new panel must NOT render. Only the "Create GitHub App" card shows.
 3. If `status.source === 'env'`: the new panel must NOT render (existing env-var footer already advises unsetting env vars to migrate).
 
-- [ ] **Step 5: Manual smoke test — connected path**
+- [ ] **Step 6: Manual smoke test — connected path**
 
 1. Complete the manifest flow so `status.source === 'db'`.
 2. Reload `/settings/github`.
 3. Expect:
    - **GitHub sign-in credentials** card appears below the webhooks card.
    - Status badge shows "Sign-in not configured" (warning) because `.env` has no `GITHUB_CLIENT_ID` yet.
-   - `Client ID` field populates automatically (eager fetch).
+   - `Client ID` field populates from `app-status` response.
    - `Client Secret` field shows `••••••••••••••••` with a **Reveal** button.
 4. Click **Reveal**. Expect:
    - The secret becomes visible for 30s.
@@ -517,7 +566,7 @@ Expected: `OK — no type errors in settings/github.vue`.
     - **Continue with GitHub** button is now visible.
     - Clicking it starts the GitHub OAuth flow and signs you in.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add apps/dashboard/app/pages/settings/github.vue
@@ -611,6 +660,7 @@ Expected body (the skill will draft this — verify it captures):
 
 **Modified:**
 - `apps/dashboard/tests/helpers.ts` — adds `truncateGithubApp`
+- `apps/dashboard/server/api/integrations/github/app-status.get.ts` — adds `clientId` to the response so the settings page can render it without hitting the audited reveal endpoint on every page load
 - `apps/dashboard/app/pages/settings/github.vue` — adds credentials panel + sign-in status badge
 - `docs/content/2.self-hosting/4.github-app.md` — optional, if the file exists
 
