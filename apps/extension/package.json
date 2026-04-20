@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "bun scripts/sync-sdk.ts && vite build",
+    "build": "bun scripts/sync-sdk.ts && bun scripts/sync-icons.ts && vite build",
     "preview": "vite preview",
     "test": "bun test src/",
-    "build:e2e": "bun scripts/sync-sdk.ts && vite build --config vite.config.e2e.ts",
+    "build:e2e": "bun scripts/sync-sdk.ts && bun scripts/sync-icons.ts && vite build --config vite.config.e2e.ts",
     "test:e2e": "bun run build:e2e && playwright test"
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "@reprojs/core": "workspace:*",
     "@types/bun": "^1.3.12",
     "@types/chrome": "^0.0.270",
+    "sharp": "^0.34.0",
     "typescript": "^5.8",
     "vite": "^5.4.0"
   }
