@@ -671,4 +671,31 @@ describe("project invitations API", () => {
       .where(eq(projectInvitations.id, row!.id))
     expect(after?.status).toBe("revoked")
   })
+
+  test("declining with a mismatched session email returns 403", async () => {
+    await createUser("owner@example.com", "admin")
+    await createUser("intruder@example.com", "member")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "target-decline@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "target-decline@example.com"))
+    const intruderCookie = await signIn("intruder@example.com")
+    const { status } = await apiFetch(`/api/invitations/${row!.token}/decline`, {
+      method: "POST",
+      headers: { cookie: intruderCookie },
+    })
+    expect(status).toBe(403)
+  })
 })
