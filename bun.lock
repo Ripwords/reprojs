@@ -58,7 +58,7 @@
     },
     "packages/core": {
       "name": "@reprojs/core",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "devDependencies": {
         "@preact/signals": "^1.3.0",
         "@reprojs/recorder": "workspace:*",
