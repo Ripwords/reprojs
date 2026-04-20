@@ -85,6 +85,13 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
+      # Node 20 ships with npm 10.8.x, which signs provenance fine but
+      # can't complete the OIDC handshake for Trusted Publishing on the
+      # publish PUT — npm registry returns a misleading 404. TP auth on
+      # the CLI side landed in npm 11.5.1. Pin an explicit recent npm so
+      # this doesn't regress when Node 20's bundled npm drifts.
+      - run: npm install -g npm@latest
+
       - run: bun install --frozen-lockfile
 
       # Rebuild dist/ from source on the CI runner — the package's `files`
