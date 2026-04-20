@@ -55,6 +55,10 @@ Manifest callback writes clientId/clientSecret to github_app row
   - Live status: reads /api/auth/providers to show "GitHub sign-in: enabled"
     vs "not configured yet"
     ↓
+(clientId comes from the existing /api/integrations/github/app-status
+endpoint, which is called on page load and never audit-logged — clientId is
+semi-public metadata, same class as slug / appId.)
+    ↓
 Admin clicks Reveal → GET /api/integrations/github/oauth-credentials
     ↓
 Server: requireInstallAdmin → read github_app row (Drizzle decrypts)
@@ -95,6 +99,18 @@ GitHub social provider. /api/auth/providers returns github: true.
   until a second reveal surface exists.
 - Returns `{ clientId, clientSecret }`. Drizzle's `encryptedText` custom type
   decrypts on read, so the handler passes the plaintext straight through.
+  clientId is included for convenience — one fetch populates both fields on
+  the reveal flow — but the UI gets clientId from the non-audited
+  `app-status` endpoint for initial render.
+
+#### 1a. `server/api/integrations/github/app-status.get.ts` (edit)
+
+Adds `clientId` to the existing response payload. This endpoint is called on
+every admin page load of `/settings/github` and is NOT audit-logged —
+`clientId` is semi-public metadata (appears in OAuth redirect URLs and on the
+GitHub App settings page), same class as `slug` and `appId`. Including it
+here lets the UI render the clientId without triggering the
+`github_oauth_credential_reveal` audit line every page load.
 
 #### 2. `app/pages/settings/github.vue` (edit)
 
