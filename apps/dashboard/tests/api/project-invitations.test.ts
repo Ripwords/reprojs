@@ -238,4 +238,71 @@ describe("project invitations API", () => {
       .where(eq(projectInvitations.id, invitationId))
     expect(row?.status).toBe("revoked")
   })
+
+  test("owner can resend a pending invitation — bumps expiresAt", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "Test Project" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    const { body: created } = await apiFetch<ProjectInvitationDTO>(
+      `/api/projects/${projectId}/invitations`,
+      {
+        method: "POST",
+        headers: { cookie: ownerCookie },
+        body: JSON.stringify({ email: "resend@example.com", role: "developer" }),
+      },
+    )
+    const invitationId = (created as ProjectInvitationDTO).id
+    const originalExpiry = new Date((created as ProjectInvitationDTO).expiresAt).getTime()
+
+    // Wait a tick so the bumped timestamp differs.
+    await new Promise((r) => setTimeout(r, 25))
+
+    const { status } = await apiFetch(
+      `/api/projects/${projectId}/invitations/${invitationId}/resend`,
+      { method: "POST", headers: { cookie: ownerCookie } },
+    )
+    expect(status).toBe(200)
+
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.id, invitationId))
+    expect(row?.expiresAt.getTime()).toBeGreaterThan(originalExpiry)
+  })
+
+  test("resending a non-pending invitation returns 409", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "Test Project" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    const { body: created } = await apiFetch<ProjectInvitationDTO>(
+      `/api/projects/${projectId}/invitations`,
+      {
+        method: "POST",
+        headers: { cookie: ownerCookie },
+        body: JSON.stringify({ email: "revoke@example.com", role: "developer" }),
+      },
+    )
+    const invitationId = (created as ProjectInvitationDTO).id
+    await apiFetch(`/api/projects/${projectId}/invitations/${invitationId}`, {
+      method: "DELETE",
+      headers: { cookie: ownerCookie },
+    })
+    const { status } = await apiFetch(
+      `/api/projects/${projectId}/invitations/${invitationId}/resend`,
+      { method: "POST", headers: { cookie: ownerCookie } },
+    )
+    expect(status).toBe(409)
+  })
 })
