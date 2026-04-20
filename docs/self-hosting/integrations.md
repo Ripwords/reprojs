@@ -52,16 +52,18 @@ For deployments that prefer static configuration (Infrastructure-as-Code, secret
 3. Fill in:
    - **GitHub App name**: `Repro` (or whatever — the slug becomes public)
    - **Homepage URL**: your `BETTER_AUTH_URL` (e.g. `https://feedback.example.com`)
-   - **Callback URL**: `<BETTER_AUTH_URL>/api/integrations/github/install-callback`
-   - **Setup URL**: `<BETTER_AUTH_URL>/api/integrations/github/install-callback` (and tick **Redirect on update**)
+   - **Callback URL** (User authorization): `<BETTER_AUTH_URL>/api/auth/callback/github` — this is where GitHub returns after "Sign in with GitHub". It must match better-auth's social-callback path.
+   - **Setup URL** (App installation): `<BETTER_AUTH_URL>/api/integrations/github/install-callback` (and tick **Redirect on update**)
    - **Webhook URL**: `<BETTER_AUTH_URL>/api/integrations/github/webhook`
    - **Webhook secret**: run `openssl rand -hex 32`, paste here AND save it for `.env`
 4. **Repository permissions**:
    - **Issues**: Read + write
    - **Metadata**: Read-only (required — GitHub auto-checks)
-5. **Subscribe to events**: `Issues` only. `Installation` and `Installation repositories` are auto-delivered — if you check them, GitHub rejects the form with "Default events unsupported".
-6. **Where can this GitHub App be installed**: your choice — *Only on this account* keeps it private
-7. Click **Create GitHub App**
+5. **Account permissions**:
+   - **Email addresses**: Read-only — required so better-auth's GitHub provider can read the signing-in user's email on first sign-in; without it you'll see `email_not_found` errors.
+6. **Subscribe to events**: `Issues` only. `Installation` and `Installation repositories` are auto-delivered — if you check them, GitHub rejects the form with "Default events unsupported".
+7. **Where can this GitHub App be installed**: **Any account**. If you pick "Only on this account", non-owner teammates will 404 when they click "Sign in with GitHub" — GitHub hides private apps from non-owners on the authorize URL. The app stays unlisted (Marketplace is a separate opt-in).
+8. Click **Create GitHub App**
 8. On the new App's settings page, scroll to **Private keys** → **Generate a private key** → a `.pem` file downloads
 9. Note the **App ID** at the top of the settings page
 

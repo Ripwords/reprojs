@@ -30,7 +30,15 @@ export interface GithubAppManifest {
   setup_url: string
   setup_on_update: boolean
   public: boolean
-  default_permissions: { issues: "write"; metadata: "read" }
+  default_permissions: {
+    issues: "write"
+    metadata: "read"
+    // Account-level permission (GitHub groups it under "Account permissions →
+    // Email addresses"). Required so the User-auth OAuth callback can read
+    // the signing-in user's verified email — without it better-auth's GitHub
+    // provider throws `email_not_found` on first sign-in.
+    emails: "read"
+  }
   /**
    * Only permission-gated events belong here. `installation` and
    * `installation_repositories` are auto-delivered to every GitHub App and
@@ -76,8 +84,22 @@ export function buildGithubAppManifest(input: {
     callback_urls: [`${base}/api/auth/callback/github`],
     setup_url: `${base}/api/integrations/github/install-callback`,
     setup_on_update: true,
-    public: false,
-    default_permissions: { issues: "write", metadata: "read" },
+    // `public: true` is required for the "Sign in with GitHub" flow to work
+    // for anyone other than the App owner. A private GitHub App returns 404
+    // on `/login/oauth/authorize` to non-owners — even if they have the
+    // clientId and a valid callback URL. The App remains unlisted in
+    // Marketplace (that's a separate submission); `public: true` just means
+    // any GitHub user can authorize it. Install-time webhooks from random
+    // strangers would still hit a dashboard that doesn't have their install
+    // context and fail gracefully.
+    public: true,
+    default_permissions: {
+      issues: "write",
+      metadata: "read",
+      // See interface comment — fixes `email_not_found` on first sign-in
+      // when the App's clientId is reused for better-auth GitHub OAuth.
+      emails: "read",
+    },
     default_events: ["issues"],
   }
 }

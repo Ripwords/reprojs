@@ -33,10 +33,13 @@ describe("buildGithubAppManifest", () => {
     expect(m.hook_attributes.url).toBe("https://example.com/webhook")
   })
 
-  test("includes issues:write and metadata:read permissions", () => {
+  test("includes issues:write, metadata:read, and emails:read permissions", () => {
     const m = buildGithubAppManifest({ baseUrl: "https://x.test" })
     expect(m.default_permissions.issues).toBe("write")
     expect(m.default_permissions.metadata).toBe("read")
+    // emails:read is required by better-auth's GitHub provider; without it
+    // the OAuth callback throws email_not_found on first sign-in.
+    expect(m.default_permissions.emails).toBe("read")
   })
 
   test("default_events contains issues only (installation* events are auto-delivered)", () => {
@@ -49,9 +52,9 @@ describe("buildGithubAppManifest", () => {
     expect(m.setup_on_update).toBe(true)
   })
 
-  test("public is false — each self-hoster's app stays private to their org", () => {
+  test("public is true — otherwise non-owner users 404 on Sign in with GitHub", () => {
     const m = buildGithubAppManifest({ baseUrl: "https://x.test" })
-    expect(m.public).toBe(false)
+    expect(m.public).toBe(true)
   })
 
   test("name defaults to Repro but is overridable", () => {
