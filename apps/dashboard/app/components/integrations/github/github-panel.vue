@@ -15,29 +15,12 @@ const { data, refresh } = useApi<GithubConfigDTO>(
   `/api/projects/${props.projectId}/integrations/github`,
 )
 
-const repos = ref<Array<{ id: number; owner: string; name: string; fullName: string }>>([])
-const reposError = ref<string | null>(null)
 const selectedRepo = ref({ owner: "", name: "" })
 const labelsText = ref("")
 const assigneesText = ref("")
 const saving = ref(false)
 const installing = ref(false)
 const unlinkOpen = ref(false)
-
-async function loadRepos() {
-  reposError.value = null
-  try {
-    const res = await $fetch<{
-      repos: Array<{ id: number; owner: string; name: string; fullName: string }>
-    }>(`/api/projects/${props.projectId}/integrations/github/repositories`, {
-      credentials: "include",
-    })
-    repos.value = res.repos
-  } catch (err) {
-    repos.value = []
-    reposError.value = err instanceof Error ? err.message : "Failed to load repositories"
-  }
-}
 
 watch(
   data,
@@ -46,9 +29,6 @@ watch(
     selectedRepo.value = { owner: v.repoOwner, name: v.repoName }
     labelsText.value = v.defaultLabels.join(", ")
     assigneesText.value = v.defaultAssignees.join(", ")
-    if (v.installed && v.status === "connected") {
-      loadRepos()
-    }
   },
   { immediate: true },
 )
@@ -198,17 +178,7 @@ async function saveRepo() {
         <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted mb-2">
           Repository
         </div>
-        <RepoPicker
-          v-model="selectedRepo"
-          :repos="repos"
-          @refresh="loadRepos"
-          @update:model-value="saveRepo"
-        />
-        <p v-if="reposError" class="mt-2 text-sm text-error">
-          {{ reposError }} —
-          <button type="button" class="underline" @click="loadRepos">retry</button>
-        </p>
-        <p v-else-if="repos.length === 0" class="mt-2 text-sm text-muted">Loading repositories…</p>
+        <RepoPicker v-model="selectedRepo" :project-id="projectId" @update:model-value="saveRepo" />
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
