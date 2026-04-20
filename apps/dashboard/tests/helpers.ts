@@ -7,7 +7,7 @@ const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
 
 export async function truncateDomain() {
   await db.execute(
-    sql`TRUNCATE project_members, projects, "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE project_invitations, project_members, projects, "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
   )
   await db.execute(
     sql`UPDATE app_settings SET signup_gated = false, allowed_email_domains = '{}'::text[] WHERE id = 1`,

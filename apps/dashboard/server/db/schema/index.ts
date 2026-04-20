@@ -1,5 +1,6 @@
 export * from "./auth-schema"
 export * from "./projects"
+export * from "./project-invitations"
 export * from "./project-members"
 export * from "./app-settings"
 export * from "./reports"
