@@ -367,4 +367,181 @@ describe("project invitations API", () => {
     const { status } = await apiFetch(`/api/invitations/${row!.token}`)
     expect(status).toBe(401)
   })
+
+  test("accepting a valid invitation inserts into project_members and marks accepted", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "Accept Project" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "joiner@example.com", role: "developer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "joiner@example.com"))
+    const token = row!.token
+    const inviteeCookie = await signIn("joiner@example.com")
+
+    const { status, body } = await apiFetch<{ projectId: string; role: string }>(
+      `/api/invitations/${token}/accept`,
+      { method: "POST", headers: { cookie: inviteeCookie } },
+    )
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ projectId, role: "developer" })
+
+    const [updated] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.token, token))
+    expect(updated?.status).toBe("accepted")
+    expect(updated?.acceptedAt).toBeInstanceOf(Date)
+  })
+
+  test("accepting with a mismatched session email returns 403", async () => {
+    await createUser("owner@example.com", "admin")
+    await createUser("other@example.com", "member")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "target@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "target@example.com"))
+    const token = row!.token
+
+    const otherCookie = await signIn("other@example.com")
+    const { status } = await apiFetch(`/api/invitations/${token}/accept`, {
+      method: "POST",
+      headers: { cookie: otherCookie },
+    })
+    expect(status).toBe(403)
+  })
+
+  test("accepting a revoked invitation returns 409", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    const { body: created } = await apiFetch<ProjectInvitationDTO>(
+      `/api/projects/${projectId}/invitations`,
+      {
+        method: "POST",
+        headers: { cookie: ownerCookie },
+        body: JSON.stringify({ email: "revoked@example.com", role: "viewer" }),
+      },
+    )
+    const invitationId = (created as ProjectInvitationDTO).id
+    await apiFetch(`/api/projects/${projectId}/invitations/${invitationId}`, {
+      method: "DELETE",
+      headers: { cookie: ownerCookie },
+    })
+
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.id, invitationId))
+    const inviteeCookie = await signIn("revoked@example.com")
+
+    const { status } = await apiFetch(`/api/invitations/${row!.token}/accept`, {
+      method: "POST",
+      headers: { cookie: inviteeCookie },
+    })
+    expect(status).toBe(409)
+  })
+
+  test("accepting an expired invitation flips status to expired and returns 409", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "expired@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "expired@example.com"))
+
+    // Backdate expiresAt to force an expired condition.
+    await db
+      .update(projectInvitations)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(projectInvitations.id, row!.id))
+
+    const inviteeCookie = await signIn("expired@example.com")
+    const { status } = await apiFetch(`/api/invitations/${row!.token}/accept`, {
+      method: "POST",
+      headers: { cookie: inviteeCookie },
+    })
+    expect(status).toBe(409)
+
+    const [after] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.id, row!.id))
+    expect(after?.status).toBe("expired")
+  })
+
+  test("accepting twice is idempotent — second call is a no-op 200", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "dup@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "dup@example.com"))
+    const cookie = await signIn("dup@example.com")
+
+    const first = await apiFetch(`/api/invitations/${row!.token}/accept`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(first.status).toBe(200)
+    const second = await apiFetch(`/api/invitations/${row!.token}/accept`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(second.status).toBe(200)
+  })
 })
