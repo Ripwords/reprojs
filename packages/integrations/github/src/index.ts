@@ -2,3 +2,4 @@
 export * from "./signature"
 export * from "./types"
 export * from "./client"
+export * from "./manifest"
