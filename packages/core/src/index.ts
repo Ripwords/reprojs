@@ -51,6 +51,13 @@ export function init(options: InitOptions): FeedbackHandle {
         method: cfg.screenshot?.method,
         excludeSelectors: cfg.screenshot?.excludeSelectors,
       }),
+    // Pause the rolling replay buffer the moment the wizard opens. Without
+    // this, the buffer keeps overwriting itself with the user's annotation
+    // work, so by submit time the original 30s of pre-click activity is
+    // gone and only the report flow itself remains. Resume on close so the
+    // next bug report still has a hot buffer to draw from.
+    onOpen: () => _collectors?.pauseReplay(),
+    onClose: () => _collectors?.resumeReplay(),
     onSubmit: async ({ title, description, screenshot, dwellMs, honeypot }) => {
       if (!_config || !_collectors) return { ok: false, message: "Not initialized" }
       const snap = _collectors.snapshotAll()
