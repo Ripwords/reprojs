@@ -346,6 +346,32 @@ describe("project invitations API", () => {
     })
   })
 
+  test("GET invitation detail with mismatched session email returns 403", async () => {
+    await createUser("owner@example.com", "admin")
+    await createUser("intruder@example.com", "member")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "victim@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "victim@example.com"))
+    const intruderCookie = await signIn("intruder@example.com")
+    const { status } = await apiFetch(`/api/invitations/${row!.token}`, {
+      headers: { cookie: intruderCookie },
+    })
+    expect(status).toBe(403)
+  })
+
   test("unauthenticated request to invitation detail returns 401", async () => {
     await createUser("owner@example.com", "admin")
     const ownerCookie = await signIn("owner@example.com")

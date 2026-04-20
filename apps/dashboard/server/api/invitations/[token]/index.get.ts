@@ -7,13 +7,17 @@ import { requireSession } from "../../../lib/permissions"
 export default defineEventHandler(async (event) => {
   const token = getRouterParam(event, "token")
   if (!token) throw createError({ statusCode: 400, statusMessage: "missing token" })
-  await requireSession(event)
+  const session = await requireSession(event)
 
   const [invite] = await db
     .select()
     .from(projectInvitations)
     .where(eq(projectInvitations.token, token))
   if (!invite) throw createError({ statusCode: 404, statusMessage: "Invitation not found" })
+
+  if (session.email.toLowerCase() !== invite.email.toLowerCase()) {
+    throw createError({ statusCode: 403, statusMessage: "email_mismatch" })
+  }
 
   const [project] = await db.select().from(projects).where(eq(projects.id, invite.projectId))
   const [inviter] = await db.select().from(user).where(eq(user.id, invite.invitedBy))
