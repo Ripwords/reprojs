@@ -1,5 +1,68 @@
 # Changelog
 
+## v0.1.8
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.7...v0.1.8)
+
+### 🚀 Enhancements
+
+- **dashboard:** Paginate + cache GitHub installation repos endpoint ([074d199](https://github.com/Ripwords/reprojs/commit/074d199))
+- **dashboard:** Infinite-scroll GitHub repo picker with server search ([1243947](https://github.com/Ripwords/reprojs/commit/1243947))
+- **shared:** Project invitation DTOs and inputs ([f7f38e3](https://github.com/Ripwords/reprojs/commit/f7f38e3))
+- **dashboard:** Project_invitations table and migration ([c4c84a8](https://github.com/Ripwords/reprojs/commit/c4c84a8))
+- **dashboard:** Project invite email template ([2acf89b](https://github.com/Ripwords/reprojs/commit/2acf89b))
+- **dashboard:** POST /api/projects/:id/invitations ([0225c8f](https://github.com/Ripwords/reprojs/commit/0225c8f))
+- **dashboard:** GET /api/projects/:id/invitations ([42f0899](https://github.com/Ripwords/reprojs/commit/42f0899))
+- **dashboard:** Revoke pending project invitation ([3de73f7](https://github.com/Ripwords/reprojs/commit/3de73f7))
+- **dashboard:** Resend project invitation ([a6d2677](https://github.com/Ripwords/reprojs/commit/a6d2677))
+- **dashboard:** GET /api/invitations/:token ([f570397](https://github.com/Ripwords/reprojs/commit/f570397))
+- **dashboard:** Accept project invitation ([6016ebd](https://github.com/Ripwords/reprojs/commit/6016ebd))
+- **dashboard:** Decline project invitation ([375e659](https://github.com/Ripwords/reprojs/commit/375e659))
+- **dashboard:** Invitation accept page ([5b7ddd2](https://github.com/Ripwords/reprojs/commit/5b7ddd2))
+- **dashboard:** Pending invites on project members page ([8e641af](https://github.com/Ripwords/reprojs/commit/8e641af))
+- **dashboard:** GET /api/invitations/:token returns 409 for non-pending states ([cf254da](https://github.com/Ripwords/reprojs/commit/cf254da))
+- **dashboard:** Admin endpoint to reveal GitHub OAuth client_id/secret ([250712e](https://github.com/Ripwords/reprojs/commit/250712e))
+- **dashboard:** Include clientId in github app-status response ([e12ee33](https://github.com/Ripwords/reprojs/commit/e12ee33))
+- **dashboard:** Reveal GitHub OAuth credentials on settings page ([ce07893](https://github.com/Ripwords/reprojs/commit/ce07893))
+
+### 🩹 Fixes
+
+- **release:** Bypass changelogen's 0.x bump downgrade in dashboard release ([bdb37e7](https://github.com/Ripwords/reprojs/commit/bdb37e7))
+- **shared:** Allow null inviterEmail in InvitationDetailDTO ([9e672e2](https://github.com/Ripwords/reprojs/commit/9e672e2))
+- **dashboard:** Enforce email match on GET /api/invitations/:token ([053bc4b](https://github.com/Ripwords/reprojs/commit/053bc4b))
+- **dashboard:** Add aria-labels to credentials-panel action buttons ([8ec43a1](https://github.com/Ripwords/reprojs/commit/8ec43a1))
+- **dashboard:** Use inviter display name in invite email ([93f6f65](https://github.com/Ripwords/reprojs/commit/93f6f65))
+
+### 📖 Documentation
+
+- Add GitHub OAuth credential reveal design ([1e11c92](https://github.com/Ripwords/reprojs/commit/1e11c92))
+- Add project member auto-invite design ([3fae443](https://github.com/Ripwords/reprojs/commit/3fae443))
+- Add implementation plan for GitHub OAuth credential reveal ([e4ca7ee](https://github.com/Ripwords/reprojs/commit/e4ca7ee))
+- Add project member auto-invite implementation plan ([8408ec2](https://github.com/Ripwords/reprojs/commit/8408ec2))
+- Clarify audit semantics — clientId via app-status, secret via reveal ([261df44](https://github.com/Ripwords/reprojs/commit/261df44))
+- Clarify audit semantics — clientId via app-status, secret via reveal ([2d0a6df](https://github.com/Ripwords/reprojs/commit/2d0a6df))
+- Add GitHub OAuth credential reveal design ([cbfd149](https://github.com/Ripwords/reprojs/commit/cbfd149))
+- Add implementation plan for GitHub OAuth credential reveal ([31b4003](https://github.com/Ripwords/reprojs/commit/31b4003))
+- Clarify audit semantics — clientId via app-status, secret via reveal ([fb54340](https://github.com/Ripwords/reprojs/commit/fb54340))
+- **dashboard:** Clarify clientId is plaintext; note apiFetch deviation ([e06b6b1](https://github.com/Ripwords/reprojs/commit/e06b6b1))
+- **self-hosting:** Note GitHub App credentials can power sign-in ([49bb0e2](https://github.com/Ripwords/reprojs/commit/49bb0e2))
+
+### 🏡 Chore
+
+- Update docs link ([a58e278](https://github.com/Ripwords/reprojs/commit/a58e278))
+- Ignore .worktrees/ directory ([f27282c](https://github.com/Ripwords/reprojs/commit/f27282c))
+
+### ✅ Tests
+
+- Add truncateGithubApp helper for manifest-install tests ([f51dbf6](https://github.com/Ripwords/reprojs/commit/f51dbf6))
+- Add failing tests for GitHub OAuth credential reveal endpoint ([a0eefbd](https://github.com/Ripwords/reprojs/commit/a0eefbd))
+- Drop cross-process spy assertion on audit log ([4a44809](https://github.com/Ripwords/reprojs/commit/4a44809))
+- **dashboard:** Decline rejects mismatched session email ([feb597d](https://github.com/Ripwords/reprojs/commit/feb597d))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.7
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.6...v0.1.7)
