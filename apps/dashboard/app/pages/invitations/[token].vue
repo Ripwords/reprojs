@@ -28,6 +28,15 @@ async function load() {
       await navigateTo(`/auth/sign-in?returnTo=/invitations/${token.value}`)
       return
     }
+    if (status === 409) {
+      const msg = (err as { statusMessage?: string }).statusMessage
+      if (msg === "expired" || msg === "revoked" || msg === "already_accepted") {
+        errorCode.value = msg === "already_accepted" ? "accepted" : msg
+      } else {
+        errorCode.value = "not_found"
+      }
+      return
+    }
     if (status === 404) errorCode.value = "not_found"
     else if (status === 403) errorCode.value = "email_mismatch"
     else errorCode.value = "not_found"
@@ -107,6 +116,11 @@ async function decline() {
     <UCard v-else-if="errorCode === 'revoked'">
       <h1 class="text-xl font-semibold mb-2">This invitation is no longer valid</h1>
       <p class="text-sm text-muted">It was revoked or declined.</p>
+    </UCard>
+
+    <UCard v-else-if="errorCode === 'accepted'">
+      <h1 class="text-xl font-semibold mb-2">Invitation already accepted</h1>
+      <p class="text-sm text-muted">You've already joined this project.</p>
     </UCard>
 
     <UCard v-else-if="errorCode === 'not_found'">

@@ -19,6 +19,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "email_mismatch" })
   }
 
+  if (invite.status === "accepted") {
+    throw createError({ statusCode: 409, statusMessage: "already_accepted" })
+  }
+  if (invite.status === "revoked") {
+    throw createError({ statusCode: 409, statusMessage: "revoked" })
+  }
+  if (invite.status === "expired" || invite.expiresAt.getTime() < Date.now()) {
+    if (invite.status !== "expired") {
+      await db
+        .update(projectInvitations)
+        .set({ status: "expired" })
+        .where(eq(projectInvitations.id, invite.id))
+    }
+    throw createError({ statusCode: 409, statusMessage: "expired" })
+  }
+
   const [project] = await db.select().from(projects).where(eq(projects.id, invite.projectId))
   const [inviter] = await db.select().from(user).where(eq(user.id, invite.invitedBy))
 

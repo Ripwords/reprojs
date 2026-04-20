@@ -394,6 +394,73 @@ describe("project invitations API", () => {
     expect(status).toBe(401)
   })
 
+  test("GET invitation detail for revoked invite returns 409", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+    const { body: created } = await apiFetch<ProjectInvitationDTO>(
+      `/api/projects/${projectId}/invitations`,
+      {
+        method: "POST",
+        headers: { cookie: ownerCookie },
+        body: JSON.stringify({ email: "revoked-get@example.com", role: "viewer" }),
+      },
+    )
+    const invitationId = (created as ProjectInvitationDTO).id
+    await apiFetch(`/api/projects/${projectId}/invitations/${invitationId}`, {
+      method: "DELETE",
+      headers: { cookie: ownerCookie },
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.id, invitationId))
+    const inviteeCookie = await signIn("revoked-get@example.com")
+    const { status } = await apiFetch(`/api/invitations/${row!.token}`, {
+      headers: { cookie: inviteeCookie },
+    })
+    expect(status).toBe(409)
+  })
+
+  test("GET invitation detail for time-expired invite flips status and returns 409", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "expire-get@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "expire-get@example.com"))
+    await db
+      .update(projectInvitations)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(projectInvitations.id, row!.id))
+    const inviteeCookie = await signIn("expire-get@example.com")
+    const { status } = await apiFetch(`/api/invitations/${row!.token}`, {
+      headers: { cookie: inviteeCookie },
+    })
+    expect(status).toBe(409)
+    const [after] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.id, row!.id))
+    expect(after?.status).toBe("expired")
+  })
+
   test("accepting a valid invitation inserts into project_members and marks accepted", async () => {
     await createUser("owner@example.com", "admin")
     const ownerCookie = await signIn("owner@example.com")
