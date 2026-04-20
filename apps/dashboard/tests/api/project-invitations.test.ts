@@ -172,4 +172,37 @@ describe("project invitations API", () => {
     })
     expect(status).toBe(403)
   })
+
+  test("owner can list only pending invitations for a project", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "Test Project" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "a@example.com", role: "viewer" }),
+    })
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "b@example.com", role: "developer" }),
+    })
+
+    const { status, body } = await apiFetch<ProjectInvitationDTO[]>(
+      `/api/projects/${projectId}/invitations`,
+      { headers: { cookie: ownerCookie } },
+    )
+    expect(status).toBe(200)
+    const list = body as ProjectInvitationDTO[]
+    expect(list).toHaveLength(2)
+    expect(list.map((i) => i.email).toSorted()).toEqual(["a@example.com", "b@example.com"])
+    expect(list.every((i) => i.status === "pending")).toBe(true)
+  })
 })
