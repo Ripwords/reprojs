@@ -1,7 +1,8 @@
 import { useEffect, useState } from "preact/hooks"
-import type { Config } from "../types"
-import { deleteConfig, listConfigs } from "../lib/storage"
-import { removeOriginPermission } from "../lib/permissions"
+import type { Config, ConfigInput } from "../types"
+import { addConfig, deleteConfig, listConfigs } from "../lib/storage"
+import { removeOriginPermission, requestOriginPermission } from "../lib/permissions"
+import { AddConfigForm } from "./AddConfigForm"
 import { ConfigList } from "./ConfigList"
 // oxlint-disable-next-line eslint-plugin-import/no-unassigned-import
 import "./styles.css"
@@ -17,6 +18,18 @@ export function App() {
     void refresh()
   }, [])
 
+  async function handleAdd(
+    input: ConfigInput,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
+    const granted = await requestOriginPermission(input.origin)
+    if (!granted) {
+      return { ok: false, message: "Host permission denied for this origin." }
+    }
+    await addConfig(input)
+    await refresh()
+    return { ok: true }
+  }
+
   async function handleDelete(id: string) {
     const target = configs.find((c) => c.id === id)
     if (!target) return
@@ -29,6 +42,7 @@ export function App() {
     <div class="app">
       <h1>Configured origins</h1>
       <ConfigList configs={configs} onDelete={handleDelete} />
+      <AddConfigForm onSubmit={handleAdd} />
     </div>
   )
 }
