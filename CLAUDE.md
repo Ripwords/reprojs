@@ -124,7 +124,8 @@ Monorepo with Bun workspaces. Mirrors the ai-trip project's `server/{api,db,lib}
 ```
 repro/
 ├── apps/
-│   └── dashboard/              # Nuxt 4 fullstack — admin UI + intake API
+│   ├── dashboard/              # Nuxt 4 fullstack — admin UI + intake API
+│   └── extension/              # Chrome MV3 extension for internal testers
 │       ├── app/                # Vue UI (pages, components, composables, layouts)
 │       ├── server/
 │       │   ├── api/
