@@ -33,10 +33,9 @@
     "prepare": "husky",
     "fix": "bun run fmt && bun run lint:fix",
     "prerelease": "bun run check && bun run sdk:build && bun run test:sdk",
-    "changelog": "changelogen --release",
-    "release": "bun run prerelease && bun run changelog",
-    "release:minor": "bun run prerelease && bun run changelog -- --minor",
-    "release:major": "bun run prerelease && bun run changelog -- --major",
+    "release": "bash ./scripts/release-dashboard.sh",
+    "release:minor": "bash ./scripts/release-dashboard.sh --minor",
+    "release:major": "bash ./scripts/release-dashboard.sh --major",
     "postrelease": "git push --follow-tags",
     "release:sdk": "bash ./scripts/release-sdk.sh"
   },
