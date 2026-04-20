@@ -51,6 +51,7 @@ export default defineConfig({
             { text: "Storage", link: "/self-hosting/storage" },
             { text: "Integrations", link: "/self-hosting/integrations" },
             { text: "Operations", link: "/self-hosting/operations" },
+            { text: "Compatibility", link: "/self-hosting/compatibility" },
           ],
         },
       ],

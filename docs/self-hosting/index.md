@@ -41,6 +41,7 @@ Persistent state lives in two named Docker volumes: `postgres_data` (the DB) and
 - [**Storage**](./storage) — switch from local disk to S3 when you outgrow one host.
 - [**Integrations**](./integrations) — GitHub Issues sync, OAuth sign-in, SMTP email.
 - [**Operations**](./operations) — backups, upgrades, logs, healthchecks.
+- [**Compatibility**](./compatibility) — which SDK versions each dashboard release accepts.
 
 ## Minimum spec
 
