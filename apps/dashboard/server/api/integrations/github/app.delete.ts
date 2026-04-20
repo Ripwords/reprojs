@@ -1,0 +1,63 @@
+import { createError, defineEventHandler } from "h3"
+import { count, eq } from "drizzle-orm"
+import { db } from "../../../db"
+import { githubApp, githubIntegrations, reportSyncJobs } from "../../../db/schema"
+import { env } from "../../../lib/env"
+import { invalidateGithubAppCache } from "../../../lib/github-app-credentials"
+import { requireInstallAdmin } from "../../../lib/permissions"
+
+/**
+ * Admin-only: drop the DB-resident GitHub App singleton + cascade to every
+ * project integration and pending sync job that authenticated against it.
+ *
+ * Refuses when credentials come from env vars — those must be unset from the
+ * deployment's environment, not deleted through the API. Also leaves
+ * `report_events` untouched so the triage history survives a reconnect.
+ *
+ * GitHub still hosts the App on the owner's account after this call; operators
+ * who want to fully remove it must visit the App's Advanced settings page in
+ * GitHub and delete it there. We surface that URL on the settings UI.
+ */
+export default defineEventHandler(async (event) => {
+  await requireInstallAdmin(event)
+
+  // Refuse early if the env-var path is active — an insert via the manifest
+  // flow can coexist with stale env vars, but the resolver always prefers
+  // env, so deleting the DB row would be silently ineffective.
+  const envComplete = Boolean(
+    env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_WEBHOOK_SECRET,
+  )
+  if (envComplete) {
+    throw createError({
+      statusCode: 400,
+      statusMessage:
+        "GitHub App credentials are set via environment variables — unset them from your environment and redeploy instead of deleting via the API.",
+    })
+  }
+
+  // Read the row directly rather than via the cached `getGithubAppCredentials`
+  // — its module-level cache can legitimately be stale in-between a manifest
+  // insert and the next read.
+  const [row] = await db.select().from(githubApp).where(eq(githubApp.id, 1)).limit(1)
+  if (!row) {
+    throw createError({ statusCode: 404, statusMessage: "No GitHub App configured" })
+  }
+
+  // Count first so the response can tell the operator what actually got
+  // wiped. The DELETEs themselves are unconditional — every integration and
+  // every sync job depends on the App's credentials we're about to drop.
+  const [jobCount] = await db.select({ c: count() }).from(reportSyncJobs)
+  const [intCount] = await db.select({ c: count() }).from(githubIntegrations)
+  const purgedSyncJobs = jobCount?.c ?? 0
+  const purgedIntegrations = intCount?.c ?? 0
+
+  await db.delete(reportSyncJobs)
+  await db.delete(githubIntegrations)
+  await db.delete(githubApp).where(eq(githubApp.id, 1))
+
+  // Flip the resolver cache so subsequent reads (app-status, etc.) see the
+  // absent row instead of the now-deleted creds.
+  invalidateGithubAppCache()
+
+  return { ok: true as const, purgedIntegrations, purgedSyncJobs }
+})

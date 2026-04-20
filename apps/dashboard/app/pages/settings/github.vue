@@ -3,6 +3,8 @@ definePageMeta({ middleware: "admin-only" })
 useHead({ title: "GitHub App" })
 
 const route = useRoute()
+const toast = useToast()
+const { confirm } = useConfirm()
 // Resolved at request time so the webhook URL shown in the instructions —
 // and the manifest-start redirect — always match the hostname operators are
 // viewing, even on pre-built Docker images where BETTER_AUTH_URL wasn't set
@@ -115,6 +117,54 @@ const githubAppPublicUrl = computed(() => {
   if (!status.value?.slug) return null
   return `https://github.com/apps/${status.value.slug}`
 })
+
+const githubAppAdvancedUrl = computed(() => {
+  if (!status.value?.slug) return null
+  return `https://github.com/settings/apps/${status.value.slug}/advanced`
+})
+
+const disconnecting = ref(false)
+
+async function disconnect() {
+  const slug = status.value?.slug ?? "the GitHub App"
+  const ok = await confirm({
+    title: "Disconnect GitHub App?",
+    description: `This removes ${slug}'s credentials from this dashboard and unlinks every project installation. Report history is preserved. The app itself still exists on GitHub — delete it from your GitHub App's Advanced settings if you also want it gone there.`,
+    confirmLabel: "Disconnect",
+    confirmColor: "error",
+    icon: "i-heroicons-exclamation-triangle",
+  })
+  if (!ok) return
+  disconnecting.value = true
+  try {
+    const res = await $fetch<{
+      ok: true
+      purgedIntegrations: number
+      purgedSyncJobs: number
+    }>("/api/integrations/github/app", { method: "DELETE", credentials: "include" })
+    clearRevealed()
+    await Promise.all([refresh(), refreshProviders()])
+    toast.add({
+      title: "GitHub App disconnected",
+      description:
+        res.purgedIntegrations === 0
+          ? "Credentials cleared."
+          : `Credentials cleared; ${res.purgedIntegrations} project integration(s) and ${res.purgedSyncJobs} pending sync job(s) removed.`,
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (e: unknown) {
+    const err = e as { statusCode?: number; statusMessage?: string; message?: string }
+    toast.add({
+      title: "Could not disconnect",
+      description: err.statusMessage ?? err.message ?? "Unknown error",
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    disconnecting.value = false
+  }
+}
 </script>
 
 <template>
@@ -200,8 +250,27 @@ const githubAppPublicUrl = computed(() => {
         </p>
       </template>
       <template v-else #footer>
-        <div class="flex gap-2">
+        <div class="flex items-center justify-between gap-2">
           <UButton variant="subtle" color="neutral" @click="() => refresh()">Refresh</UButton>
+          <div class="flex items-center gap-3">
+            <ULink
+              v-if="githubAppAdvancedUrl"
+              :to="githubAppAdvancedUrl"
+              target="_blank"
+              class="text-xs text-muted hover:text-default"
+            >
+              Delete on GitHub &rarr;
+            </ULink>
+            <UButton
+              variant="subtle"
+              color="error"
+              icon="i-heroicons-trash"
+              :loading="disconnecting"
+              @click="disconnect"
+            >
+              Disconnect
+            </UButton>
+          </div>
         </div>
       </template>
     </UCard>
