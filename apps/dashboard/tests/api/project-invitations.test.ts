@@ -544,4 +544,38 @@ describe("project invitations API", () => {
     })
     expect(second.status).toBe(200)
   })
+
+  test("invitee can decline — status goes to revoked, no membership", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "nope@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "nope@example.com"))
+    const cookie = await signIn("nope@example.com")
+
+    const { status } = await apiFetch(`/api/invitations/${row!.token}/decline`, {
+      method: "POST",
+      headers: { cookie },
+    })
+    expect(status).toBe(204)
+
+    const [after] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.id, row!.id))
+    expect(after?.status).toBe("revoked")
+  })
 })
