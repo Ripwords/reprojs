@@ -24,6 +24,17 @@ export interface FeedbackHandle {
 }
 
 export function init(options: InitOptions): FeedbackHandle {
+  // SSR no-op: the widget mounts into the DOM and the recorder subscribes
+  // to DOM events, so init() only makes sense in a browser. Under Next.js
+  // RSC / Nuxt server routes / SvelteKit load / etc. the module is also
+  // evaluated server-side — short-circuit there instead of throwing, so
+  // users can call init() from framework-agnostic code without guards.
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return {
+      pauseReplay: () => {},
+      resumeReplay: () => {},
+    }
+  }
   const cfg = resolveConfig(options)
   _config = cfg
   if (_mounted) unmount()
