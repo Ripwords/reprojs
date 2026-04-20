@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.6
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/sdk-v0.1.6...v0.1.6)
+
+### 🩹 Fixes
+
+- **dashboard:** Pre-create /data/attachments owned by non-root user ([379cd13](https://github.com/Ripwords/reprojs/commit/379cd13))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.5
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.4...v0.1.5)
