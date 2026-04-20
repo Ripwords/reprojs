@@ -305,4 +305,66 @@ describe("project invitations API", () => {
     )
     expect(status).toBe(409)
   })
+
+  test("authenticated invitee can fetch invitation detail by token", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "Detail Project" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "detail@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "detail@example.com"))
+    const token = row!.token
+
+    // Brand-new user was pre-created; sign them in.
+    const inviteeCookie = await signIn("detail@example.com")
+
+    const { status, body } = await apiFetch<{
+      token: string
+      projectName: string
+      role: string
+      email: string
+    }>(`/api/invitations/${token}`, { headers: { cookie: inviteeCookie } })
+
+    expect(status).toBe(200)
+    expect(body).toMatchObject({
+      token,
+      projectName: "Detail Project",
+      role: "viewer",
+      email: "detail@example.com",
+    })
+  })
+
+  test("unauthenticated request to invitation detail returns 401", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "P" }),
+    })
+    const projectId = (project as ProjectDTO).id
+    await apiFetch(`/api/projects/${projectId}/invitations`, {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ email: "anon@example.com", role: "viewer" }),
+    })
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.email, "anon@example.com"))
+    const { status } = await apiFetch(`/api/invitations/${row!.token}`)
+    expect(status).toBe(401)
+  })
 })
