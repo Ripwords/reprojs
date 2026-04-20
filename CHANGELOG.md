@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.1.5
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.4...v0.1.5)
+
+### 🩹 Fixes
+
+- **dashboard:** Resolve runtime env at request time, not build time ([b02c894](https://github.com/Ripwords/reprojs/commit/b02c894))
+
+### 🤖 CI
+
+- **publish-docker:** Gate image build on a verify job ([32a9b00](https://github.com/Ripwords/reprojs/commit/32a9b00))
+- **publish-npm:** Add npm publish workflow with provenance + release:sdk helper ([5104bf4](https://github.com/Ripwords/reprojs/commit/5104bf4))
+- **publish-npm:** Switch to npm trusted publishing (OIDC) — drop NPM_TOKEN ([1c26993](https://github.com/Ripwords/reprojs/commit/1c26993))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.4
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.3...v0.1.4)
