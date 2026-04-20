@@ -112,11 +112,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId))
+  const [inviter] = await db.select().from(user).where(eq(user.id, session.userId))
 
   const acceptUrl = `${env.BETTER_AUTH_URL}/invitations/${token}`
   const html = await renderTemplate("project-invite", {
     projectName: project?.name ?? "a Repro project",
-    inviterName: session.email,
+    inviterName: inviter?.name ?? session.email,
     inviterEmail: session.email,
     role: body.role,
     acceptUrl,

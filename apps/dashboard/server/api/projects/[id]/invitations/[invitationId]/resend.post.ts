@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm"
 import { createError, defineEventHandler, getRouterParam } from "h3"
 import { db } from "../../../../../db"
-import { projectInvitations, projects } from "../../../../../db/schema"
+import { projectInvitations, projects, user } from "../../../../../db/schema"
 import { env } from "../../../../../lib/env"
 import { requireProjectRole } from "../../../../../lib/permissions"
 import { getInviteLimiter } from "../../../../../lib/rate-limit"
@@ -46,10 +46,11 @@ export default defineEventHandler(async (event) => {
     .where(eq(projectInvitations.id, invitationId))
 
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId))
+  const [inviter] = await db.select().from(user).where(eq(user.id, session.userId))
   const acceptUrl = `${env.BETTER_AUTH_URL}/invitations/${existing.token}`
   const html = await renderTemplate("project-invite", {
     projectName: project?.name ?? "a Repro project",
-    inviterName: session.email,
+    inviterName: inviter?.name ?? session.email,
     inviterEmail: session.email,
     role: existing.role,
     acceptUrl,
