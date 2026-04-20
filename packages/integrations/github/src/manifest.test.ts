@@ -8,9 +8,12 @@ describe("buildGithubAppManifest", () => {
     expect(m.redirect_url).toBe(
       "https://repro.example.com/api/integrations/github/manifest-callback",
     )
-    expect(m.callback_urls).toContain(
-      "https://repro.example.com/api/integrations/github/install-callback",
-    )
+    // User-authorization OAuth callback points at better-auth's social callback
+    // so the App's clientId/secret can power "Sign in with GitHub".
+    expect(m.callback_urls).toContain("https://repro.example.com/api/auth/callback/github")
+    // The App-installation setup URL stays on our own handler (distinct hook
+    // from the OAuth callback).
+    expect(m.setup_url).toBe("https://repro.example.com/api/integrations/github/install-callback")
   })
 
   test("webhook is created inactive — operators enable it manually after setup", () => {

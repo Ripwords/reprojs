@@ -67,7 +67,13 @@ export function buildGithubAppManifest(input: {
     url: base,
     hook_attributes: { url: webhookUrl, active: false },
     redirect_url: `${base}/api/integrations/github/manifest-callback`,
-    callback_urls: [`${base}/api/integrations/github/install-callback`],
+    // `callback_urls` is the GitHub App's User authorization OAuth callback —
+    // where GitHub redirects after "Sign in with GitHub" consent. Point it at
+    // better-auth's social-provider callback so the same App's clientId/secret
+    // can power dashboard sign-in (via the reveal-credentials flow). The
+    // distinct App *installation* callback (`setup_url`) stays on our own
+    // handler, which exchanges the install for a `github_integrations` row.
+    callback_urls: [`${base}/api/auth/callback/github`],
     setup_url: `${base}/api/integrations/github/install-callback`,
     setup_on_update: true,
     public: false,
