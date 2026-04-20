@@ -9,7 +9,8 @@ import { requireInstallAdmin } from "../../../lib/permissions"
  * operator can paste them into `.env` as GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET
  * and restart to enable better-auth GitHub sign-in.
  *
- * The values are decrypted on read by Drizzle's `encryptedText` custom type.
+ * `client_secret` is decrypted on read by Drizzle's `encryptedText` custom
+ * type; `client_id` is plaintext at rest (non-secret public identifier).
  * `Cache-Control: no-store` is defense-in-depth — the route is auth-gated, but
  * a secret must never be cacheable by any intermediary. Every successful reveal
  * emits a structured `console.info` audit line so operators with a log
