@@ -1,5 +1,41 @@
 # Changelog
 
+## v0.1.7
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.6...v0.1.7)
+
+### 🚀 Enhancements
+
+- **sdk-core:** Pixel-perfect screen-capture path via getDisplayMedia ([a93a239](https://github.com/Ripwords/reprojs/commit/a93a239))
+- **sdk:** Pause replay buffer while the report wizard is open ([bd64ef3](https://github.com/Ripwords/reprojs/commit/bd64ef3))
+- **dashboard:** Collapsible triage panel + per-section toggles ([6cd9abb](https://github.com/Ripwords/reprojs/commit/6cd9abb))
+- **dashboard:** Page titles via useHead + global titleTemplate ([93b1027](https://github.com/Ripwords/reprojs/commit/93b1027))
+
+### 🩹 Fixes
+
+- **recorder:** Extract CSSOM rules and absolutize URLs in full snapshot ([ad8e527](https://github.com/Ripwords/reprojs/commit/ad8e527))
+- **release:** Pin changelogen --from to prefix-matched tag ([0c68bcd](https://github.com/Ripwords/reprojs/commit/0c68bcd))
+- **sdk:** Close lifecycle gaps in pause/resume, capture, and reporter ([dce4455](https://github.com/Ripwords/reprojs/commit/dce4455))
+- **dashboard:** Static-import rrweb-player CSS + theme controller to dashboard ([a70598d](https://github.com/Ripwords/reprojs/commit/a70598d))
+- **docs:** Drop /reprojs prefix from favicon path ([eb45504](https://github.com/Ripwords/reprojs/commit/eb45504))
+
+### 💅 Refactors
+
+- **recorder:** Drop unjustified \`as unknown as\` on stylesheet read ([4889dcd](https://github.com/Ripwords/reprojs/commit/4889dcd))
+
+### 🏡 Chore
+
+- **release:** Sdk-v0.2.0 ([320cfad](https://github.com/Ripwords/reprojs/commit/320cfad))
+- **release:** Sdk-v0.2.1 ([73414c3](https://github.com/Ripwords/reprojs/commit/73414c3))
+
+### 🤖 CI
+
+- **sdk-release:** Generate CHANGELOG and GitHub Release for @reprojs/core ([5603973](https://github.com/Ripwords/reprojs/commit/5603973))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.6
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/sdk-v0.1.6...v0.1.6)
