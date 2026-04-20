@@ -20,10 +20,25 @@ The `/sdk/repro.iife.js` bundle is served by the dashboard itself, so you always
 
 ### ESM / bundler
 
-```bash
+::: code-group
+
+```sh [npm]
 npm install @reprojs/core
-# or pnpm / yarn / bun
 ```
+
+```sh [pnpm]
+pnpm add @reprojs/core
+```
+
+```sh [yarn]
+yarn add @reprojs/core
+```
+
+```sh [bun]
+bun add @reprojs/core
+```
+
+:::
 
 ```ts
 import { init } from "@reprojs/core"
@@ -42,7 +57,7 @@ The SDK touches `document` and `window` to mount the widget and start the replay
 
 The fix is the same shape everywhere: **defer `init()` until after the component has mounted in the browser.** Import is always safe; only the call needs to be client-side.
 
-### Next.js — App Router (`app/`)
+### <img src="/icons/nextdotjs.svg" class="fw-icon" alt="" /> Next.js — App Router (`app/`)
 
 Create a tiny client component and render it once in your root layout.
 
@@ -82,7 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 > Note: `'use client'` alone isn't enough — client components still pre-render on the server unless you also defer the browser API behind `useEffect` or lazy-load with `next/dynamic`. See the Pages Router recipe for the `dynamic` variant.
 
-### Next.js — Pages Router (`pages/`)
+### <img src="/icons/nextdotjs.svg" class="fw-icon" alt="" /> Next.js — Pages Router (`pages/`)
 
 Use `next/dynamic` with `ssr: false`, or call `init()` from `useEffect` in `pages/_app.tsx`.
 
@@ -106,7 +121,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
 The dynamic `import()` keeps the SDK out of the server bundle entirely.
 
-### Nuxt 3 / 4
+### <img src="/icons/nuxt.svg" class="fw-icon" alt="" /> Nuxt 3 / 4
 
 Put the init call in a `.client.ts` plugin — Nuxt only runs these in the browser.
 
@@ -136,7 +151,7 @@ export default defineNuxtConfig({
 
 Alternative: call `init()` inside `onMounted()` in `app.vue` or a layout `<script setup>` block.
 
-### Remix / React Router v7 (framework mode)
+### <img src="/icons/remix.svg" class="fw-icon" alt="" /> Remix / React Router v7 (framework mode)
 
 Use a `.client.ts` module so the bundler strips it from the server build, or call from `useEffect` in the root route.
 
@@ -157,7 +172,7 @@ export default function App() {
 }
 ```
 
-### SvelteKit
+### <img src="/icons/svelte.svg" class="fw-icon" alt="" /> SvelteKit
 
 Use `onMount` (SvelteKit guarantees it's browser-only) or gate on the `browser` constant from `$app/environment`.
 
@@ -179,7 +194,7 @@ Use `onMount` (SvelteKit guarantees it's browser-only) or gate on the `browser` 
 <slot />
 ```
 
-### Astro
+### <img src="/icons/astro.svg" class="fw-icon" alt="" /> Astro
 
 Put the init call in a `<script>` tag (Astro ships those to the client by default) or in a client-only island component.
 
@@ -201,7 +216,7 @@ Put the init call in a `<script>` tag (Astro ships those to the client by defaul
 </html>
 ```
 
-### Vanilla SPA (Vite, CRA, Parcel, …)
+### <img src="/icons/vite.svg" class="fw-icon" alt="" /> Vanilla SPA (Vite, CRA, Parcel, …)
 
 No server rendering, no guards needed — the top-level call in the ESM example above works as-is.
 

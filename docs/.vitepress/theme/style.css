@@ -130,3 +130,70 @@
 .VPHero .text {
   letter-spacing: -0.02em;
 }
+
+/*
+ * Framework logos inline with section headings (SDK SSR guide).
+ *
+ * The simpleicons SVGs render solid black/#000, so we recolor with a CSS
+ * filter to match the surrounding heading text. That keeps the icons
+ * crisp under dark mode without shipping twin assets.
+ */
+.VPDoc h3 > img.fw-icon {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.45em;
+  vertical-align: -0.15em;
+  /* Tint to match heading color (mist-900 light / mist-50 dark) */
+  filter: brightness(0) saturate(100%);
+  opacity: 0.9;
+}
+
+.dark .VPDoc h3 > img.fw-icon {
+  filter: brightness(0) saturate(100%) invert(1);
+}
+
+/*
+ * Package-manager icons on <code-group> tab labels (SDK install block).
+ *
+ * VitePress renders each tab as `<label>` whose text is the name given in
+ * the fence (e.g. `[npm]`). We inject the brand SVG as a ::before, fetched
+ * from docs/public/icons and tinted to match the tab foreground.
+ */
+.vp-code-group .tabs label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+}
+
+.vp-code-group .tabs label::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  opacity: 0.85;
+  flex: none;
+}
+
+.vp-code-group .tabs label[data-title="npm"]::before {
+  -webkit-mask-image: url("/reprojs/icons/npm.svg");
+  mask-image: url("/reprojs/icons/npm.svg");
+}
+.vp-code-group .tabs label[data-title="pnpm"]::before {
+  -webkit-mask-image: url("/reprojs/icons/pnpm.svg");
+  mask-image: url("/reprojs/icons/pnpm.svg");
+}
+.vp-code-group .tabs label[data-title="yarn"]::before {
+  -webkit-mask-image: url("/reprojs/icons/yarn.svg");
+  mask-image: url("/reprojs/icons/yarn.svg");
+}
+.vp-code-group .tabs label[data-title="bun"]::before {
+  -webkit-mask-image: url("/reprojs/icons/bun.svg");
+  mask-image: url("/reprojs/icons/bun.svg");
+}
