@@ -92,8 +92,7 @@ Additions outside `apps/extension/`:
     "dev": "vite",
     "build": "bun scripts/sync-sdk.ts && vite build",
     "preview": "vite preview",
-    "test": "bun test src/",
-    "test:e2e": "playwright test"
+    "test": "bun test src/"
   },
   "dependencies": {
     "preact": "^10.23.0"
@@ -1147,8 +1146,10 @@ git commit -m "chore(extension): add ext:* scripts to root"
 - Create: `apps/extension/playwright.config.ts`
 - Create: `apps/extension/tests/e2e/inject.spec.ts`
 - Create: `apps/extension/tests/e2e/fixtures/test-site.html`
+- Create: `apps/extension/manifest.e2e.config.ts`
+- Modify: `apps/extension/package.json` (add `build:e2e` script)
 
-Rationale: Playwright launches Chromium with a persistent context and the built extension loaded via `--load-extension`. The test serves a static HTML fixture from a local server on a known origin, grants the host permission programmatically via `chrome.permissions.request` (triggered from the popup page), seeds a config, and asserts the SDK injected (shadow-DOM root `#repro-host` appears).
+Rationale: Playwright launches Chromium with a persistent context and the built extension loaded via `--load-extension`. **Known constraint:** `chrome.permissions.request` requires a page user gesture that Playwright's `page.evaluate()` cannot synthesize from the extension origin. The pragmatic fix is a dedicated e2e build that pre-grants `host_permissions: ["<all_urls>"]` in the manifest, so injection runs without the permission dance. Popup/permissions UX is covered by the manual smoke test (Task 11); this e2e suite covers the injection path.
 
 - [ ] **Step 1: Create `apps/extension/playwright.config.ts`**
 
@@ -1165,6 +1166,63 @@ export default defineConfig({
   },
 })
 ```
+
+- [ ] **Step 1b: Create `apps/extension/manifest.e2e.config.ts`**
+
+```ts
+import { defineManifest } from "@crxjs/vite-plugin"
+import pkg from "./package.json" with { type: "json" }
+
+// E2E-only manifest. `host_permissions: ["<all_urls>"]` is pre-granted so
+// the injection test doesn't need to synthesize a user gesture for
+// chrome.permissions.request(). Do NOT publish this variant to the Web Store.
+export default defineManifest({
+  manifest_version: 3,
+  name: "Repro Tester (E2E)",
+  version: pkg.version,
+  permissions: ["storage", "scripting", "activeTab", "tabs"],
+  host_permissions: ["<all_urls>"],
+  background: {
+    service_worker: "src/service-worker/index.ts",
+    type: "module",
+  },
+  action: { default_popup: "index.html" },
+  options_page: "options.html",
+  web_accessible_resources: [
+    { resources: ["repro.iife.js"], matches: ["<all_urls>"] },
+  ],
+})
+```
+
+- [ ] **Step 1c: Add `vite.config.e2e.ts`**
+
+Create `apps/extension/vite.config.e2e.ts`:
+
+```ts
+import { defineConfig } from "vite"
+import { crx } from "@crxjs/vite-plugin"
+import preact from "@preact/preset-vite"
+import manifest from "./manifest.e2e.config"
+
+export default defineConfig({
+  plugins: [preact(), crx({ manifest })],
+  build: {
+    target: "es2022",
+    outDir: "dist-e2e",
+  },
+})
+```
+
+- [ ] **Step 1d: Add `build:e2e` script**
+
+Modify `apps/extension/package.json`, add these entries to `scripts`:
+
+```json
+"build:e2e": "bun scripts/sync-sdk.ts && vite build --config vite.config.e2e.ts",
+"test:e2e": "bun run build:e2e && playwright test"
+```
+
+(Preserve the existing `dev`, `build`, `preview`, `test` scripts from Task 1.)
 
 - [ ] **Step 2: Create `apps/extension/tests/e2e/fixtures/test-site.html`**
 
@@ -1191,7 +1249,7 @@ import { resolve } from "node:path"
 import { tmpdir } from "node:os"
 import { mkdtempSync } from "node:fs"
 
-const EXT_PATH = resolve(__dirname, "../../dist")
+const EXT_PATH = resolve(__dirname, "../../dist-e2e")
 const FIXTURE = readFileSync(resolve(__dirname, "fixtures/test-site.html"), "utf8")
 
 test("injects the SDK on a configured origin", async () => {
@@ -1228,9 +1286,9 @@ test("injects the SDK on a configured origin", async () => {
     await popup.goto(`chrome-extension://${extId}/index.html`)
     await popup.evaluate(
       async ({ origin }) => {
-        // Request permission first (this triggers the native prompt; Playwright
-        // auto-accepts via the context setting below).
-        await chrome.permissions.request({ origins: [`${origin}/*`] })
+        // E2E manifest pre-grants <all_urls> in host_permissions, so we skip
+        // the chrome.permissions.request prompt dance entirely and just seed
+        // the config directly.
         await chrome.storage.local.set({
           configs: [
             {
@@ -1294,8 +1352,8 @@ test("does NOT inject on an unconfigured origin", async () => {
 
 - [ ] **Step 4: Run the test**
 
-Run: `bun run ext:build && cd apps/extension && bunx playwright install chromium && bunx playwright test`
-Expected: Both tests PASS.
+Run: `cd apps/extension && bunx playwright install chromium && bun run test:e2e`
+Expected: Both tests PASS. (`test:e2e` runs `build:e2e` first, which produces `dist-e2e/`.)
 
 - [ ] **Step 5: Commit**
 
