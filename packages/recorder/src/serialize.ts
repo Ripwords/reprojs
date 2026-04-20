@@ -17,6 +17,67 @@ export interface SerializeContext {
 
 const SKIP_TAGS = new Set(["SCRIPT", "NOSCRIPT", "TEMPLATE"])
 
+const URL_ATTRS_BY_TAG: Record<string, readonly string[]> = {
+  a: ["href"],
+  area: ["href"],
+  link: ["href"],
+  base: ["href"],
+  img: ["src"],
+  source: ["src"],
+  video: ["src", "poster"],
+  audio: ["src"],
+  iframe: ["src"],
+  embed: ["src"],
+  track: ["src"],
+  object: ["data"],
+  form: ["action"],
+  use: ["href"],
+}
+
+const NON_RESOLVABLE_SCHEME = /^(javascript|data|blob|about|mailto|tel):/i
+
+function absolutizeUrl(raw: string, baseURI: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed || trimmed.startsWith("#") || NON_RESOLVABLE_SCHEME.test(trimmed)) return raw
+  try {
+    return new URL(raw, baseURI).href
+  } catch {
+    return raw
+  }
+}
+
+function absolutizeSrcset(raw: string, baseURI: string): string {
+  return raw
+    .split(",")
+    .map((part) => {
+      const entry = part.trim()
+      if (!entry) return ""
+      const space = entry.search(/\s/)
+      if (space === -1) return absolutizeUrl(entry, baseURI)
+      const url = entry.slice(0, space)
+      const descriptor = entry.slice(space)
+      return `${absolutizeUrl(url, baseURI)}${descriptor}`
+    })
+    .filter(Boolean)
+    .join(", ")
+}
+
+function tryReadCssText(el: Element): string | null {
+  try {
+    const sheet = (el as unknown as { sheet?: CSSStyleSheet | null }).sheet
+    if (!sheet) return null
+    const rules = sheet.cssRules
+    if (!rules || rules.length === 0) return null
+    let out = ""
+    for (let i = 0; i < rules.length; i++) {
+      out += rules[i]!.cssText
+    }
+    return out || null
+  } catch {
+    return null
+  }
+}
+
 export function serializeNodeWithChildren(
   node: Node,
   ctx: SerializeContext,
@@ -67,6 +128,32 @@ function serializeElement(el: Element, ctx: SerializeContext): ElementNode {
     attributes[attr.name] = attr.value
   }
   const tagName = el.tagName.toLowerCase()
+  const baseURI = el.baseURI || el.ownerDocument?.baseURI || ""
+  if (baseURI) {
+    const urlAttrs = URL_ATTRS_BY_TAG[tagName]
+    if (urlAttrs) {
+      for (const attr of urlAttrs) {
+        const v = attributes[attr]
+        if (typeof v === "string") attributes[attr] = absolutizeUrl(v, baseURI)
+      }
+    }
+    if (typeof attributes.srcset === "string") {
+      attributes.srcset = absolutizeSrcset(attributes.srcset, baseURI)
+    }
+    if (typeof attributes["xlink:href"] === "string") {
+      attributes["xlink:href"] = absolutizeUrl(attributes["xlink:href"] as string, baseURI)
+    }
+  }
+  if (tagName === "style") {
+    const cssText = tryReadCssText(el)
+    if (cssText) attributes._cssText = cssText
+  } else if (tagName === "link") {
+    const rel = typeof attributes.rel === "string" ? (attributes.rel as string).toLowerCase() : ""
+    if (rel.includes("stylesheet")) {
+      const cssText = tryReadCssText(el)
+      if (cssText) attributes._cssText = cssText
+    }
+  }
   if (tagName === "input" || tagName === "textarea" || tagName === "select") {
     // Prefer the live DOM value over the HTML attribute (which reflects only
     // `defaultValue`). Ensures pre-typed content captures correctly in the

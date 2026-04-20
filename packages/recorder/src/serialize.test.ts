@@ -68,4 +68,107 @@ describe("serializeNodeWithChildren", () => {
       expect(childTags).toEqual(["p"])
     })
   })
+
+  test("extracts cssText from <style> sheet into _cssText attribute", () => {
+    withDOM(`<style>.foo { color: red; }</style>`, (doc) => {
+      const el = doc.querySelector("style") as HTMLStyleElement
+      const node = serializeNodeWithChildren(el, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      expect(typeof node.attributes._cssText).toBe("string")
+      expect(node.attributes._cssText as string).toContain(".foo")
+      expect(node.attributes._cssText as string).toContain("color: red")
+    })
+  })
+
+  test("tolerates cross-origin <style> sheet access errors", () => {
+    withDOM(`<style>.foo { color: red; }</style>`, (doc) => {
+      const el = doc.querySelector("style") as HTMLStyleElement
+      Object.defineProperty(el, "sheet", {
+        get() {
+          throw new Error("SecurityError: cross-origin")
+        },
+      })
+      const node = serializeNodeWithChildren(el, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      expect(node.tagName).toBe("style")
+      expect(node.attributes._cssText).toBeUndefined()
+    })
+  })
+
+  test("absolutizes <link rel=stylesheet> href", () => {
+    withDOM(`<link rel=stylesheet href="/style.css">`, (doc) => {
+      const el = doc.querySelector("link") as HTMLLinkElement
+      const node = serializeNodeWithChildren(el, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      expect(node.attributes.href).toBe("http://localhost/style.css")
+    })
+  })
+
+  test("absolutizes <a href>", () => {
+    withDOM(`<a href="/docs">click</a>`, (doc) => {
+      const el = doc.querySelector("a") as HTMLAnchorElement
+      const node = serializeNodeWithChildren(el, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      expect(node.attributes.href).toBe("http://localhost/docs")
+    })
+  })
+
+  test("absolutizes <img src>", () => {
+    withDOM(`<img src="/logo.png">`, (doc) => {
+      const el = doc.querySelector("img") as HTMLImageElement
+      const node = serializeNodeWithChildren(el, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      expect(node.attributes.src).toBe("http://localhost/logo.png")
+    })
+  })
+
+  test("absolutizes each URL in <img srcset>", () => {
+    withDOM(`<img src="/a.png" srcset="/a.png 1x, /b.png 2x">`, (doc) => {
+      const el = doc.querySelector("img") as HTMLImageElement
+      const node = serializeNodeWithChildren(el, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      const srcset = node.attributes.srcset as string
+      expect(srcset).toContain("http://localhost/a.png 1x")
+      expect(srcset).toContain("http://localhost/b.png 2x")
+    })
+  })
+
+  test("leaves already-absolute URLs untouched", () => {
+    withDOM(`<a href="https://example.com/docs">x</a>`, (doc) => {
+      const el = doc.querySelector("a") as HTMLAnchorElement
+      const node = serializeNodeWithChildren(el, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      expect(node.attributes.href).toBe("https://example.com/docs")
+    })
+  })
+
+  test("does not absolutize hash-only or javascript: hrefs", () => {
+    withDOM(`<a href="#section">x</a><a href="javascript:void(0)">y</a>`, (doc) => {
+      const anchors = Array.from(doc.querySelectorAll("a")) as HTMLAnchorElement[]
+      const first = serializeNodeWithChildren(anchors[0]!, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      const second = serializeNodeWithChildren(anchors[1]!, {
+        mirror: new Mirror(),
+        mask: createMask({ masking: "moderate" }),
+      }) as ElementNode
+      expect(first.attributes.href).toBe("#section")
+      expect(second.attributes.href).toBe("javascript:void(0)")
+    })
+  })
 })
