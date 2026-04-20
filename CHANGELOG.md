@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.10
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.9...v0.1.10)
+
+### 🚀 Enhancements
+
+- **dashboard:** Disconnect GitHub App from settings ([63b1b98](https://github.com/Ripwords/reprojs/commit/63b1b98))
+
+### 🩹 Fixes
+
+- **ci:** Provide ENCRYPTION_KEY to dashboard test job ([43e240d](https://github.com/Ripwords/reprojs/commit/43e240d))
+- **github:** Manifest sets public:true + emails:read for sign-in ([380c62b](https://github.com/Ripwords/reprojs/commit/380c62b))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.9
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.8...v0.1.9)
