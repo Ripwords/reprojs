@@ -2,6 +2,8 @@
 import type { ProjectDTO } from "@reprojs/shared"
 import AppEmptyState from "~/components/common/app-empty-state.vue"
 
+useHead({ title: "Projects" })
+
 const toast = useToast()
 const route = useRoute()
 const router = useRouter()

@@ -7,6 +7,8 @@ const route = useRoute()
 const projectId = computed(() => String(route.params.id))
 
 const { data: project } = await useApi<ProjectDTO>(`/api/projects/${projectId.value}`)
+
+useHead({ title: () => project.value?.name ?? "Project" })
 const { data: overview } = await useApi<ProjectOverviewDTO>(
   `/api/projects/${projectId.value}/overview`,
 )

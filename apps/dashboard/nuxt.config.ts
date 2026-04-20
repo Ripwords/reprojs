@@ -28,6 +28,8 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
+      title: "Repro",
+      titleTemplate: "%s · Repro",
       link: [
         {
           rel: "icon",

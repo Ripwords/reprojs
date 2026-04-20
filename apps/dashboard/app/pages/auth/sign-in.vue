@@ -2,6 +2,7 @@
 import type { AuthProviderStatus } from "~~/server/lib/auth-providers"
 
 definePageMeta({ layout: "auth" })
+useHead({ title: "Sign in" })
 
 const { session, signIn } = useSession()
 const router = useRouter()

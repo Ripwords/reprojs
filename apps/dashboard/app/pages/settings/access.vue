@@ -2,6 +2,7 @@
 import type { AppSettingsDTO } from "@reprojs/shared"
 
 definePageMeta({ middleware: "admin-only" })
+useHead({ title: "Access" })
 
 const toast = useToast()
 const runtimeConfig = useRuntimeConfig()

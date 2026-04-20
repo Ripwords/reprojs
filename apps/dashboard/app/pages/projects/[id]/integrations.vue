@@ -3,6 +3,8 @@ import GithubPanel from "~/components/integrations/github/github-panel.vue"
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))
+
+useHead({ title: "Integrations" })
 </script>
 
 <template>

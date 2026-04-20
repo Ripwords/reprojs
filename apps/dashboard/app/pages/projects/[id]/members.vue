@@ -20,6 +20,8 @@ const {
   refresh,
 } = await useApi<ProjectMemberDTO[]>(`/api/projects/${projectId.value}/members`)
 
+useHead({ title: () => (project.value?.name ? `${project.value.name} · Members` : "Members") })
+
 const membersList = computed<ProjectMemberDTO[]>(() => members.value ?? [])
 const isOwner = computed(() => project.value?.effectiveRole === "owner")
 

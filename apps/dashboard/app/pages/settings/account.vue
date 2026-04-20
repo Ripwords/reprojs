@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
 
+useHead({ title: "Account" })
+
 const { user, role: sessionRole, signOut } = useSession()
 const toast = useToast()
 const { confirm } = useConfirm()

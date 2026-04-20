@@ -1,5 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ middleware: "admin-only" })
+useHead({ title: "GitHub App" })
 
 const route = useRoute()
 // Resolved at request time so the webhook URL shown in the instructions —

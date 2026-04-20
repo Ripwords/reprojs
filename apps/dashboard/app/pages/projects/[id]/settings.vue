@@ -16,6 +16,10 @@ const projectId = computed(() => String(route.params.id))
 
 const { data: project, refresh } = await useApi<ProjectDTO>(`/api/projects/${projectId.value}`)
 
+useHead({
+  title: () => (project.value?.name ? `${project.value.name} · Settings` : "Project settings"),
+})
+
 const isOwner = computed(() => project.value?.effectiveRole === "owner")
 
 // Local form state — seeded from the fetched project.

@@ -21,6 +21,8 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const projectId = computed(() => route.params.id as string)
+
+useHead({ title: "Reports" })
 const { session } = useSession()
 const sessionUserId = computed(() => session.value?.data?.user?.id ?? "")
 

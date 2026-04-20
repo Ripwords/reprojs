@@ -4,6 +4,7 @@ import type { TableColumn } from "@nuxt/ui"
 import type { InstallRole, UserDTO, UserStatus } from "@reprojs/shared"
 
 definePageMeta({ middleware: "admin-only" })
+useHead({ title: "Users" })
 
 const UAvatar = resolveComponent("UAvatar")
 const UBadge = resolveComponent("UBadge")

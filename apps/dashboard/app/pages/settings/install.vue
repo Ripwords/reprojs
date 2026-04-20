@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue"
 
 definePageMeta({ middleware: "admin-only" })
+useHead({ title: "Install SDK" })
 
 const toast = useToast()
 
