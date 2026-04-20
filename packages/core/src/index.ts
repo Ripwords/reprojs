@@ -46,7 +46,7 @@ export function init(options: InitOptions): FeedbackHandle {
   const collectors = _collectors
   mount({
     config: { position: cfg.position, launcher: cfg.launcher },
-    capture,
+    capture: () => capture({ excludeSelectors: cfg.screenshot?.excludeSelectors }),
     onSubmit: async ({ title, description, screenshot, dwellMs, honeypot }) => {
       if (!_config || !_collectors) return { ok: false, message: "Not initialized" }
       const snap = _collectors.snapshotAll()

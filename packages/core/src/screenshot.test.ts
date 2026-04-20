@@ -71,4 +71,32 @@ describe("capture", () => {
     host.remove()
     unrelated.remove()
   })
+
+  test("filter excludes <nextjs-portal> by default", async () => {
+    // Next.js dev overlay attaches an open shadow root with deeply nested
+    // dev panels; modern-screenshot recurses into open shadow roots and
+    // stalls on the overlay's resource inlining.
+    const portal = document.createElement("nextjs-portal")
+    document.body.appendChild(portal)
+    await capture()
+    expect(lastOptions?.filter?.(portal)).toBe(false)
+    portal.remove()
+  })
+
+  test("filter excludes user-provided selectors", async () => {
+    const intercom = document.createElement("div")
+    intercom.className = "intercom-launcher"
+    document.body.appendChild(intercom)
+    const keep = document.createElement("div")
+    keep.className = "intercom-fake"
+    document.body.appendChild(keep)
+
+    await capture({ excludeSelectors: [".intercom-launcher"] })
+
+    expect(lastOptions?.filter?.(intercom)).toBe(false)
+    expect(lastOptions?.filter?.(keep)).toBe(true)
+
+    intercom.remove()
+    keep.remove()
+  })
 })

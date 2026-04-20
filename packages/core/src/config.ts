@@ -8,6 +8,14 @@ export interface ReplayInitConfig {
   maxBytes?: number
 }
 
+export interface ScreenshotConfig {
+  // CSS selectors for elements to omit from the screenshot in addition to
+  // the widget itself and known-bad overlays (e.g. <nextjs-portal>).
+  // Pass selectors for any third-party widgets that stall modern-screenshot:
+  // Vercel toolbar, Intercom, Storybook addons, hot-reload portals, etc.
+  excludeSelectors?: string[]
+}
+
 export interface InitOptions {
   projectKey: string
   endpoint: string
@@ -16,6 +24,7 @@ export interface InitOptions {
   metadata?: Record<string, string | number | boolean>
   collectors?: CollectorConfig
   replay?: ReplayInitConfig
+  screenshot?: ScreenshotConfig
 }
 
 export interface ResolvedConfig {
@@ -25,6 +34,7 @@ export interface ResolvedConfig {
   launcher: boolean
   metadata: Record<string, string | number | boolean> | undefined
   replay: ReplayInitConfig | undefined
+  screenshot: ScreenshotConfig | undefined
 }
 
 const KEY_RE = /^rp_pk_[A-Za-z0-9]{24}$/
@@ -48,5 +58,6 @@ export function resolveConfig(opts: InitOptions): ResolvedConfig {
     launcher: opts.launcher ?? true,
     metadata: opts.metadata,
     replay: opts.replay,
+    screenshot: opts.screenshot,
   }
 }
