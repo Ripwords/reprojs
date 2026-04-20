@@ -87,6 +87,11 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-at-least-32-bytes-long-xxxxx
       BETTER_AUTH_URL: http://localhost:3000
       ATTACHMENT_URL_SECRET: ci-test-secret-at-least-32-bytes-long-xxxxx
+      # Required by encryption.ts (base64-decoded, HKDF-derived) so the
+      # oauth-credentials tests can encrypt a seed row's client_secret
+      # against the same key the dev server uses to decrypt on read.
+      # Dummy, not a real secret.
+      ENCRYPTION_KEY: Y2ktdGVzdC1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcy0xMjM0NQ==
       MAIL_PROVIDER: console
       NODE_ENV: test
       # Dummy GitHub App credentials — must match the fallback values in
