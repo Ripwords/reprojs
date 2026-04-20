@@ -37,7 +37,8 @@
     "release": "bun run prerelease && bun run changelog",
     "release:minor": "bun run prerelease && bun run changelog -- --minor",
     "release:major": "bun run prerelease && bun run changelog -- --major",
-    "postrelease": "git push --follow-tags"
+    "postrelease": "git push --follow-tags",
+    "release:sdk": "bash ./scripts/release-sdk.sh"
   },
   "devDependencies": {
     "@types/bun": "^1.3.12",
