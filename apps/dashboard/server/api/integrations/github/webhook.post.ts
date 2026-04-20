@@ -6,6 +6,7 @@ import { db } from "../../../db"
 import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
 import { env } from "../../../lib/env"
 import { getWebhookSecret } from "../../../lib/github"
+import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
 
 interface IssuesPayload {
   action: "opened" | "closed" | "reopened" | "edited" | "deleted" | string
@@ -63,9 +64,11 @@ export default defineEventHandler(async (event) => {
         .update(githubIntegrations)
         .set({ status: "disconnected", updatedAt: new Date() })
         .where(eq(githubIntegrations.installationId, p.installation.id))
+      invalidateInstallationRepos(p.installation.id)
     }
   } else if (kind === "installation_repositories") {
     const p = payload as InstallationReposPayload
+    invalidateInstallationRepos(p.installation.id)
     if (p.action === "removed" && p.repositories_removed?.length) {
       const removedNames = new Set(p.repositories_removed.map((r) => r.full_name))
       const rows = await db

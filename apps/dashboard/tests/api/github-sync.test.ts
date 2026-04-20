@@ -199,6 +199,21 @@ describe("github integration — install + config", () => {
     expect(body.installed).toBe(false)
   })
 
+  test("GET repositories 409s when integration is not connected", async () => {
+    const owner = await createUser("owner@example.com", "admin")
+    const pid = await seedProject({
+      name: "g",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: owner,
+    })
+    const cookie = await signIn("owner@example.com")
+    const res = await apiFetch(`/api/projects/${pid}/integrations/github/repositories`, {
+      headers: { cookie },
+    })
+    expect(res.status).toBe(409)
+  })
+
   test("viewer cannot PATCH or disconnect", async () => {
     const owner = await createUser("owner@example.com", "admin")
     const viewer = await createUser("viewer@example.com", "member")
