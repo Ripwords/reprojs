@@ -123,11 +123,4 @@ export default defineNuxtConfig({
       },
     },
   },
-  runtimeConfig: {
-    public: {
-      betterAuthUrl: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
-      hasGithubOAuth: !!process.env.GITHUB_CLIENT_ID,
-      hasGoogleOAuth: !!process.env.GOOGLE_CLIENT_ID,
-    },
-  },
 })

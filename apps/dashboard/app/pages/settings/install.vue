@@ -4,12 +4,12 @@ import { computed, onMounted, ref } from "vue"
 definePageMeta({ middleware: "admin-only" })
 
 const toast = useToast()
-const runtimeConfig = useRuntimeConfig()
 
-// SDK embed origin falls back to the dashboard URL — that's where the SDK
-// bundle is served from and where the intake API lives. Operators can swap
-// this by pointing `BETTER_AUTH_URL` at their public dashboard hostname.
-const SDK_ORIGIN = runtimeConfig.public.betterAuthUrl || "https://your-dashboard.example.com"
+// SDK embed origin = the URL the operator is currently viewing. `useRequestURL()`
+// resolves at request time (SSR → Host header via reverse proxy; client →
+// `window.location.origin`) so the copy-paste snippet always matches the
+// dashboard's real public hostname, without depending on a build-time env var.
+const SDK_ORIGIN = useRequestURL().origin
 const PROJECT_KEY_EXAMPLE = "rp_pk_xxxxxxxxxxxxxxxxxxxxxxxx"
 
 // Lazy-load shiki once. Cache the highlighter across tab switches so the

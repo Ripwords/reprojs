@@ -13,10 +13,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const projectId = match[1]
   if (!projectId) return
 
-  const config = useRuntimeConfig()
   try {
     await $fetch(`/api/projects/${projectId}`, {
-      baseURL: config.public.betterAuthUrl,
       credentials: "include",
       headers: import.meta.server ? useRequestHeaders(["cookie"]) : undefined,
     })

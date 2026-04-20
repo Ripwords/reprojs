@@ -48,7 +48,6 @@ async function createProject() {
   try {
     await $fetch<ProjectDTO>("/api/projects", {
       method: "POST",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
       body: { name: newName.value.trim() },
     })

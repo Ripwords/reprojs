@@ -2,7 +2,11 @@
 definePageMeta({ middleware: "admin-only" })
 
 const route = useRoute()
-const runtimeConfig = useRuntimeConfig()
+// Resolved at request time so the webhook URL shown in the instructions —
+// and the manifest-start redirect — always match the hostname operators are
+// viewing, even on pre-built Docker images where BETTER_AUTH_URL wasn't set
+// at build time.
+const dashboardUrl = useRequestURL().origin
 
 interface AppStatus {
   configured: boolean
@@ -20,11 +24,10 @@ const creating = ref(false)
 
 function startManifestFlow() {
   creating.value = true
-  const base = runtimeConfig.public.betterAuthUrl ?? ""
   const org = orgInput.value.trim()
   const url = org
-    ? `${base}/api/integrations/github/manifest-start?org=${encodeURIComponent(org)}`
-    : `${base}/api/integrations/github/manifest-start`
+    ? `${dashboardUrl}/api/integrations/github/manifest-start?org=${encodeURIComponent(org)}`
+    : `${dashboardUrl}/api/integrations/github/manifest-start`
   window.location.href = url
 }
 
@@ -150,7 +153,7 @@ const githubAppPublicUrl = computed(() => {
           <li>
             Set the URL to
             <code class="font-mono px-1 rounded bg-muted">
-              {{ runtimeConfig.public.betterAuthUrl }}/api/integrations/github/webhook
+              {{ dashboardUrl }}/api/integrations/github/webhook
             </code>
           </li>
           <li>Check <strong>Active</strong> and click <strong>Save changes</strong>.</li>

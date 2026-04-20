@@ -7,8 +7,11 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const { confirm } = useConfirm()
-const runtime = useRuntimeConfig()
-const dashboardUrl = runtime.public.betterAuthUrl
+// Dashboard origin for the embed-snippet display. `useRequestURL()` resolves
+// at request time: SSR reads the external Host header (via the reverse
+// proxy), client reads `window.location.origin` — so the snippet shown to
+// operators always matches the URL they're actually viewing.
+const dashboardUrl = useRequestURL().origin
 const projectId = computed(() => String(route.params.id))
 
 const { data: project, refresh } = await useApi<ProjectDTO>(`/api/projects/${projectId.value}`)
@@ -51,7 +54,6 @@ async function saveGeneral() {
   try {
     await $fetch(`/api/projects/${projectId.value}`, {
       method: "PATCH",
-      baseURL: dashboardUrl,
       credentials: "include",
       body: {
         name: generalForm.value.name,
@@ -78,7 +80,6 @@ async function updateReplayEnabled(enabled: boolean) {
   try {
     await $fetch(`/api/projects/${projectId.value}`, {
       method: "PATCH",
-      baseURL: dashboardUrl,
       credentials: "include",
       body: { replayEnabled: enabled },
     })
@@ -110,7 +111,6 @@ async function rotateKey() {
   try {
     await $fetch(`/api/projects/${projectId.value}/rotate-key`, {
       method: "POST",
-      baseURL: dashboardUrl,
       credentials: "include",
     })
     toast.add({ title: "Key rotated", color: "success", icon: "i-heroicons-check-circle" })
@@ -147,7 +147,6 @@ async function confirmDelete() {
   try {
     await $fetch(`/api/projects/${projectId.value}`, {
       method: "DELETE",
-      baseURL: dashboardUrl,
       credentials: "include",
     })
     toast.add({ title: "Project deleted", color: "success", icon: "i-heroicons-check-circle" })

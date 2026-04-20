@@ -24,7 +24,6 @@ async function signOutOtherSessions() {
   try {
     await $fetch("/api/auth/revoke-other-sessions", {
       method: "POST",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
     })
     toast.add({

@@ -40,7 +40,6 @@ async function sendInvite() {
   try {
     await $fetch("/api/users", {
       method: "POST",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
       body: { email: inviteEmail.value, role: inviteRole.value },
     })
@@ -65,7 +64,6 @@ async function updateRole(userId: string, next: InstallRole) {
   try {
     await $fetch(`/api/users/${userId}`, {
       method: "PATCH",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
       body: { role: next },
     })
@@ -85,7 +83,6 @@ async function setStatus(userId: string, status: UserStatus) {
   try {
     await $fetch(`/api/users/${userId}`, {
       method: "PATCH",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
       body: { status },
     })

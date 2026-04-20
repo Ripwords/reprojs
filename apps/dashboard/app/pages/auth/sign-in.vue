@@ -1,11 +1,20 @@
 <script setup lang="ts">
+import type { AuthProviderStatus } from "~~/server/lib/auth-providers"
+
 definePageMeta({ layout: "auth" })
 
 const { session, signIn } = useSession()
-const config = useRuntimeConfig()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+
+// Which OAuth providers are enabled is read at request time from the server
+// rather than a build-time-baked runtime config — that way, setting
+// GITHUB_CLIENT_ID / GOOGLE_CLIENT_ID on a pre-built Docker image at
+// container start correctly shows the buttons without a rebuild.
+const { data: providers } = await useFetch<AuthProviderStatus>("/api/auth/providers", {
+  default: () => ({ github: false, google: false }),
+})
 
 // If already signed in, bounce to the projects index.
 watchEffect(() => {
@@ -70,7 +79,7 @@ async function oauth(provider: "github" | "google") {
   }
 }
 
-const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.hasGoogleOAuth)
+const hasOAuth = computed(() => providers.value.github || providers.value.google)
 </script>
 
 <template>
@@ -152,7 +161,7 @@ const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.ha
 
           <div class="space-y-2">
             <UButton
-              v-if="config.public.hasGithubOAuth"
+              v-if="providers.github"
               label="Continue with GitHub"
               icon="i-simple-icons-github"
               color="neutral"
@@ -162,7 +171,7 @@ const hasOAuth = computed(() => config.public.hasGithubOAuth || config.public.ha
               @click="oauth('github')"
             />
             <UButton
-              v-if="config.public.hasGoogleOAuth"
+              v-if="providers.google"
               label="Continue with Google"
               icon="i-simple-icons-google"
               color="neutral"

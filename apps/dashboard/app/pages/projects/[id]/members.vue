@@ -40,7 +40,6 @@ async function sendInvite() {
   try {
     await $fetch(`/api/projects/${projectId.value}/members`, {
       method: "POST",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
       body: { email: inviteEmail.value, role: inviteRole.value },
     })
@@ -65,7 +64,6 @@ async function updateRole(userId: string, next: ProjectRole) {
   try {
     await $fetch(`/api/projects/${projectId.value}/members/${userId}`, {
       method: "PATCH",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
       body: { role: next },
     })
@@ -85,7 +83,6 @@ async function removeMember(userId: string) {
   try {
     await $fetch(`/api/projects/${projectId.value}/members/${userId}`, {
       method: "DELETE",
-      baseURL: useRuntimeConfig().public.betterAuthUrl,
       credentials: "include",
     })
     toast.add({ title: "Member removed", color: "success", icon: "i-heroicons-check-circle" })

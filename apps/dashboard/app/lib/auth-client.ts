@@ -7,18 +7,24 @@ import { magicLinkClient } from "better-auth/client/plugins"
 // infer the full shape — including signIn.magicLink — through `AuthClient`.
 function makeClient() {
   return createAuthClient({
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
+    baseURL: useRequestURL().origin,
     plugins: [magicLinkClient()],
   })
 }
 
 type AuthClient = ReturnType<typeof makeClient>
 
-let _client: AuthClient | null = null
+// Client-side singleton: `window.location.origin` is stable for the life of
+// the page, so caching is safe and cheap. On SSR we intentionally skip the
+// cache — a module-level singleton would capture the FIRST request's origin
+// and then serve a wrong baseURL for subsequent requests hitting the same
+// process from a different hostname (self-hosters occasionally front the
+// dashboard with multiple domains).
+let _clientCache: AuthClient | null = null
 
 export function useAuthClient(): AuthClient {
-  if (!_client) {
-    _client = makeClient()
-  }
-  return _client
+  if (import.meta.client && _clientCache) return _clientCache
+  const client = makeClient()
+  if (import.meta.client) _clientCache = client
+  return client
 }

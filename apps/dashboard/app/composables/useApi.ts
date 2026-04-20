@@ -4,11 +4,11 @@
  * and client navigation alike.
  *
  * SAME-ORIGIN ASSUMPTION:
- * `credentials: "include"` combined with a `baseURL` pointing at
- * `public.betterAuthUrl` assumes the dashboard UI and the API are served from
- * the SAME origin (the default self-host topology). If an operator splits
- * origins (e.g. `dashboard.example.com` for the UI and `auth.example.com` for
- * the API), the browser requires the API origin to respond with:
+ * `credentials: "include"` on a relative URL assumes the dashboard UI and the
+ * API are served from the SAME origin (the default self-host topology). If an
+ * operator splits origins (e.g. `dashboard.example.com` for the UI and
+ * `auth.example.com` for the API), the browser requires the API origin to
+ * respond with:
  *   - Access-Control-Allow-Credentials: true
  *   - Access-Control-Allow-Origin: <the exact dashboard origin> (never `*`)
  * The dashboard does NOT emit those headers today — the intake API emits CORS
@@ -24,8 +24,11 @@ export const useApi = <T>(
   // caller's session. Without this, protected endpoints return 401 on SSR
   // and the page hydrates in a broken state.
   const headers = import.meta.server ? useRequestHeaders(["cookie"]) : undefined
+  // No baseURL: relative URLs resolve in-process on SSR (Nitro short-circuits
+  // the HTTP hop) and against `window.location.origin` on client. Previously
+  // read a public runtimeConfig value that was baked at build time, which
+  // broke on pre-built Docker images where BETTER_AUTH_URL wasn't set.
   return useFetch<T>(path, {
-    baseURL: useRuntimeConfig().public.betterAuthUrl,
     credentials: "include",
     headers,
     ...opts,

@@ -58,7 +58,6 @@ async function save() {
   try {
     await $fetch("/api/settings", {
       method: "PATCH",
-      baseURL: runtimeConfig.public.betterAuthUrl,
       credentials: "include",
       body: {
         signupGated: signupGated.value,
