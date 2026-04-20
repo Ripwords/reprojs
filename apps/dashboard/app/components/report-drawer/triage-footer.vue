@@ -170,6 +170,12 @@ const assigneeItems = computed(() => [
     value: m.userId,
   })),
 ])
+
+const open = reactive({
+  properties: true,
+  tags: true,
+  github: true,
+})
 </script>
 
 <template>
@@ -178,8 +184,20 @@ const assigneeItems = computed(() => [
          label / select pairs with breathing room. Grouped under one
          "Properties" umbrella rather than three floating sections. -->
     <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Properties</h3>
-      <div class="space-y-3">
+      <button
+        type="button"
+        class="flex w-full items-center justify-between gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        :aria-expanded="open.properties"
+        @click="open.properties = !open.properties"
+      >
+        <span>Properties</span>
+        <UIcon
+          name="i-heroicons-chevron-down"
+          class="size-4 transition-transform"
+          :class="open.properties ? '' : '-rotate-90'"
+        />
+      </button>
+      <div v-show="open.properties" class="space-y-3">
         <div class="flex items-center gap-3">
           <label class="w-20 shrink-0 text-xs font-medium text-muted">Status</label>
           <USelectMenu
@@ -221,8 +239,20 @@ const assigneeItems = computed(() => [
     <!-- Tags — proper chips with hashtag + dismiss, input lives in the
          same row so the editor feels contiguous with the tag pile. -->
     <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Tags</h3>
-      <div class="flex flex-wrap gap-1.5 items-center">
+      <button
+        type="button"
+        class="flex w-full items-center justify-between gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        :aria-expanded="open.tags"
+        @click="open.tags = !open.tags"
+      >
+        <span>Tags</span>
+        <UIcon
+          name="i-heroicons-chevron-down"
+          class="size-4 transition-transform"
+          :class="open.tags ? '' : '-rotate-90'"
+        />
+      </button>
+      <div v-show="open.tags" class="flex flex-wrap gap-1.5 items-center">
         <span
           v-for="t in report.tags"
           :key="t"
@@ -260,75 +290,92 @@ const assigneeItems = computed(() => [
          border+bg instead of a bare link so it reads as "record" rather
          than "inline text". -->
     <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">GitHub</h3>
-      <template v-if="report.githubIssueNumber && report.githubIssueUrl">
-        <a
-          :href="safeHref(report.githubIssueUrl)"
-          target="_blank"
-          rel="noopener"
-          class="group flex items-center gap-2 rounded-lg border border-default bg-elevated/40 px-3 py-2 text-sm transition-colors hover:border-primary/30 hover:bg-elevated/80"
-        >
-          <UIcon name="i-simple-icons-github" class="size-4 text-default" />
-          <span class="flex-1 min-w-0 truncate">
-            <span class="text-muted">{{ ghRepoFullName(report.githubIssueUrl) }}</span>
-            <span class="mx-1 text-muted">·</span>
-            <span class="text-default font-medium">#{{ report.githubIssueNumber }}</span>
-          </span>
-          <UIcon
-            name="i-heroicons-arrow-top-right-on-square"
-            class="size-3.5 text-muted transition-colors group-hover:text-primary"
-          />
-        </a>
-        <UButton
-          v-if="canEdit"
-          size="sm"
-          color="neutral"
-          variant="ghost"
-          label="Unlink issue"
-          icon="i-heroicons-link-slash"
-          class="mt-2"
-          block
-          @click="unlinkOpen = true"
+      <button
+        type="button"
+        class="flex w-full items-center justify-between gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        :aria-expanded="open.github"
+        @click="open.github = !open.github"
+      >
+        <span>GitHub</span>
+        <UIcon
+          name="i-heroicons-chevron-down"
+          class="size-4 transition-transform"
+          :class="open.github ? '' : '-rotate-90'"
         />
-      </template>
-      <!-- Three states for the unlinked case:
+      </button>
+      <div v-show="open.github">
+        <template v-if="report.githubIssueNumber && report.githubIssueUrl">
+          <a
+            :href="safeHref(report.githubIssueUrl)"
+            target="_blank"
+            rel="noopener"
+            class="group flex items-center gap-2 rounded-lg border border-default bg-elevated/40 px-3 py-2 text-sm transition-colors hover:border-primary/30 hover:bg-elevated/80"
+          >
+            <UIcon name="i-simple-icons-github" class="size-4 text-default" />
+            <span class="flex-1 min-w-0 truncate">
+              <span class="text-muted">{{ ghRepoFullName(report.githubIssueUrl) }}</span>
+              <span class="mx-1 text-muted">·</span>
+              <span class="text-default font-medium">#{{ report.githubIssueNumber }}</span>
+            </span>
+            <UIcon
+              name="i-heroicons-arrow-top-right-on-square"
+              class="size-3.5 text-muted transition-colors group-hover:text-primary"
+            />
+          </a>
+          <UButton
+            v-if="canEdit"
+            size="sm"
+            color="neutral"
+            variant="ghost"
+            label="Unlink issue"
+            icon="i-heroicons-link-slash"
+            class="mt-2"
+            block
+            @click="unlinkOpen = true"
+          />
+        </template>
+        <!-- Three states for the unlinked case:
            1. Integration ready → "Create GitHub issue" (primary action)
            2. Integration missing / disconnected but viewer can edit →
               soft prompt with a link to the integrations page
            3. Viewer-only (no edit rights) → italic "Not linked" -->
-      <UButton
-        v-else-if="canEdit && githubReady"
-        size="md"
-        color="neutral"
-        variant="outline"
-        icon="i-simple-icons-github"
-        :loading="ghSubmitting"
-        :label="ghSubmitting ? 'Creating…' : 'Create GitHub issue'"
-        block
-        @click="createIssue"
-      />
-      <div
-        v-else-if="canEdit"
-        class="rounded-lg border border-dashed border-default bg-elevated/40 p-3 space-y-2"
-      >
-        <div class="flex items-start gap-2">
-          <UIcon name="i-heroicons-information-circle" class="size-4 text-muted shrink-0 mt-0.5" />
-          <p class="text-sm text-muted leading-relaxed">
-            Connect the GitHub App to this project to sync reports as issues.
-          </p>
-        </div>
         <UButton
-          :to="`/projects/${projectId}/integrations`"
-          size="sm"
+          v-else-if="canEdit && githubReady"
+          size="md"
           color="neutral"
           variant="outline"
           icon="i-simple-icons-github"
-          label="Set up GitHub integration"
-          trailing-icon="i-heroicons-arrow-right"
+          :loading="ghSubmitting"
+          :label="ghSubmitting ? 'Creating…' : 'Create GitHub issue'"
           block
+          @click="createIssue"
         />
+        <div
+          v-else-if="canEdit"
+          class="rounded-lg border border-dashed border-default bg-elevated/40 p-3 space-y-2"
+        >
+          <div class="flex items-start gap-2">
+            <UIcon
+              name="i-heroicons-information-circle"
+              class="size-4 text-muted shrink-0 mt-0.5"
+            />
+            <p class="text-sm text-muted leading-relaxed">
+              Connect the GitHub App to this project to sync reports as issues.
+            </p>
+          </div>
+          <UButton
+            :to="`/projects/${projectId}/integrations`"
+            size="sm"
+            color="neutral"
+            variant="outline"
+            icon="i-simple-icons-github"
+            label="Set up GitHub integration"
+            trailing-icon="i-heroicons-arrow-right"
+            block
+          />
+        </div>
+        <span v-else class="text-sm text-muted italic">Not linked</span>
       </div>
-      <span v-else class="text-sm text-muted italic">Not linked</span>
     </section>
 
     <UnlinkDialog

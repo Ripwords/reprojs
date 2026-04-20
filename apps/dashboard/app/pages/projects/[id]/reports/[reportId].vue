@@ -37,6 +37,8 @@ const {
   watch: [projectId, reportId],
 })
 
+useHead({ title: () => report.value?.title ?? "Report" })
+
 // Role check — viewers see read-only controls in the triage panel. Mirrors the
 // drawer's canEdit wiring.
 const { data: meRole } = useApi<{ role: string }>(() => `/api/projects/${projectId.value}/me`, {
@@ -99,6 +101,8 @@ async function onPatched() {
   await refresh()
   if (activityRef.value) await activityRef.value.refresh()
 }
+
+const triageOpen = ref(false)
 
 // Keyboard shortcuts: 1-8 jump to each tab; Esc navigates back to the inbox.
 function onKey(e: KeyboardEvent) {
@@ -234,12 +238,29 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
 
     <!-- Right triage panel. Distinct surface (elevated bg + left border)
          so it reads as "meta / controls" against the main report content.
-         Scrolls independently so long tag piles don't push GitHub off. -->
-    <aside class="w-80 flex-shrink-0 border-l border-default bg-elevated/40 overflow-y-auto">
-      <div class="p-6">
-        <div class="flex items-center gap-2 mb-5">
-          <UIcon name="i-heroicons-adjustments-horizontal" class="size-4 text-muted" />
-          <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
+         Scrolls independently so long tag piles don't push GitHub off.
+         Collapsible to a 48px rail so reviewers can reclaim horizontal
+         space on narrow windows. -->
+    <aside
+      :class="[
+        'flex-shrink-0 border-l border-default bg-elevated/40 overflow-y-auto transition-[width] duration-200',
+        triageOpen ? 'w-80' : 'w-12',
+      ]"
+    >
+      <div v-if="triageOpen" class="p-6">
+        <div class="flex items-center justify-between gap-2 mb-5">
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-adjustments-horizontal" class="size-4 text-muted" />
+            <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
+          </div>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-chevron-double-right"
+            aria-label="Collapse triage panel"
+            @click="triageOpen = false"
+          />
         </div>
         <TriageFooter
           :project-id="projectId"
@@ -248,6 +269,19 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
           @patched="onPatched"
         />
       </div>
+      <button
+        v-else
+        type="button"
+        class="flex w-full flex-col items-center gap-3 py-4 text-muted hover:text-default transition-colors"
+        aria-label="Expand triage panel"
+        @click="triageOpen = true"
+      >
+        <UIcon name="i-heroicons-chevron-double-left" class="size-4" />
+        <UIcon name="i-heroicons-adjustments-horizontal" class="size-4" />
+        <span class="text-xs font-semibold uppercase tracking-[0.14em] [writing-mode:vertical-rl]">
+          Triage
+        </span>
+      </button>
     </aside>
   </div>
 </template>
