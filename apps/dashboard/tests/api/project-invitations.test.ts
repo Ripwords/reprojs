@@ -205,4 +205,37 @@ describe("project invitations API", () => {
     expect(list.map((i) => i.email).toSorted()).toEqual(["a@example.com", "b@example.com"])
     expect(list.every((i) => i.status === "pending")).toBe(true)
   })
+
+  test("owner can revoke a pending invitation", async () => {
+    await createUser("owner@example.com", "admin")
+    const ownerCookie = await signIn("owner@example.com")
+    const { body: project } = await apiFetch<ProjectDTO>("/api/projects", {
+      method: "POST",
+      headers: { cookie: ownerCookie },
+      body: JSON.stringify({ name: "Test Project" }),
+    })
+    const projectId = (project as ProjectDTO).id
+
+    const { body: created } = await apiFetch<ProjectInvitationDTO>(
+      `/api/projects/${projectId}/invitations`,
+      {
+        method: "POST",
+        headers: { cookie: ownerCookie },
+        body: JSON.stringify({ email: "x@example.com", role: "developer" }),
+      },
+    )
+    const invitationId = (created as ProjectInvitationDTO).id
+
+    const { status } = await apiFetch(`/api/projects/${projectId}/invitations/${invitationId}`, {
+      method: "DELETE",
+      headers: { cookie: ownerCookie },
+    })
+    expect(status).toBe(200)
+
+    const [row] = await db
+      .select()
+      .from(projectInvitations)
+      .where(eq(projectInvitations.id, invitationId))
+    expect(row?.status).toBe("revoked")
+  })
 })
