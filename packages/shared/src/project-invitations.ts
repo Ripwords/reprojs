@@ -30,7 +30,7 @@ export const InvitationDetailDTO = z.object({
   role: ProjectRole,
   email: z.email(),
   inviterName: z.string().nullable(),
-  inviterEmail: z.email(),
+  inviterEmail: z.email().nullable(),
   expiresAt: z.string(),
 })
 export type InvitationDetailDTO = z.infer<typeof InvitationDetailDTO>
