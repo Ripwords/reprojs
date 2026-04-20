@@ -56,6 +56,12 @@ COPY --from=build --chown=repro:repro /repo/apps/dashboard/server/db ./server/db
 # Email templates read via fs.readFile at runtime — Nuxt doesn't bundle them.
 COPY --from=build --chown=repro:repro /repo/apps/dashboard/server/emails ./server/emails
 
+# Pre-create the local-disk attachments root owned by `repro`. Docker seeds a
+# newly-initialized named volume with the image directory's ownership, so
+# fresh deployments inherit the correct UID and the non-root server can
+# write without a privileged sidecar.
+RUN mkdir -p /data/attachments && chown -R repro:repro /data
+
 # drizzle-kit standalone (for the migrator command); tiny, ~30MB with its deps
 RUN bun add --cwd /app drizzle-kit@latest drizzle-orm pg
 
