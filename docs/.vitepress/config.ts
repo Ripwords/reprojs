@@ -73,7 +73,8 @@ export default defineConfig({
     search: { provider: "local" },
 
     footer: {
-      message: "Released under the MIT License.",
+      message:
+        'Released under the MIT License. · <a href="/reprojs/privacy">Privacy policy</a>',
       copyright: "Copyright © 2026 JJ Teoh",
     },
   },
