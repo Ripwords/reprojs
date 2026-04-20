@@ -1,7 +1,7 @@
 import { setup } from "@nuxt/test-utils/e2e"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
-import { afterEach, beforeAll, describe, expect, spyOn, test } from "bun:test"
+import { afterEach, beforeAll, describe, expect, test } from "bun:test"
 import { apiFetch, createUser, signIn, truncateDomain, truncateGithubApp } from "../helpers"
 import { db } from "../../server/db"
 import { githubApp } from "../../server/db/schema"
@@ -46,7 +46,7 @@ describe("GET /api/integrations/github/oauth-credentials", () => {
     expect(res.status).toBe(404)
   })
 
-  test("200 with decrypted credentials, Cache-Control: no-store, audit log emitted", async () => {
+  test("200 with decrypted credentials and Cache-Control: no-store", async () => {
     const adminId = await createUser("admin@example.com", "admin")
     await db.insert(githubApp).values({
       id: 1,
@@ -60,14 +60,10 @@ describe("GET /api/integrations/github/oauth-credentials", () => {
       createdBy: adminId,
     })
 
-    const infoSpy = spyOn(console, "info").mockImplementation(() => {})
-
     const cookie = await signIn("admin@example.com")
     const res = await fetch(
       `${process.env.TEST_BASE_URL ?? "http://localhost:3000"}/api/integrations/github/oauth-credentials`,
-      {
-        headers: { cookie },
-      },
+      { headers: { cookie } },
     )
     expect(res.status).toBe(200)
     expect(res.headers.get("cache-control")).toContain("no-store")
@@ -76,16 +72,11 @@ describe("GET /api/integrations/github/oauth-credentials", () => {
     expect(body.clientId).toBe("Iv1.testclientid")
     expect(body.clientSecret).toBe("secret-value-xyz")
 
-    const auditCall = infoSpy.mock.calls.find((c) => {
-      const arg = c[0]
-      return typeof arg === "string" && arg.includes("github_oauth_credential_reveal")
-    })
-    expect(auditCall).toBeDefined()
-    const parsed = JSON.parse(auditCall?.[0] as string)
-    expect(parsed.event).toBe("github_oauth_credential_reveal")
-    expect(parsed.userId).toBe(adminId)
-    expect(typeof parsed.ts).toBe("string")
-
-    infoSpy.mockRestore()
+    // Audit log (`console.info` with event="github_oauth_credential_reveal")
+    // runs in the Nitro server process, not this test process, so a bun `spyOn`
+    // can't intercept it. It's visible in the dev server's stdout and will be
+    // picked up by any log collector the operator runs in production. If we
+    // later want in-test assertions, split the handler into a pure function
+    // that takes a logger dependency and unit-test that function in isolation.
   })
 })
