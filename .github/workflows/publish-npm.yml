@@ -10,15 +10,15 @@ name: Publish npm package
 # releases on independent cadences. Use `bun run release:sdk` to bump
 # packages/core and tag locally (it runs prerelease checks first).
 #
-# Secrets (Settings → Secrets and variables → Actions):
-#   - NPM_TOKEN : automation token scoped to the @reprojs org. Generate at
-#                 https://www.npmjs.com/settings/<you>/tokens with type
-#                 "Automation" (bypasses 2FA for CI).
-#
-# Provenance:
-#   - id-token: write on the publish job lets npm attest that this tarball
-#     came from this repo+workflow+commit, shown as a verified badge on the
-#     package page. Requires the package to be public (it is — publishConfig).
+# Auth — uses npm Trusted Publishing (OIDC), not a token.
+#   - The package's Trusted Publisher config on npmjs.com must match:
+#     repository: Ripwords/reprojs, workflow: publish-npm.yml
+#   - id-token: write on the publish job lets npm validate the OIDC claims
+#     against that config. npm also uses this token to sign the provenance
+#     attestation (sigstore), which shows as a verified badge on the package
+#     page. No NPM_TOKEN secret needed.
+#   - If you ever revert to token-based auth, re-add NODE_AUTH_TOKEN on the
+#     publish step and a matching NPM_TOKEN repo secret.
 
 on:
   push:
@@ -69,7 +69,7 @@ jobs:
     needs: verify
     permissions:
       contents: read
-      id-token: write # required for --provenance
+      id-token: write # required for OIDC auth + provenance attestation
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -107,6 +107,4 @@ jobs:
 
       - name: Publish to npm
         working-directory: packages/core
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public
