@@ -60,7 +60,10 @@ TAG="sdk-v${NEW_VERSION}"
 echo "→ committing chore(release): ${TAG}..."
 git add packages/core/package.json
 git commit -m "chore(release): ${TAG}"
-git tag "$TAG"
+# Annotated tag (-a) so `git push --follow-tags` actually ships it; lightweight
+# tags are skipped by --follow-tags, which silently leaves the publish workflow
+# untriggered until a separate `git push origin <tag>`.
+git tag -a "$TAG" -m "$TAG"
 
 echo ""
 echo "✓ tagged $TAG locally."
