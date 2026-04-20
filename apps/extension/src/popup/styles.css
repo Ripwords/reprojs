@@ -1,0 +1,91 @@
+:root {
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 13px;
+  color: #1f2937;
+  background: #f9fafb;
+}
+body {
+  margin: 0;
+}
+.app {
+  padding: 12px;
+}
+.config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.config-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.config-item .label {
+  font-weight: 600;
+}
+.config-item .origin {
+  color: #6b7280;
+  font-size: 12px;
+  word-break: break-all;
+}
+.btn {
+  font: inherit;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+}
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+.btn.danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.empty {
+  color: #6b7280;
+  text-align: center;
+  padding: 20px 0;
+}
+.error {
+  color: #b91c1c;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.field input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+.form {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 12px;
+}
+h1 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
