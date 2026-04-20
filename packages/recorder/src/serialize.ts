@@ -62,18 +62,20 @@ function absolutizeSrcset(raw: string, baseURI: string): string {
     .join(", ")
 }
 
-function tryReadCssText(el: Element): string | null {
+function tryReadCssText(el: HTMLStyleElement | HTMLLinkElement): string | null {
   try {
-    const sheet = (el as unknown as { sheet?: CSSStyleSheet | null }).sheet
+    const sheet = el.sheet
     if (!sheet) return null
     const rules = sheet.cssRules
     if (!rules || rules.length === 0) return null
     let out = ""
     for (let i = 0; i < rules.length; i++) {
-      out += rules[i]!.cssText
+      const rule = rules[i]
+      if (rule) out += rule.cssText
     }
     return out || null
   } catch {
+    // SecurityError on cross-origin stylesheets without CORS headers.
     return null
   }
 }
@@ -145,12 +147,12 @@ function serializeElement(el: Element, ctx: SerializeContext): ElementNode {
     }
   }
   if (tagName === "style") {
-    const cssText = tryReadCssText(el)
+    const cssText = tryReadCssText(el as HTMLStyleElement)
     if (cssText) attributes._cssText = cssText
   } else if (tagName === "link") {
-    const rel = typeof attributes.rel === "string" ? (attributes.rel as string).toLowerCase() : ""
+    const rel = typeof attributes.rel === "string" ? attributes.rel.toLowerCase() : ""
     if (rel.includes("stylesheet")) {
-      const cssText = tryReadCssText(el)
+      const cssText = tryReadCssText(el as HTMLLinkElement)
       if (cssText) attributes._cssText = cssText
     }
   }
