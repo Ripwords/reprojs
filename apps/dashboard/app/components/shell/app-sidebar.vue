@@ -110,6 +110,7 @@ const adminItems = computed<NavItem[]>(() => {
     { label: "Users", icon: "i-heroicons-users", to: "/settings/users" },
     { label: "Access", icon: "i-heroicons-shield-check", to: "/settings/access" },
     { label: "Install", icon: "i-heroicons-code-bracket", to: "/settings/install" },
+    { label: "GitHub", icon: "i-mdi-github", to: "/settings/github" },
   ]
 })
 
