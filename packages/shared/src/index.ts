@@ -1,4 +1,5 @@
 export * from "./projects"
+export * from "./project-invitations"
 export * from "./users"
 export * from "./settings"
 export * from "./reports"
