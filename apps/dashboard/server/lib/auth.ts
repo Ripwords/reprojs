@@ -4,7 +4,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { magicLink } from "better-auth/plugins/magic-link"
 import { db } from "../db"
-import { appSettings, user } from "../db/schema"
+import { appSettings, session, user } from "../db/schema"
 import { env, getAuthRateLimitEnabled } from "./env"
 import { renderTemplate } from "./render-template"
 import { sendMail } from "./email"
@@ -26,36 +26,28 @@ const AUTH_RATE_WINDOW_SEC = 15 * 60
 
 const strictAuthRule = { window: AUTH_RATE_WINDOW_SEC, max: env.AUTH_RATE_PER_IP_PER_15MIN }
 
-type GateRejection = "domain_not_allowed" | "not_invited"
+/**
+ * Returns true iff the email's domain is on the workspace allowlist, or
+ * the allowlist is empty (no restriction configured). Caller is
+ * responsible for reacting to a `false` result.
+ */
+async function isEmailDomainAllowed(email: string): Promise<boolean> {
+  const [settings] = await db.select().from(appSettings).limit(1)
+  if (!settings || settings.allowedEmailDomains.length === 0) return true
+  const domain = email.toLowerCase().split("@")[1] ?? ""
+  return settings.allowedEmailDomains.includes(domain)
+}
 
 /**
- * Domain-allowlist gate. Called from the after-hook on every OAuth callback
- * and magic-link verify so a workspace that tightens its allowlist after the
- * fact also blocks previously-provisioned users whose domain no longer
- * qualifies. On rejection deletes the just-created user row so an attacker
- * can't race the verify + keep an orphan account that bypassed the gate.
- *
- * The signup-gate (invited-only) is NOT enforced here — see `databaseHooks`
- * below. Enforcing it here previously deleted existing active users on
- * sign-in, because the after-hook runs for returning users too and can't
- * reliably tell "just created" from "already had a row".
+ * Revoke the session better-auth just planted for `userId`. Used on the
+ * "existing user's domain is no longer on the allowlist" path: the user
+ * already has their row + memberships + OAuth linkage provisioned from
+ * before the allowlist tightened, and we must NOT cascade-delete those
+ * assets just because policy changed. Dropping the session row
+ * invalidates the cookie that `setSessionCookie` already sent.
  */
-async function enforceDomainGate(newUser: {
-  id: string
-  email: string
-}): Promise<{ ok: true } | { ok: false; reason: GateRejection }> {
-  const emailLower = newUser.email.toLowerCase()
-  const [settings] = await db.select().from(appSettings).limit(1)
-  if (!settings) return { ok: true }
-
-  if (settings.allowedEmailDomains.length > 0) {
-    const domain = emailLower.split("@")[1] ?? ""
-    if (!settings.allowedEmailDomains.includes(domain)) {
-      await db.delete(user).where(eq(user.id, newUser.id))
-      return { ok: false, reason: "domain_not_allowed" }
-    }
-  }
-  return { ok: true }
+async function revokeJustCreatedSession(userId: string): Promise<void> {
+  await db.delete(session).where(eq(session.userId, userId))
 }
 
 /**
@@ -171,6 +163,21 @@ export const auth = betterAuth({
         // caller, e.g. programmatic auth.api.createUser) so callers still
         // get a clear refusal.
         before: async (newUser, ctx) => {
+          // Domain allowlist: a new sign-up from an off-allowlist domain
+          // is rejected at insert time so no orphan user row is ever
+          // created. Existing users whose domain is now off-list are
+          // handled in the after-hook (see revokeJustCreatedSession).
+          const emailLower = newUser.email.toLowerCase()
+          if (!(await isEmailDomainAllowed(emailLower))) {
+            if (!ctx) throw new APIError("FORBIDDEN", { message: "domain_not_allowed" })
+            const url = new URL(
+              "/auth/sign-in?error=domain_not_allowed",
+              ctx.context.baseURL,
+            ).toString()
+            throw ctx.redirect(url)
+          }
+
+          // Signup gate.
           const [settings] = await db.select().from(appSettings).limit(1)
           if (!settings?.signupGated) return { data: newUser }
           if (!ctx) throw new APIError("FORBIDDEN", { message: "not_invited" })
@@ -206,17 +213,17 @@ export const auth = betterAuth({
       const newUser = newSession?.user
       if (!newUser?.id || !newUser.email) return
 
-      const gate = await enforceDomainGate({ id: newUser.id, email: newUser.email })
-      if (!gate.ok) {
-        // Rewrite the success redirect to the sign-in page with an error code.
-        // Both verify's success and error paths are 302s, so using `ctx.redirect`
-        // keeps status parity and avoids better-auth's toResponse mixing a 403
-        // status onto an existing 302 Location header. The session cookie that
-        // `setSessionCookie` planted earlier is left in place because its
-        // session row was cascade-deleted with the user — `/get-session`
-        // returns null for the stale cookie until the browser replaces it.
+      // Post-hoc domain allowlist tightening: an existing user whose
+      // row was provisioned when their domain was allowed but no longer
+      // qualifies. Revoke the session better-auth just planted (do NOT
+      // delete the user — that was the bug that prompted BLOCKER-1) and
+      // redirect them to the sign-in page with an error. Their data
+      // (memberships, OAuth linkages, ticket assignments) stays intact
+      // so a later allowlist relaxation lets them back in cleanly.
+      if (!(await isEmailDomainAllowed(newUser.email))) {
+        await revokeJustCreatedSession(newUser.id)
         const errorUrl = new URL(
-          `/auth/sign-in?error=${gate.reason}`,
+          "/auth/sign-in?error=domain_not_allowed",
           ctx.context.baseURL,
         ).toString()
         throw ctx.redirect(errorUrl)

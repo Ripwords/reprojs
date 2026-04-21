@@ -266,4 +266,39 @@ describe("magic-link auth", () => {
       expect(sessionUser).toBeFalsy()
     }
   })
+
+  test("domain-allowlist tightening does NOT delete existing active user's row", async () => {
+    // REGRESSION (BLOCKER-1): the old `enforceDomainGate` called
+    // db.delete(user) in the after-hook on every rejection. For a user
+    // who was provisioned when their domain was allowed, a later
+    // allowlist tightening would cascade-delete their user row, session,
+    // oauth account, and orphan their project_members the moment they
+    // next tried to sign in. The fix moves new-user creation into
+    // `create.before` and switches the after-hook's rejection path to
+    // delete the just-planted session (not the user), preserving their
+    // pre-existing data while still denying them the signed-in session.
+    const id = await createUser("stayer@offlist.com")
+    await db.execute(
+      sql`UPDATE app_settings SET allowed_email_domains = ARRAY['allowed.com']::text[] WHERE id = 1`,
+    )
+
+    const sent = await sendMagicLink("stayer@offlist.com")
+    expect(sent.status).toBe(200)
+    const token = await findLatestToken("stayer@offlist.com")
+    expect(token).not.toBeNull()
+
+    const res = await fetch(
+      `${BASE_URL}/api/auth/magic-link/verify?token=${encodeURIComponent(token ?? "")}&callbackURL=/`,
+      { redirect: "manual" },
+    )
+    expect([302, 303].includes(res.status)).toBe(true)
+    expect(res.headers.get("location") ?? "").toContain("error=domain_not_allowed")
+
+    // CRITICAL: their user row must still be there — they existed before
+    // this allowlist change and their data (memberships, assigned tickets)
+    // must not be cascade-wiped by a policy tightening.
+    const [row] = await db.select().from(user).where(eq(user.id, id))
+    expect(row).toBeDefined()
+    expect(row?.email).toBe("stayer@offlist.com")
+  })
 })
