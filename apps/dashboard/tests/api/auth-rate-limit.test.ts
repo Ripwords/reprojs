@@ -133,6 +133,37 @@ describe("auth rate limiting (H2)", () => {
     }
   })
 
+  test("magic-link/verify: 6th attempt from same IP returns 429 (token-probe defense)", async () => {
+    if (!rateLimitingOn) return
+    // REGRESSION (CONCERN-7): customRules declares
+    // `"/magic-link/verify": strictAuthRule` but the path was never
+    // exercised by a test. The magic-link plugin's own default rate
+    // limit is 5/60s; our customRule widens the window to 15min — so
+    // without this test, a silent config drift (rule removed, wrong
+    // path, overridden by plugin default) would go unnoticed and
+    // re-expose the token-probing oracle that motivated H2.
+    const ip = nextIp()
+    const statuses: number[] = []
+    for (let i = 0; i < MAX; i++) {
+      // eslint-disable-next-line no-await-in-loop -- sequential required for rate limiter
+      const r = await fetch(
+        `${BASE_URL}/api/auth/magic-link/verify?token=bogus${i}&callbackURL=/`,
+        { headers: { "X-Forwarded-For": ip }, redirect: "manual" },
+      )
+      statuses.push(r.status)
+    }
+    // All MAX attempts reach the handler (they 302 with error=INVALID_TOKEN,
+    // never 429) — confirming the bucket isn't already exhausted by something
+    // else.
+    expect(statuses.every((s) => s !== 429)).toBe(true)
+
+    const blocked = await fetch(
+      `${BASE_URL}/api/auth/magic-link/verify?token=bogusN&callbackURL=/`,
+      { headers: { "X-Forwarded-For": ip }, redirect: "manual" },
+    )
+    expect(blocked.status).toBe(429)
+  })
+
   test("OAuth /callback/* is NOT rate-limited", async () => {
     if (!rateLimitingOn) return
     const ip = nextIp()
