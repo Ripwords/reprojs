@@ -122,6 +122,54 @@ describe("magic-link auth", () => {
     expect(row?.status).toBe("active")
   })
 
+  test("signupGated=true still lets an existing active user sign in (and does NOT delete their row)", async () => {
+    // REGRESSION: the after-hook previously looked up by status='invited' and
+    // called db.delete(user) when no match was found — which wiped EXISTING
+    // active users (cascade-deleting their sessions + oauth accounts too)
+    // every time they tried to log in while the gate was on.
+    const id = await createUser("stayer@example.com")
+    await db.execute(sql`UPDATE app_settings SET signup_gated = true WHERE id = 1`)
+
+    const cookie = await signIn("stayer@example.com")
+    expect(cookie.length).toBeGreaterThan(0)
+
+    // Existing user row must still be there after sign-in.
+    const [row] = await db.select().from(user).where(eq(user.id, id))
+    expect(row).toBeDefined()
+    expect(row?.status).toBe("active")
+
+    // And the session must actually be valid (not just "cookie was set on a
+    // since-deleted user" — that's what the bug produced).
+    const me = await apiFetch<{ user?: { email?: string } }>("/api/auth/get-session", {
+      headers: { cookie },
+    })
+    expect(me.status).toBe(200)
+    expect(me.body.user?.email).toBe("stayer@example.com")
+  })
+
+  test("signupGated=true blocks a brand-new email at verify and leaves no orphan user row", async () => {
+    await db.execute(sql`UPDATE app_settings SET signup_gated = true WHERE id = 1`)
+
+    // Send succeeds (no enumeration oracle).
+    const sent = await sendMagicLink("stranger@example.com")
+    expect(sent.status).toBe(200)
+    const token = await findLatestToken("stranger@example.com")
+    expect(token).not.toBeNull()
+
+    const res = await fetch(
+      `${BASE_URL}/api/auth/magic-link/verify?token=${encodeURIComponent(token ?? "")}&callbackURL=/`,
+      { redirect: "manual" },
+    )
+    expect([302, 303].includes(res.status)).toBe(true)
+    const location = res.headers.get("location") ?? ""
+    expect(location).toContain("/auth/sign-in")
+    expect(location).toContain("error=not_invited")
+
+    // No orphan row for an email that never had an invitation.
+    const [row] = await db.select().from(user).where(eq(user.email, "stranger@example.com"))
+    expect(row).toBeUndefined()
+  })
+
   test("domain allowlist blocks magic-link sign-in for a non-allowed domain", async () => {
     await db.execute(
       sql`UPDATE app_settings SET allowed_email_domains = ARRAY['allowed.com']::text[] WHERE id = 1`,

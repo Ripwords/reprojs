@@ -1,6 +1,6 @@
-import { and, count, eq } from "drizzle-orm"
+import { count, eq } from "drizzle-orm"
 import { betterAuth } from "better-auth"
-import { createAuthMiddleware } from "better-auth/api"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { magicLink } from "better-auth/plugins/magic-link"
 import { db } from "../db"
@@ -29,20 +29,18 @@ const strictAuthRule = { window: AUTH_RATE_WINDOW_SEC, max: env.AUTH_RATE_PER_IP
 type GateRejection = "domain_not_allowed" | "not_invited"
 
 /**
- * Enforce the workspace-level domain allowlist + invite gate against a newly
- * signed-in user. Called from the `after` hook on any path that creates a user
- * row and a session (OAuth callback + magic-link verify). On rejection,
- * deletes the just-created user row so the attacker doesn't end up with an
- * orphan account that bypassed the allowlist.
+ * Domain-allowlist gate. Called from the after-hook on every OAuth callback
+ * and magic-link verify so a workspace that tightens its allowlist after the
+ * fact also blocks previously-provisioned users whose domain no longer
+ * qualifies. On rejection deletes the just-created user row so an attacker
+ * can't race the verify + keep an orphan account that bypassed the gate.
  *
- * Returns `{ ok: true }` on pass or `{ ok: false, reason }` on rejection. The
- * caller is responsible for surfacing the rejection — for OAuth callback +
- * magic-link verify we redirect to the sign-in page with a `?error=` param
- * rather than throwing a 403, because those endpoints' own error paths use
- * 302 redirects and mixing a 403 throw into better-auth's toResponse produced
- * an inconsistent status/body shape.
+ * The signup-gate (invited-only) is NOT enforced here — see `databaseHooks`
+ * below. Enforcing it here previously deleted existing active users on
+ * sign-in, because the after-hook runs for returning users too and can't
+ * reliably tell "just created" from "already had a row".
  */
-async function enforceDomainAndInviteGate(newUser: {
+async function enforceDomainGate(newUser: {
   id: string
   email: string
 }): Promise<{ ok: true } | { ok: false; reason: GateRejection }> {
@@ -55,17 +53,6 @@ async function enforceDomainAndInviteGate(newUser: {
     if (!settings.allowedEmailDomains.includes(domain)) {
       await db.delete(user).where(eq(user.id, newUser.id))
       return { ok: false, reason: "domain_not_allowed" }
-    }
-  }
-
-  if (settings.signupGated) {
-    const [invited] = await db
-      .select()
-      .from(user)
-      .where(and(eq(user.email, emailLower), eq(user.status, "invited")))
-    if (!invited) {
-      await db.delete(user).where(eq(user.id, newUser.id))
-      return { ok: false, reason: "not_invited" }
     }
   }
   return { ok: true }
@@ -172,6 +159,30 @@ export const auth = betterAuth({
       status: { type: "string", defaultValue: "active", input: false },
     },
   },
+  databaseHooks: {
+    user: {
+      create: {
+        // Signup gate. Fires ONLY when a brand-new user row is about to be
+        // inserted — which means neither an existing account nor a pre-seeded
+        // `invited` row matched the email (better-auth resolves those via
+        // findUserByEmail before ever calling create). We redirect to the
+        // sign-in page with ?error=not_invited to match the domain-gate UX;
+        // ctx.redirect throws an APIError(FOUND) internally, which better-
+        // auth's error pipeline passes through as a 302 (see api/index.mjs
+        // onError — it explicitly lets `FOUND` errors propagate untouched).
+        // Fallback to a plain APIError when ctx is missing (non-endpoint
+        // caller, e.g. programmatic auth.api.createUser) so callers still
+        // get a clear refusal.
+        before: async (newUser, ctx) => {
+          const [settings] = await db.select().from(appSettings).limit(1)
+          if (!settings?.signupGated) return { data: newUser }
+          if (!ctx) throw new APIError("FORBIDDEN", { message: "not_invited" })
+          const url = new URL("/auth/sign-in?error=not_invited", ctx.context.baseURL).toString()
+          throw ctx.redirect(url)
+        },
+      },
+    },
+  },
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       // SEC1: guard OAuth callbacks AND magic-link verification against the
@@ -192,7 +203,7 @@ export const auth = betterAuth({
       const newUser = newSession?.user
       if (!newUser?.id || !newUser.email) return
 
-      const gate = await enforceDomainAndInviteGate({ id: newUser.id, email: newUser.email })
+      const gate = await enforceDomainGate({ id: newUser.id, email: newUser.email })
       if (!gate.ok) {
         // Rewrite the success redirect to the sign-in page with an error code.
         // Both verify's success and error paths are 302s, so using `ctx.redirect`
