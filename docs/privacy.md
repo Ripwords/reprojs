@@ -72,8 +72,8 @@ Because Repro is self-hosted, the operator of the dashboard you interact with is
 
 ## Changes to this policy
 
-Material changes are committed to the public repository at [github.com/Ripwords/reprojs](https://github.com/Ripwords/reprojs). The effective date at the top of this page reflects the most recent change.
+Material changes are committed to the public repository at [github.com/Ripwords/ReproJs](https://github.com/Ripwords/ReproJs). The effective date at the top of this page reflects the most recent change.
 
 ## Contact
 
-For questions about the project itself — not about a specific dashboard installation — open an issue at [github.com/Ripwords/reprojs/issues](https://github.com/Ripwords/reprojs/issues).
+For questions about the project itself — not about a specific dashboard installation — open an issue at [github.com/Ripwords/ReproJs/issues](https://github.com/Ripwords/ReproJs/issues).

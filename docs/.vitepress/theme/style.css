@@ -182,18 +182,18 @@
 }
 
 .vp-code-group .tabs label[data-title="npm"]::before {
-  -webkit-mask-image: url("/reprojs/icons/npm.svg");
-  mask-image: url("/reprojs/icons/npm.svg");
+  -webkit-mask-image: url("/ReproJs/icons/npm.svg");
+  mask-image: url("/ReproJs/icons/npm.svg");
 }
 .vp-code-group .tabs label[data-title="pnpm"]::before {
-  -webkit-mask-image: url("/reprojs/icons/pnpm.svg");
-  mask-image: url("/reprojs/icons/pnpm.svg");
+  -webkit-mask-image: url("/ReproJs/icons/pnpm.svg");
+  mask-image: url("/ReproJs/icons/pnpm.svg");
 }
 .vp-code-group .tabs label[data-title="yarn"]::before {
-  -webkit-mask-image: url("/reprojs/icons/yarn.svg");
-  mask-image: url("/reprojs/icons/yarn.svg");
+  -webkit-mask-image: url("/ReproJs/icons/yarn.svg");
+  mask-image: url("/ReproJs/icons/yarn.svg");
 }
 .vp-code-group .tabs label[data-title="bun"]::before {
-  -webkit-mask-image: url("/reprojs/icons/bun.svg");
-  mask-image: url("/reprojs/icons/bun.svg");
+  -webkit-mask-image: url("/ReproJs/icons/bun.svg");
+  mask-image: url("/ReproJs/icons/bun.svg");
 }

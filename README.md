@@ -9,10 +9,10 @@
   <p><strong>Framework-agnostic embeddable feedback SDK + self-hostable triage dashboard.</strong></p>
 
   <p>
-    <a href="https://ripwords.github.io/reprojs/"><strong>Docs</strong></a> ·
-    <a href="https://ripwords.github.io/reprojs/self-hosting/"><strong>Self-host</strong></a> ·
-    <a href="https://ripwords.github.io/reprojs/guide/sdk"><strong>SDK</strong></a> ·
-    <a href="https://ripwords.github.io/reprojs/guide/extension"><strong>Tester extension</strong></a>
+    <a href="https://ripwords.github.io/ReproJs/"><strong>Docs</strong></a> ·
+    <a href="https://ripwords.github.io/ReproJs/self-hosting/"><strong>Self-host</strong></a> ·
+    <a href="https://ripwords.github.io/ReproJs/guide/sdk"><strong>SDK</strong></a> ·
+    <a href="https://ripwords.github.io/ReproJs/guide/extension"><strong>Tester extension</strong></a>
   </p>
 </div>
 
@@ -113,7 +113,7 @@ Project keys are issued from the dashboard's project settings page. Each project
 
 **Repro Tester** is a Chrome MV3 extension for internal QA teams that need to file reports from sites they don't control (a staging build owned by another team, a vendor preview, etc.). It bundles the same `@reprojs/core` SDK, and its service worker proxies the intake POST so CSP-strict hosts don't block submission.
 
-Install: grab `repro-tester-vX.Y.Z.zip` from the [releases page](https://github.com/Ripwords/reprojs/releases), unzip somewhere stable, and load it via `chrome://extensions → Load unpacked`. Full guide: [Tester extension docs](https://ripwords.github.io/reprojs/guide/extension).
+Install: grab `repro-tester-vX.Y.Z.zip` from the [releases page](https://github.com/Ripwords/ReproJs/releases), unzip somewhere stable, and load it via `chrome://extensions → Load unpacked`. Full guide: [Tester extension docs](https://ripwords.github.io/ReproJs/guide/extension).
 
 The extension is **not** a replacement for the `<script>` embed — real users on customer sites always get the SDK via the embed. The extension is for internal testers only.
 
@@ -124,7 +124,7 @@ The extension is **not** a replacement for the `<script>` embed — real users o
 Prerequisites: Bun, Docker.
 
 ```bash
-git clone https://github.com/Ripwords/reprojs.git
+git clone https://github.com/Ripwords/ReproJs.git
 cd repro
 bun install
 

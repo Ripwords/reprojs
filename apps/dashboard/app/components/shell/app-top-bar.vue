@@ -31,7 +31,7 @@ const userItems = computed(() => [
     <div class="flex items-center gap-1">
       <UButton
         icon="i-heroicons-question-mark-circle"
-        to="https://ripwords.github.io/reprojs/"
+        to="https://ripwords.github.io/ReproJs/"
         target="_blank"
         color="neutral"
         variant="ghost"

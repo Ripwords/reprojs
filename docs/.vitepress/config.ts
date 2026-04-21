@@ -5,8 +5,8 @@ export default defineConfig({
   title: "Repro",
   description: "Framework-agnostic embeddable feedback SDK + self-hostable triage dashboard.",
 
-  // Published to https://ripwords.github.io/reprojs/
-  base: "/reprojs/",
+  // Published to https://ripwords.github.io/ReproJs/
+  base: "/ReproJs/",
   cleanUrls: true,
   lastUpdated: true,
 
@@ -67,10 +67,10 @@ export default defineConfig({
       ],
     },
 
-    socialLinks: [{ icon: "github", link: "https://github.com/Ripwords/reprojs" }],
+    socialLinks: [{ icon: "github", link: "https://github.com/Ripwords/ReproJs" }],
 
     editLink: {
-      pattern: "https://github.com/Ripwords/reprojs/edit/main/docs/:path",
+      pattern: "https://github.com/Ripwords/ReproJs/edit/main/docs/:path",
       text: "Edit this page on GitHub",
     },
 
@@ -78,7 +78,7 @@ export default defineConfig({
 
     footer: {
       message:
-        'Released under the MIT License. · <a href="/reprojs/privacy">Privacy policy</a>',
+        'Released under the MIT License. · <a href="/ReproJs/privacy">Privacy policy</a>',
       copyright: "Copyright © 2026 JJ Teoh",
     },
   },

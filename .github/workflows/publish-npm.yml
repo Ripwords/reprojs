@@ -12,7 +12,7 @@ name: Publish npm package
 #
 # Auth — uses npm Trusted Publishing (OIDC), not a token.
 #   - The package's Trusted Publisher config on npmjs.com must match:
-#     repository: Ripwords/reprojs, workflow: publish-npm.yml
+#     repository: Ripwords/ReproJs, workflow: publish-npm.yml
 #   - id-token: write on the publish job lets npm validate the OIDC claims
 #     against that config. npm also uses this token to sign the provenance
 #     attestation (sigstore), which shows as a verified badge on the package

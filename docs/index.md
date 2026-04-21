@@ -18,7 +18,7 @@ hero:
       link: /guide/sdk
     - theme: alt
       text: GitHub
-      link: https://github.com/Ripwords/reprojs
+      link: https://github.com/Ripwords/ReproJs
 
 features:
   - title: Drop-in widget, any framework

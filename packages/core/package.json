@@ -11,15 +11,15 @@
     "sdk",
     "session-replay"
   ],
-  "homepage": "https://github.com/Ripwords/reprojs#readme",
+  "homepage": "https://github.com/Ripwords/ReproJs#readme",
   "bugs": {
-    "url": "https://github.com/Ripwords/reprojs/issues"
+    "url": "https://github.com/Ripwords/ReproJs/issues"
   },
   "license": "MIT",
   "author": "JJ Teoh",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ripwords/reprojs.git",
+    "url": "git+https://github.com/Ripwords/ReproJs.git",
     "directory": "packages/core"
   },
   "files": [

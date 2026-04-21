@@ -10,6 +10,6 @@
 // "from" base otherwise — the v0.1.6 entry in CHANGELOG.md was corrupted this
 // way (it compares sdk-v0.1.6...v0.1.6 instead of v0.1.5...v0.1.6).
 export default {
-  repo: "Ripwords/reprojs",
+  repo: "Ripwords/ReproJs",
   output: "CHANGELOG.md",
 }

@@ -99,7 +99,7 @@ jobs:
             org.opencontainers.image.title=Repro dashboard
             org.opencontainers.image.description=Self-hostable triage dashboard + intake API for the Repro feedback SDK
             org.opencontainers.image.licenses=MIT
-            org.opencontainers.image.source=https://github.com/Ripwords/reprojs
+            org.opencontainers.image.source=https://github.com/Ripwords/ReproJs
 
       - name: Build + push
         uses: docker/build-push-action@v6

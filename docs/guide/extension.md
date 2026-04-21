@@ -30,7 +30,7 @@ The proxy runs on top of the existing origin allowlist — a report is still onl
 
 While the extension is waiting on Chrome Web Store review, testers install from a shared zip.
 
-1. Download `repro-tester-vX.Y.Z.zip` from the [GitHub releases page](https://github.com/Ripwords/reprojs/releases).
+1. Download `repro-tester-vX.Y.Z.zip` from the [GitHub releases page](https://github.com/Ripwords/ReproJs/releases).
 2. Unzip it to a **stable** location — Chrome re-reads the folder on every browser launch, so don't put it in `/tmp` or a download-reaper directory. `~/Documents/repro-tester/` is fine.
 3. Open `chrome://extensions`.
 4. Toggle **Developer mode** on (top right).

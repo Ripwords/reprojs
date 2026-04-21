@@ -11,7 +11,7 @@ Contributor guide for working in the `reprojs` monorepo.
 ## First-time setup
 
 ```bash
-git clone https://github.com/Ripwords/reprojs.git
+git clone https://github.com/Ripwords/ReproJs.git
 cd reprojs
 bun install
 cp .env.example .env
@@ -143,4 +143,4 @@ The `prerelease` hook runs lint, format:check, SDK build, and SDK tests. Pushing
 
 ## Where to file bugs / ideas
 
-[github.com/Ripwords/reprojs/issues](https://github.com/Ripwords/reprojs/issues). PRs welcome.
+[github.com/Ripwords/ReproJs/issues](https://github.com/Ripwords/ReproJs/issues). PRs welcome.

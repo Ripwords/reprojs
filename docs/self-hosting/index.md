@@ -6,8 +6,8 @@ Repro ships as a Docker image on GitHub Container Registry plus a single `compos
 
 ```bash
 # 1. Download the two files from the repo
-curl -fsSL https://raw.githubusercontent.com/Ripwords/reprojs/main/compose.yaml -o compose.yaml
-curl -fsSL https://raw.githubusercontent.com/Ripwords/reprojs/main/.env.example -o .env
+curl -fsSL https://raw.githubusercontent.com/Ripwords/ReproJs/main/compose.yaml -o compose.yaml
+curl -fsSL https://raw.githubusercontent.com/Ripwords/ReproJs/main/.env.example -o .env
 
 # 2. Fill in the four REQUIRED secrets in .env
 #    Generate each with: openssl rand -hex 32
