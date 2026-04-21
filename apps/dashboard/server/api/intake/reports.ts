@@ -27,7 +27,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 405, statusMessage: "Method not allowed" })
   }
 
-  const origin = getHeader(event, "origin") ?? ""
+  const rawOrigin = getHeader(event, "origin") ?? ""
+  // When an extension service worker posts on behalf of a tester, the
+  // browser sets Origin to chrome-extension://<id> — unforgeable from
+  // a regular webpage. In that narrow case, fall back to the page origin
+  // the extension captured client-side and forwarded via X-Repro-Origin.
+  // Regular JS in a page cannot set a chrome-extension:// Origin, so this
+  // fallback is only reachable from an installed extension, which is a
+  // much higher bar than the standard leaked-project-key threat the
+  // Origin allowlist is meant to defend against.
+  const origin = rawOrigin.startsWith("chrome-extension://")
+    ? (getHeader(event, "x-repro-origin") ?? "")
+    : rawOrigin
   // TRUST_XFF is OFF by default — a public deployment must not be trivially
   // rate-limit-bypassed via a spoofed X-Forwarded-For header.
   const ip = getRequestIP(event, { xForwardedFor: env.TRUST_XFF }) ?? "unknown"
@@ -78,7 +89,10 @@ export default defineEventHandler(async (event) => {
 
   // Origin validated: emit ACAO so the legitimate SDK (on this allowed origin)
   // can read both success AND error bodies of the rest of this request.
-  applyIntakePostCors(event, origin)
+  // Use the RAW origin for CORS — the browser checks ACAO against the fetch
+  // client's actual origin, which for an extension SW proxy is
+  // chrome-extension://<id>, not the page-origin fallback we accepted above.
+  applyIntakePostCors(event, rawOrigin || origin)
 
   // S1: Honeypot check BEFORE rate-limit takes. Bots that set _hp must not
   // consume quota — tarpit them cheaply without burning the project's budget.

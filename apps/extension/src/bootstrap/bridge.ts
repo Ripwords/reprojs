@@ -23,6 +23,7 @@ export function installBridge(): void {
       method?: string
       headers?: Record<string, string>
       body?: unknown
+      pageOrigin?: string
     } | null
     if (!data || data.source !== SOURCE || data.type !== "request") return
     if (typeof data.id !== "string") return
@@ -37,6 +38,7 @@ export function installBridge(): void {
         method: data.method,
         headers: data.headers,
         body: data.body,
+        pageOrigin: data.pageOrigin,
       })
       .then((response: unknown) => {
         const payload =

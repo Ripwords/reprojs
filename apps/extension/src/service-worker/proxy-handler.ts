@@ -25,6 +25,12 @@ type ProxyRequest = {
   method: string
   headers: Record<string, string>
   body: SerializedBody
+  // The page's own origin, captured by the MAIN-world proxy before the
+  // message hop. The service worker uses it to set X-Repro-Origin so the
+  // intake allowlist check can treat the request as if it came from the
+  // page — the browser's Origin header on an extension-initiated fetch is
+  // chrome-extension://<id>, which won't be in any project's allowlist.
+  pageOrigin?: string
 }
 
 function fromBase64(b64: string): Uint8Array {
@@ -105,6 +111,14 @@ export function registerProxyHandler(): void {
         delete headers.referer
         // For FormData let fetch compute Content-Type with the boundary.
         if (msg.body?.kind === "formData") delete headers["content-type"]
+        // Pass the original page origin through as a custom header. The
+        // intake server checks this when the standard Origin is
+        // chrome-extension://* (the browser's value for extension-
+        // initiated fetches). Can't set the Origin header directly:
+        // fetch treats it as a forbidden header name.
+        if (msg.pageOrigin) {
+          headers["x-repro-origin"] = msg.pageOrigin
+        }
 
         const response = await fetch(msg.url, {
           method: msg.method ?? "GET",

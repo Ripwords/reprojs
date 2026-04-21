@@ -128,6 +128,11 @@ export function installFetchProxy(endpointOrigin: string): void {
     }
     const body = await serializeBody(bodyInit ?? null)
 
+    // The service worker will override the browser's Origin header (which
+    // would otherwise be chrome-extension://<id>) to the page's real origin
+    // so the intake's allowlist check behaves the same as when the SDK
+    // posts directly. `location.origin` is the MAIN-world document's own
+    // origin — the one the tester configured.
     const id = `repro-${Date.now().toString(36)}-${counter++}`
     const request = {
       source: SOURCE,
@@ -137,6 +142,7 @@ export function installFetchProxy(endpointOrigin: string): void {
       method,
       headers,
       body,
+      pageOrigin: location.origin,
     }
 
     const response = await new Promise<{
