@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.1.15
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.14...v0.1.15)
+
+### 🚀 Enhancements
+
+- **dashboard:** Replay fullscreen toggle + hide ineffective controls ([fa95c16](https://github.com/Ripwords/reprojs/commit/fa95c16))
+
+### 🩹 Fixes
+
+- **core:** Prevent screenshot hang and broken-image glyphs ([0f9f684](https://github.com/Ripwords/reprojs/commit/0f9f684))
+- **recorder:** Align event pipeline with rrweb-player expectations ([b51ae61](https://github.com/Ripwords/reprojs/commit/b51ae61))
+- **extension:** Re-inject SDK on page refresh ([b5f9db4](https://github.com/Ripwords/reprojs/commit/b5f9db4))
+
+### 📖 Documentation
+
+- Surface tester Chrome extension in overview docs ([f73840a](https://github.com/Ripwords/reprojs/commit/f73840a))
+
+### 🏡 Chore
+
+- Ignore zip artifacts ([5b3900a](https://github.com/Ripwords/reprojs/commit/5b3900a))
+- **ci:** Scannable release titles per track on GitHub Releases ([6d15fa1](https://github.com/Ripwords/reprojs/commit/6d15fa1))
+- **release:** Sdk-v0.3.0 ([0a88ed6](https://github.com/Ripwords/reprojs/commit/0a88ed6))
+- **release:** Extension changelog config + fix SDK repo casing ([34aa3bc](https://github.com/Ripwords/reprojs/commit/34aa3bc))
+- **release:** Extension-v0.1.1 ([36b1ee3](https://github.com/Ripwords/reprojs/commit/36b1ee3))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.14
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.13...v0.1.14)
