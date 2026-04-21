@@ -8,3 +8,10 @@ docs/
 # Generated files — formatting style is owned by the tool that writes them
 apps/dashboard/server/db/schema/auth-schema.ts
 apps/dashboard/server/db/migrations/
+
+# changelogen-generated. Keep-a-Changelog style doesn't round-trip through
+# oxfmt cleanly, and the release script's pre-commit hook kept aborting on
+# these. Historical files; minor drift is fine.
+CHANGELOG.md
+packages/*/CHANGELOG.md
+apps/*/CHANGELOG.md
