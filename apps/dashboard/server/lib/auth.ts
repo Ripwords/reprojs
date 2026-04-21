@@ -27,13 +27,33 @@ const AUTH_RATE_WINDOW_SEC = 15 * 60
 const strictAuthRule = { window: AUTH_RATE_WINDOW_SEC, max: env.AUTH_RATE_PER_IP_PER_15MIN }
 
 /**
+ * Load the singleton `app_settings` row, or throw if it's missing. The
+ * seed plugin at server/plugins/00.seed-settings.ts guarantees this row
+ * exists at startup; if an operational mishap (manual DELETE, failed
+ * migration, corrupt restore) has wiped it, we MUST fail auth closed
+ * rather than silently bypass the signup gate and the domain allowlist.
+ */
+async function loadAppSettings() {
+  const [settings] = await db.select().from(appSettings).limit(1)
+  if (!settings) {
+    throw new APIError("INTERNAL_SERVER_ERROR", {
+      message:
+        "app_settings row is missing — refusing to auth without gate state. " +
+        "Restart the server so 00.seed-settings.ts re-seeds, or INSERT the row manually.",
+    })
+  }
+  return settings
+}
+
+/**
  * Returns true iff the email's domain is on the workspace allowlist, or
- * the allowlist is empty (no restriction configured). Caller is
- * responsible for reacting to a `false` result.
+ * the allowlist is empty (no restriction configured). Throws via
+ * loadAppSettings when app_settings is missing — caller sees this as a
+ * 500, which is the desired fail-closed behavior.
  */
 async function isEmailDomainAllowed(email: string): Promise<boolean> {
-  const [settings] = await db.select().from(appSettings).limit(1)
-  if (!settings || settings.allowedEmailDomains.length === 0) return true
+  const settings = await loadAppSettings()
+  if (settings.allowedEmailDomains.length === 0) return true
   const domain = email.toLowerCase().split("@")[1] ?? ""
   return settings.allowedEmailDomains.includes(domain)
 }
@@ -177,9 +197,11 @@ export const auth = betterAuth({
             throw ctx.redirect(url)
           }
 
-          // Signup gate.
-          const [settings] = await db.select().from(appSettings).limit(1)
-          if (!settings?.signupGated) return { data: newUser }
+          // Signup gate. loadAppSettings throws if the settings row is
+          // missing (fail-closed); if present but signup_gated=false,
+          // let the create proceed.
+          const settings = await loadAppSettings()
+          if (!settings.signupGated) return { data: newUser }
           if (!ctx) throw new APIError("FORBIDDEN", { message: "not_invited" })
           const url = new URL("/auth/sign-in?error=not_invited", ctx.context.baseURL).toString()
           throw ctx.redirect(url)

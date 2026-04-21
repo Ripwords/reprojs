@@ -267,6 +267,42 @@ describe("magic-link auth", () => {
     }
   })
 
+  test("missing app_settings row fails sign-in closed (does not silently allow)", async () => {
+    // REGRESSION (CONCERN-5): both gate paths used `if (!settings) return`
+    // / `return true`, so any operational mishap that wiped the singleton
+    // row (manual DELETE, failed migration, corrupted restore) silently
+    // disabled both the signup gate and the domain allowlist. A missing
+    // app_settings row now throws, turning a silent policy bypass into
+    // a loud sign-in failure that an operator can see and fix.
+    await db.execute(sql`DELETE FROM app_settings`)
+    try {
+      const sent = await sendMagicLink("no-settings@example.com")
+      expect(sent.status).toBe(200)
+      const token = await findLatestToken("no-settings@example.com")
+      expect(token).not.toBeNull()
+
+      const res = await fetch(
+        `${BASE_URL}/api/auth/magic-link/verify?token=${encodeURIComponent(token ?? "")}&callbackURL=/`,
+        { redirect: "manual" },
+      )
+      // Fail-closed: the verify must NOT succeed with a 302 + session cookie.
+      expect(res.status).not.toBe(302)
+      expect(res.status).toBeGreaterThanOrEqual(400)
+
+      const [row] = await db.select().from(user).where(eq(user.email, "no-settings@example.com"))
+      expect(row).toBeUndefined()
+    } finally {
+      // Restore singleton so the afterEach can leave a clean state for the
+      // next test (truncateDomain UPDATEs but doesn't re-INSERT).
+      await db.execute(
+        sql`INSERT INTO app_settings (id, signup_gated, allowed_email_domains)
+            VALUES (1, false, '{}'::text[])
+            ON CONFLICT (id) DO UPDATE
+              SET signup_gated = false, allowed_email_domains = '{}'::text[]`,
+      )
+    }
+  })
+
   test("domain-allowlist tightening does NOT delete existing active user's row", async () => {
     // REGRESSION (BLOCKER-1): the old `enforceDomainGate` called
     // db.delete(user) in the after-hook on every rejection. For a user
