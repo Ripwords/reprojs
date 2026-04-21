@@ -16,15 +16,18 @@
 export function installFetchProxy(endpointOrigin: string): void {
   const g = globalThis as unknown as {
     __REPRO_PROXY_INSTALLED__?: boolean
+    __REPRO_PROXY_ORIGIN__?: string
     fetch: typeof fetch
   }
   if (g.__REPRO_PROXY_INSTALLED__) return
   g.__REPRO_PROXY_INSTALLED__ = true
+  g.__REPRO_PROXY_ORIGIN__ = endpointOrigin
 
   const SOURCE = "repro-proxy"
   const originalFetch = g.fetch.bind(globalThis)
   let counter = 0
   const pending = new Map<string, (response: unknown) => void>()
+  console.info("[repro-extension] fetch proxy installed for", endpointOrigin)
 
   window.addEventListener("message", (event) => {
     if (event.source !== window) return
@@ -103,6 +106,7 @@ export function installFetchProxy(endpointOrigin: string): void {
     if (!targetUrl.startsWith(endpointOrigin)) {
       return originalFetch(input, init)
     }
+    console.info("[repro-extension] proxying fetch →", targetUrl)
 
     const method = init?.method ?? (input instanceof Request ? input.method : "GET")
     const headersInit = init?.headers ?? (input instanceof Request ? input.headers : undefined)

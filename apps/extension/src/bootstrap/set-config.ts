@@ -31,5 +31,16 @@ export function bootRepro(): void {
   const cfg = g.__REPRO_CONFIG__
   if (!cfg || !g.Repro) return
   g.__REPRO_BOOTED__ = true
-  g.Repro.init({ projectKey: cfg.projectKey, endpoint: cfg.endpoint })
+  try {
+    g.Repro.init({ projectKey: cfg.projectKey, endpoint: cfg.endpoint })
+  } catch (err) {
+    // Belt-and-suspenders: if we somehow slipped past both guards (racing
+    // injections, host element created between the check and this line,
+    // a fresh IIFE module instance reading an empty WeakMap), swallow the
+    // attachShadow NotSupportedError instead of bubbling it to the page.
+    // The prior init already mounted the widget; a failed duplicate init
+    // isn't user-visible, and leaving the error uncaught makes it look
+    // like the extension broke the page.
+    console.debug("[repro-extension] Repro.init skipped:", err)
+  }
 }
