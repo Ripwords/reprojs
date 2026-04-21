@@ -36,6 +36,14 @@ const lastProjectId = useCookie<string | null>("last-project-id", {
 const { data: projectsData } = await useApi<ProjectDTO[]>("/api/projects", {
   default: () => [],
 })
+
+// Pending invitations count for the badge. Kept deliberately cheap — the
+// endpoint returns a small list and we only display the count in the
+// sidebar; the full list lives on /invitations.
+const { data: pendingInvitations } = await useApi<Array<{ token: string }>>("/api/invitations", {
+  default: () => [],
+})
+const pendingInviteCount = computed(() => pendingInvitations.value?.length ?? 0)
 const projectIds = computed(() => new Set((projectsData.value ?? []).map((p) => p.id)))
 const hasAnyProject = computed(() => (projectsData.value?.length ?? 0) > 0)
 
@@ -184,6 +192,43 @@ function isActive(item: NavItem): boolean {
         >
           <UIcon name="i-heroicons-squares-2x2" class="size-4 shrink-0" />
           <span v-if="!collapsed" class="text-sm truncate">All projects</span>
+        </NuxtLink>
+      </div>
+
+      <!-- Invitations: only rendered when the user has pending invites.
+           Dropped from the nav the moment the count hits zero so the
+           sidebar doesn't carry a permanent slot for something most
+           users won't see. -->
+      <div v-if="pendingInviteCount > 0" class="mt-1 px-2">
+        <NuxtLink
+          to="/invitations"
+          :aria-label="
+            collapsed
+              ? `${pendingInviteCount} pending invitation${pendingInviteCount === 1 ? '' : 's'}`
+              : undefined
+          "
+          :class="[
+            'flex items-center rounded-lg transition-colors',
+            collapsed ? 'justify-center size-10' : 'gap-3 px-3 py-2.5',
+            route.path === '/invitations'
+              ? 'bg-elevated text-default font-semibold'
+              : 'text-muted hover:text-default hover:bg-elevated/60 font-medium',
+          ]"
+        >
+          <UIcon name="i-heroicons-envelope" class="size-4 shrink-0" />
+          <span v-if="!collapsed" class="text-sm truncate flex-1">Invitations</span>
+          <span
+            v-if="!collapsed"
+            class="text-xs font-semibold px-1.5 py-0.5 rounded bg-primary-500 text-white"
+          >
+            {{ pendingInviteCount }}
+          </span>
+          <span
+            v-else
+            class="absolute ml-5 mt-[-18px] text-[10px] font-semibold px-1 py-0 rounded-full bg-primary-500 text-white"
+          >
+            {{ pendingInviteCount }}
+          </span>
         </NuxtLink>
       </div>
 

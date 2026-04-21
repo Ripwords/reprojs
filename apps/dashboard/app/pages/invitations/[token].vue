@@ -63,6 +63,11 @@ async function accept() {
       `/api/invitations/${token.value}/accept`,
       { method: "POST" },
     )
+    // Blow away any cached useFetch data — the user's membership just
+    // changed, and the project list + sidebar queries need to re-run so the
+    // newly-joined project actually appears. Without this, navigating to /
+    // after acceptance shows a stale list from before the membership insert.
+    await clearNuxtData()
     toast.add({ title: "Invitation accepted", color: "success", icon: "i-heroicons-check-circle" })
     await nuxtApp.runWithContext(() => navigateTo(`/projects/${res.projectId}`))
   } catch (err: unknown) {
