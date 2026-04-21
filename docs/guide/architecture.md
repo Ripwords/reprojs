@@ -5,7 +5,7 @@
 │   Host web app       │                 │   Repro Dashboard              │
 │                      │   POST report   │   (Nuxt 4: Vue UI + Nitro API) │
 │  ┌────────────────┐  │ ──────────────► │                                │
-│  │ @reprojs/core │  │    multipart    │  /api/intake/*   (SDK ingress) │
+│  │ @reprojs/core  │  │    multipart    │  /api/intake/*   (SDK ingress) │
 │  │   SDK widget   │  │                 │  /api/tickets/*  (triage)      │
 │  └────────────────┘  │                 │  /api/auth/*     (better-auth) │
 └──────────────────────┘                 │  /api/integrations/github/*    │
@@ -18,12 +18,15 @@
                                               GitHub Issues (optional)
 ```
 
-## The two deliverables
+## The three deliverables
 
-| Component        | What it is                                  | Built with                                 |
-| ---------------- | ------------------------------------------- | ------------------------------------------ |
-| **SDK**          | Embeddable widget + framework-agnostic SDK  | TypeScript, Preact, Shadow DOM, tsdown     |
-| **Dashboard**    | Admin / triage UI + intake API              | Nuxt 4 (Vue 3 + Nitro), Drizzle, Postgres |
+| Component             | What it is                                                                              | Built with                                 |
+| --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------ |
+| **SDK**               | Embeddable widget + framework-agnostic SDK                                              | TypeScript, Preact, Shadow DOM, tsdown     |
+| **Dashboard**         | Admin / triage UI + intake API                                                          | Nuxt 4 (Vue 3 + Nitro), Drizzle, Postgres  |
+| **Tester extension**  | Chrome MV3 extension that injects the SDK into any origin a tester has added            | Preact + Vite + `@crxjs/vite-plugin`       |
+
+The SDK is the primary way end users file reports — it's what you embed in your product. The **[tester extension](/guide/extension)** covers a different job: internal QA on pages the team doesn't own (a staging build, a vendor preview). It bundles the same `@reprojs/core` at build time, and its MV3 service worker proxies the intake POST so strict CSP hosts can't block submission. Reports from the extension land in the same inbox as embed reports — attributed to the page's origin, not the extension ID.
 
 ## Runtime flow
 
@@ -69,7 +72,8 @@
 ```
 reprojs/
 ├── apps/
-│   └── dashboard/              # Nuxt 4 — admin UI + intake API
+│   ├── dashboard/              # Nuxt 4 — admin UI + intake API
+│   └── extension/              # Chrome MV3 tester extension (Preact + Vite + CRXJS)
 ├── packages/
 │   ├── core/                   # @reprojs/core — published SDK
 │   ├── ui/                     # widget UI (Preact, Shadow DOM) — workspace-only

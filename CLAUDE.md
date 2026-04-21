@@ -33,12 +33,13 @@ End users (users of whatever host app embeds the SDK) can report bugs directly f
 
 ## 2. System Overview
 
-Two first-class deliverables in one repo:
+Three first-class deliverables in one repo:
 
 | Component | What it is | Who uses it | Built with |
 | --- | --- | --- | --- |
 | **SDK** | Embeddable JS widget + SDK | End users of host apps | TypeScript lib, Preact + Shadow DOM (tentative), tsdown |
 | **Dashboard** | Admin/developer web app + API | Developers, team admins | Nuxt 4 fullstack (Vue + Nitro) |
+| **Tester extension** | Chrome MV3 extension that injects the SDK into pages the team doesn't control | Internal QA / testers | Preact + Vite + `@crxjs/vite-plugin`; bundles `@reprojs/core` at build time |
 
 Data flow:
 
@@ -125,28 +126,39 @@ Monorepo with Bun workspaces. Mirrors the ai-trip project's `server/{api,db,lib}
 repro/
 ├── apps/
 │   ├── dashboard/              # Nuxt 4 fullstack — admin UI + intake API
-│   └── extension/              # Chrome MV3 extension for internal testers
-│       ├── app/                # Vue UI (pages, components, composables, layouts)
-│       ├── server/
-│       │   ├── api/
-│       │   │   ├── intake/     # SDK → API: reports, attachments
-│       │   │   ├── tickets/    # admin CRUD
-│       │   │   ├── projects/
-│       │   │   ├── auth/       # better-auth handler
-│       │   │   └── integrations/github/
-│       │   ├── db/
-│       │   │   ├── schema/     # Drizzle schemas (auth, projects, tickets, attachments)
-│       │   │   ├── migrations/
-│       │   │   └── index.ts    # Drizzle client
-│       │   ├── lib/
-│       │   │   ├── auth.ts     # better-auth config
-│       │   │   ├── github.ts   # GitHub App client
-│       │   │   └── storage/    # blob storage adapter (index.ts, local-disk.ts, s3.ts)
-│       │   └── plugins/
-│       ├── docker/
-│       │   └── docker-compose.dev.yml   # Postgres 17
-│       ├── drizzle.config.ts
-│       └── nuxt.config.ts
+│   │   ├── app/                # Vue UI (pages, components, composables, layouts)
+│   │   ├── server/
+│   │   │   ├── api/
+│   │   │   │   ├── intake/     # SDK → API: reports, attachments
+│   │   │   │   ├── tickets/    # admin CRUD
+│   │   │   │   ├── projects/
+│   │   │   │   ├── auth/       # better-auth handler
+│   │   │   │   └── integrations/github/
+│   │   │   ├── db/
+│   │   │   │   ├── schema/     # Drizzle schemas (auth, projects, tickets, attachments)
+│   │   │   │   ├── migrations/
+│   │   │   │   └── index.ts    # Drizzle client
+│   │   │   ├── lib/
+│   │   │   │   ├── auth.ts     # better-auth config
+│   │   │   │   ├── github.ts   # GitHub App client
+│   │   │   │   └── storage/    # blob storage adapter (index.ts, local-disk.ts, s3.ts)
+│   │   │   └── plugins/
+│   │   ├── docker/
+│   │   │   └── docker-compose.dev.yml   # Postgres 17
+│   │   ├── drizzle.config.ts
+│   │   └── nuxt.config.ts
+│   └── extension/              # Chrome MV3 extension for internal testers (Preact + Vite + CRXJS)
+│       ├── src/
+│       │   ├── bootstrap/      # MAIN-world fetch proxy + ISOLATED-world bridge + config injector
+│       │   ├── service-worker/ # MV3 background worker — intake proxy, origin validation
+│       │   ├── popup/          # Preact UI: add / list / revoke origin configs
+│       │   ├── options/        # Options page (Preact)
+│       │   ├── lib/            # storage, permission helpers
+│       │   └── types.ts        # Config / ConfigInput types
+│       ├── scripts/            # sync-sdk, sync-icons (pulled in by build)
+│       ├── tests/              # Playwright E2E against a built extension
+│       ├── manifest.config.ts  # @crxjs/vite-plugin manifest definition
+│       └── vite.config.ts
 │
 ├── packages/
 │   ├── core/                   # framework-agnostic SDK entry (init, public API)
@@ -168,6 +180,7 @@ repro/
 - Dashboard is a single Nuxt app (Vue UI + Nitro server) — no separate backend service needed.
 - `packages/shared` is consumed by both SDK (for report types) and dashboard (for API contract validation) so the contract is single-sourced.
 - GitHub integration adapter lives in `packages/integrations/github` so it could be reused by a standalone worker later, but the dashboard imports and runs it server-side today.
+- `apps/extension` depends on `@reprojs/core` as a workspace package and bundles it at build time (MV3 forbids remote code anyway). It is **not** a published npm package — it ships as a zip uploaded to the Chrome Web Store and the GitHub releases page. Its only role is CSP-bypass for internal testers on sites the team doesn't control; it never talks to the dashboard directly — the bundled SDK does.
 
 ---
 

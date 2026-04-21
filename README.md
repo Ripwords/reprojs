@@ -11,7 +11,8 @@
   <p>
     <a href="https://ripwords.github.io/reprojs/"><strong>Docs</strong></a> ·
     <a href="https://ripwords.github.io/reprojs/self-hosting/"><strong>Self-host</strong></a> ·
-    <a href="https://ripwords.github.io/reprojs/guide/sdk"><strong>SDK</strong></a>
+    <a href="https://ripwords.github.io/reprojs/guide/sdk"><strong>SDK</strong></a> ·
+    <a href="https://ripwords.github.io/reprojs/guide/extension"><strong>Tester extension</strong></a>
   </p>
 </div>
 
@@ -51,12 +52,13 @@ Repro gives end users of any web app a one-click way to report bugs from the pag
                                               GitHub Issues (optional)
 ```
 
-Two first-class deliverables in one repo:
+Three first-class deliverables in one repo:
 
 | Component | What it is | Who uses it |
 | --- | --- | --- |
 | **SDK** (`packages/*`) | Embeddable widget + framework-agnostic SDK | End users of whatever web app embeds Repro |
 | **Dashboard** (`apps/dashboard`) | Admin / triage UI + intake API | Your team |
+| **Tester extension** (`apps/extension`) | Chrome MV3 extension that injects the SDK into any page, with an intake proxy that bypasses strict CSPs | Internal QA on sites you don't control |
 
 ---
 
@@ -107,6 +109,16 @@ Project keys are issued from the dashboard's project settings page. Each project
 
 ---
 
+## Tester Chrome extension
+
+**Repro Tester** is a Chrome MV3 extension for internal QA teams that need to file reports from sites they don't control (a staging build owned by another team, a vendor preview, etc.). It bundles the same `@reprojs/core` SDK, and its service worker proxies the intake POST so CSP-strict hosts don't block submission.
+
+Install: grab `repro-tester-vX.Y.Z.zip` from the [releases page](https://github.com/Ripwords/reprojs/releases), unzip somewhere stable, and load it via `chrome://extensions → Load unpacked`. Full guide: [Tester extension docs](https://ripwords.github.io/reprojs/guide/extension).
+
+The extension is **not** a replacement for the `<script>` embed — real users on customer sites always get the SDK via the embed. The extension is for internal testers only.
+
+---
+
 ## Quick start (self-host)
 
 Prerequisites: Bun, Docker.
@@ -142,7 +154,8 @@ For production deployment (Docker Compose with Caddy / Nginx reverse proxy, S3-c
 ```
 repro/
 ├── apps/
-│   └── dashboard/              # Nuxt 4 — admin UI + intake API
+│   ├── dashboard/              # Nuxt 4 — admin UI + intake API
+│   └── extension/              # @reprojs/extension — Chrome MV3 tester extension (Preact + Vite + CRXJS)
 ├── packages/
 │   ├── core/                   # @reprojs/core — SDK entry (init / open / identify)
 │   ├── ui/                     # @reprojs/ui — widget UI (Preact + Shadow DOM)
@@ -182,6 +195,9 @@ bun run db:push           # create schema
 bun run dev               # start dashboard on :3000
 bun run sdk:build         # build @reprojs/core IIFE + ESM bundles
 bun run demo              # run the SDK demo playground on :4000
+bun run ext:dev           # run the tester extension in Vite dev mode
+bun run ext:build         # build the extension (syncs the SDK + icons first)
+bun run ext:test          # run the extension unit tests
 bun run check             # oxfmt --check + oxlint
 bun run test              # run all tests (SDK + dashboard)
 bun run test:sdk          # SDK tests only (no Postgres required)
@@ -192,9 +208,12 @@ bun run test:sdk          # SDK tests only (no Postgres required)
 Releases are driven by [changelogen](https://github.com/unjs/changelogen) from Conventional Commits.
 
 ```bash
-bun run release           # patch (default)
-bun run release:minor     # minor
-bun run release:major     # major
+bun run release           # patch (default) — dashboard
+bun run release:minor     # minor — dashboard
+bun run release:major     # major — dashboard
+bun run release:sdk       # release the SDK packages
+bun run release:extension # release the Chrome extension (builds + zips for the release page)
+bun run release:all       # release SDK + extension together (BUMP=minor to override)
 bun run postrelease       # push tags to GitHub
 ```
 

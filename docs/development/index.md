@@ -43,28 +43,52 @@ bun run demo         # runs the demo playground on :4000
 
 The demo loads the freshly-built IIFE so you can exercise the widget against a real dashboard. Point it at your dev instance by editing `packages/ui/demo/index.html`'s `Repro.init({...})` call.
 
+## Tester extension development
+
+```bash
+bun run ext:dev      # Vite dev mode — HMR for popup/options, rebuilds MV3 bundles on save
+bun run ext:build    # one-off production build → apps/extension/dist/
+bun run ext:test     # unit tests (bun test, src/)
+```
+
+`ext:build` calls `scripts/sync-sdk.ts` first, which copies the freshly-built `@reprojs/core` IIFE into the extension's `public/` directory so the service worker ships the same SDK the embed uses. Run `bun run sdk:build` first (or `bun run ext:build` which chains it).
+
+To load the extension locally: open `chrome://extensions`, enable Developer mode, click **Load unpacked**, and point it at `apps/extension/dist/`. For `ext:dev`'s HMR bundle use `apps/extension/dist/` the same way — CRXJS writes there continuously.
+
+End-to-end tests run against a built extension via Playwright:
+
+```bash
+bun run --filter @reprojs/extension test:e2e
+```
+
+That builds with `vite.config.e2e.ts` (extra test hooks) then runs the Playwright suite in `apps/extension/tests/`.
+
 ## Useful scripts
 
-| Script             | What it does                                                     |
-| ------------------ | ---------------------------------------------------------------- |
-| `bun run dev`      | Dev server (Nuxt + HMR) on `:3000`                               |
-| `bun run build`    | Production Nuxt build → `apps/dashboard/.output/`                |
-| `bun run sdk:build`| Build the SDK bundles (ESM + IIFE + `.d.ts`)                     |
-| `bun run demo`     | SDK demo playground on `:4000`                                   |
-| `bun run check`    | `oxfmt --check` + `oxlint` — runs in CI                          |
-| `bun run lint`     | oxlint only                                                       |
-| `bun run fmt`      | oxfmt write                                                       |
-| `bun run fix`      | `oxfmt --write` + `oxlint --fix`                                  |
-| `bun run test`     | Full test suite (SDK + dashboard — needs dev server up)           |
-| `bun run test:sdk` | SDK tests only — no Postgres / dev server required                |
-| `bun run db:gen`   | Regenerate Drizzle migrations from schema changes                 |
-| `bun run db:push`  | Sync schema directly (dev only — prod uses `migrate`)             |
-| `bun run docs:dev` | VitePress docs dev server                                         |
+| Script              | What it does                                                     |
+| ------------------- | ---------------------------------------------------------------- |
+| `bun run dev`       | Dev server (Nuxt + HMR) on `:3000`                               |
+| `bun run build`     | Production Nuxt build → `apps/dashboard/.output/`                |
+| `bun run sdk:build` | Build the SDK bundles (ESM + IIFE + `.d.ts`)                     |
+| `bun run demo`      | SDK demo playground on `:4000`                                   |
+| `bun run ext:dev`   | Vite dev mode for the tester Chrome extension                    |
+| `bun run ext:build` | Production build for the tester extension → `apps/extension/dist/`|
+| `bun run ext:test`  | Extension unit tests                                             |
+| `bun run check`     | `oxfmt --check` + `oxlint` — runs in CI                          |
+| `bun run lint`      | oxlint only                                                      |
+| `bun run fmt`       | oxfmt write                                                      |
+| `bun run fix`       | `oxfmt --write` + `oxlint --fix`                                 |
+| `bun run test`      | Full test suite (SDK + dashboard — needs dev server up)          |
+| `bun run test:sdk`  | SDK tests only — no Postgres / dev server required               |
+| `bun run db:gen`    | Regenerate Drizzle migrations from schema changes                |
+| `bun run db:push`   | Sync schema directly (dev only — prod uses `migrate`)            |
+| `bun run docs:dev`  | VitePress docs dev server                                        |
 
 ## Testing
 
 - **SDK tests** (`packages/*/*.test.ts`) — pure-JS, `bun test packages/`, no DB.
 - **Dashboard tests** (`apps/dashboard/tests/`) — integration tests that POST to a real dev server + real Postgres. Start `bun run dev` in another terminal first, then `cd apps/dashboard && bun test tests/`.
+- **Extension tests** — unit tests live next to source under `apps/extension/src/` (`bun run ext:test`); Playwright E2E lives in `apps/extension/tests/` and runs against a built extension via `bun run --filter @reprojs/extension test:e2e`.
 
 The full `bun run test` runs both, so you need the dev server running.
 
@@ -85,7 +109,8 @@ Write the failing test first, then the implementation. The project uses `bun:tes
 ```
 reprojs/
 ├── apps/
-│   └── dashboard/              # Nuxt 4 — admin UI + intake API
+│   ├── dashboard/              # Nuxt 4 — admin UI + intake API
+│   └── extension/              # Chrome MV3 tester extension (Preact + Vite + CRXJS)
 ├── packages/
 │   ├── core/                   # @reprojs/core — the published SDK
 │   ├── ui/                     # widget UI (Preact + Shadow DOM)
@@ -98,20 +123,23 @@ reprojs/
 └── compose.yaml                # self-host entry point
 ```
 
-`@reprojs/core` bundles every workspace package at build time. The others stay private and exist as build inputs only — they're never published standalone.
+`@reprojs/core` bundles every `packages/*` workspace package at build time. The others stay private and exist as build inputs only — they're never published standalone. `apps/extension` is also private: it ships as a zip on the GitHub releases page and (after review) the Chrome Web Store, not as an npm package.
 
 ## Releases
 
-Releases are driven by [changelogen](https://github.com/unjs/changelogen) from Conventional Commits.
+Releases are driven by [changelogen](https://github.com/unjs/changelogen) from Conventional Commits. Dashboard, SDK, and the tester extension release on independent tag prefixes so they can version independently.
 
 ```bash
-bun run release           # patch bump
-bun run release:minor
-bun run release:major
+bun run release           # dashboard — patch bump
+bun run release:minor     # dashboard — minor
+bun run release:major     # dashboard — major
+bun run release:sdk       # SDK packages (tag prefix: sdk-v)
+bun run release:extension # tester extension (tag prefix: extension-v) — builds + zips artifacts
+bun run release:all       # SDK + extension together (set BUMP=minor|major to override)
 bun run postrelease       # push tags to GitHub
 ```
 
-The `prerelease` hook runs lint, format:check, SDK build, and SDK tests. Pushing a `v*.*.*` tag triggers the `publish-docker` workflow which builds the multi-arch image and pushes to `ripwords/reprojs-dashboard`.
+The `prerelease` hook runs lint, format:check, SDK build, and SDK tests. Pushing a `v*.*.*` tag triggers `publish-docker` which builds the multi-arch image and pushes to `ripwords/reprojs-dashboard`. Pushing an `sdk-v*.*.*` tag triggers `publish-npm` which publishes `@reprojs/core` with provenance. Pushing an `extension-v*.*.*` tag triggers `publish-extension` which uploads to the Chrome Web Store **and** creates a GitHub Release with the `repro-tester.zip` attached (what testers install unpacked while Web Store review is pending).
 
 ## Where to file bugs / ideas
 
