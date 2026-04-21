@@ -1,15 +1,15 @@
 import type { Mirror } from "../mirror"
-import { EventType, IncrementalSource, type IncrementalSnapshotEvent } from "../types"
+import {
+  EventType,
+  IncrementalSource,
+  MouseInteractions,
+  PointerTypes,
+  type IncrementalSnapshotEvent,
+} from "../types"
 
-export const MouseInteractionType = {
-  MouseUp: 0,
-  MouseDown: 1,
-  Click: 2,
-  ContextMenu: 3,
-  DblClick: 4,
-  Focus: 5,
-  Blur: 6,
-} as const
+// Re-export as `MouseInteractionType` for ergonomic import parity with the
+// previous symbol name. Values are identical to rrweb's MouseInteractions.
+export const MouseInteractionType = MouseInteractions
 
 export interface MouseInteractionOptions {
   doc: Document
@@ -18,37 +18,70 @@ export interface MouseInteractionOptions {
   now: () => number
 }
 
+function coercePointerType(raw: string | undefined): PointerTypes | undefined {
+  if (!raw) return undefined
+  if (raw === "mouse") return PointerTypes.Mouse
+  if (raw === "pen") return PointerTypes.Pen
+  if (raw === "touch") return PointerTypes.Touch
+  return undefined
+}
+
 export function createMouseInteractionObserver(opts: MouseInteractionOptions): {
   start(): void
   stop(): void
 } {
   const handlers: Array<[string, (e: Event) => void]> = [
-    ["click", (e) => record(e, MouseInteractionType.Click)],
-    ["dblclick", (e) => record(e, MouseInteractionType.DblClick)],
-    ["mousedown", (e) => record(e, MouseInteractionType.MouseDown)],
-    ["mouseup", (e) => record(e, MouseInteractionType.MouseUp)],
-    ["contextmenu", (e) => record(e, MouseInteractionType.ContextMenu)],
-    ["focusin", (e) => record(e, MouseInteractionType.Focus)],
-    ["focusout", (e) => record(e, MouseInteractionType.Blur)],
+    ["click", (e) => record(e, MouseInteractions.Click)],
+    ["dblclick", (e) => record(e, MouseInteractions.DblClick)],
+    ["mousedown", (e) => record(e, MouseInteractions.MouseDown)],
+    ["mouseup", (e) => record(e, MouseInteractions.MouseUp)],
+    ["contextmenu", (e) => record(e, MouseInteractions.ContextMenu)],
+    ["focusin", (e) => record(e, MouseInteractions.Focus)],
+    ["focusout", (e) => record(e, MouseInteractions.Blur)],
+    // Touch taps — rrweb-player animates `.touch-active` on TouchStart and
+    // requires TouchEnd to clear the state. Without these, mobile replays
+    // have no tap feedback and touch events feel invisible.
+    ["touchstart", (e) => record(e, MouseInteractions.TouchStart)],
+    ["touchend", (e) => record(e, MouseInteractions.TouchEnd)],
+    ["touchcancel", (e) => record(e, MouseInteractions.TouchCancel)],
   ]
 
-  function record(
-    e: Event,
-    type: (typeof MouseInteractionType)[keyof typeof MouseInteractionType],
-  ): void {
+  function record(e: Event, type: MouseInteractions): void {
     const target = e.target as Node | null
     if (!target) return
     const id = opts.mirror.getId(target)
     if (id === undefined) return
-    const mouse = e as MouseEvent
+
+    // Extract x/y — prefer pointerEvent.clientX/Y; fall back to first touch
+    // for TouchEvents on browsers without unified PointerEvents.
+    let x = 0
+    let y = 0
+    let pointerType: PointerTypes | undefined
+    const pointer = e as PointerEvent
+    if (typeof pointer.clientX === "number" && typeof pointer.clientY === "number") {
+      x = Math.round(pointer.clientX)
+      y = Math.round(pointer.clientY)
+      pointerType = coercePointerType(pointer.pointerType)
+    } else {
+      const touch = e as TouchEvent
+      const first = touch.changedTouches?.[0] ?? touch.touches?.[0]
+      if (first) {
+        x = Math.round(first.clientX)
+        y = Math.round(first.clientY)
+      }
+      // All TouchEvent-derived interactions imply pointerType=Touch.
+      pointerType = PointerTypes.Touch
+    }
+
     opts.emit({
       type: EventType.IncrementalSnapshot,
       data: {
         source: IncrementalSource.MouseInteraction,
         type,
         id,
-        x: Math.round(mouse.clientX ?? 0),
-        y: Math.round(mouse.clientY ?? 0),
+        x,
+        y,
+        ...(pointerType !== undefined ? { pointerType } : {}),
       },
       timestamp: opts.now(),
     })

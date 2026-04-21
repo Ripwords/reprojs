@@ -14,13 +14,47 @@ export type EventType = (typeof EventType)[keyof typeof EventType]
 
 export const IncrementalSource = {
   Mutation: 0,
-  // MouseMove: 1 — reserved by rrweb schema; not emitted by our minimal observer subset.
+  MouseMove: 1,
   MouseInteraction: 2,
   Scroll: 3,
   ViewportResize: 4,
   Input: 5,
+  TouchMove: 6,
+  // 7 (MediaInteraction), 9 (CanvasMutation), 10 (Font), 11 (Log) not emitted
+  // by our subset — listed as comments against the rrweb schema.
+  StyleSheetRule: 8,
+  Drag: 12,
+  AdoptedStyleSheet: 15,
 } as const
 export type IncrementalSource = (typeof IncrementalSource)[keyof typeof IncrementalSource]
+
+/**
+ * rrweb's `MouseInteractions` enum — rrweb-player keys its click-ripple and
+ * touch-active animations off these numeric types. Value 8 is reserved by
+ * rrweb as `TouchMove_Departed` (legacy) — do NOT emit it.
+ */
+export const MouseInteractions = {
+  MouseUp: 0,
+  MouseDown: 1,
+  Click: 2,
+  ContextMenu: 3,
+  DblClick: 4,
+  Focus: 5,
+  Blur: 6,
+  TouchStart: 7,
+  // 8: TouchMove_Departed (legacy) — never emit
+  TouchEnd: 9,
+  TouchCancel: 10,
+} as const
+export type MouseInteractions = (typeof MouseInteractions)[keyof typeof MouseInteractions]
+
+/** rrweb's `PointerTypes` enum. */
+export const PointerTypes = {
+  Mouse: 0,
+  Pen: 1,
+  Touch: 2,
+} as const
+export type PointerTypes = (typeof PointerTypes)[keyof typeof PointerTypes]
 
 export const NodeType = {
   Document: 0,
@@ -93,10 +127,32 @@ export interface MutationData {
 
 export interface MouseInteractionData {
   source: typeof IncrementalSource.MouseInteraction
-  type: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+  type: MouseInteractions
   id: number
   x: number
   y: number
+  /** `PointerTypes.Mouse | Pen | Touch` when the browser exposes `pointerType`. */
+  pointerType?: PointerTypes
+}
+
+export interface MousePosition {
+  x: number
+  y: number
+  id: number
+  /**
+   * Negative offset in ms from the batch event's `timestamp` to when the
+   * position was sampled. rrweb-player reconstructs the sample time as
+   * `event.timestamp + position.timeOffset`.
+   */
+  timeOffset: number
+}
+
+export interface MouseMoveData {
+  source:
+    | typeof IncrementalSource.MouseMove
+    | typeof IncrementalSource.TouchMove
+    | typeof IncrementalSource.Drag
+  positions: MousePosition[]
 }
 
 export interface ScrollData {
@@ -120,12 +176,47 @@ export interface InputData {
   userTriggered?: boolean
 }
 
+export interface StyleSheetAddRule {
+  rule: string
+  index?: number | number[]
+}
+
+export interface StyleSheetDeleteRule {
+  index: number | number[]
+}
+
+export interface StyleSheetRuleData {
+  source: typeof IncrementalSource.StyleSheetRule
+  /** Mirror id of the <style>/<link rel=stylesheet> element the sheet belongs to. */
+  id?: number
+  /** `styleId` used by rrweb for constructable stylesheets — unused by us. */
+  styleId?: number
+  /** Whole-text replace via `sheet.replace()` / `replaceSync()`. */
+  replace?: string
+  /** Individual rule insertions. */
+  adds?: StyleSheetAddRule[]
+  /** Individual rule deletions (by index). */
+  removes?: StyleSheetDeleteRule[]
+}
+
+export interface AdoptedStyleSheetData {
+  source: typeof IncrementalSource.AdoptedStyleSheet
+  id: number
+  /** Ordered list of styleIds adopted on this (shadow) root. */
+  styleIds: number[]
+  /** New sheets that appeared in this adoption — their initial rules. */
+  styles?: Array<{ styleId: number; rules: StyleSheetAddRule[] }>
+}
+
 export type IncrementalData =
   | MutationData
+  | MouseMoveData
   | MouseInteractionData
   | ScrollData
   | ViewportResizeData
   | InputData
+  | StyleSheetRuleData
+  | AdoptedStyleSheetData
 
 export interface IncrementalSnapshotEvent {
   type: typeof EventType.IncrementalSnapshot
