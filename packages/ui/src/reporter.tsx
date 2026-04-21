@@ -28,7 +28,6 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
   const [annotatedBlob, setAnnotatedBlob] = useState<Blob | null>(null)
   const [step, setStep] = useState<"annotate" | "describe">("annotate")
   const [rawScreenshot, setRawScreenshot] = useState<Blob | null>(null)
-  const [captureFailed, setCaptureFailed] = useState(false)
 
   useEffect(() => {
     let revoked = false
@@ -42,7 +41,11 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
     ;(async () => {
       const blob = await onCapture()
       if (!blob) {
-        setCaptureFailed(true)
+        // The user dismissed the screen-capture prompt. Treat that as a
+        // cancel of the whole bug-report flow: close the wizard and return
+        // to the page. This used to drop into the describe step with a
+        // null screenshot, which surprised users who'd explicitly cancelled.
+        if (!revoked) onClose()
         return
       }
       setRawScreenshot(blob)
@@ -101,17 +104,6 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
       setTimeout(onClose, 1500)
     }
     return result
-  }
-
-  if (captureFailed) {
-    return h(StepDescribe, {
-      annotatedBlob: null,
-      onBack: handleCancel,
-      onCancel: handleCancel,
-      openedAt,
-      onSubmit: async ({ title, description, dwellMs, honeypot }) =>
-        handleSubmit({ title, description, dwellMs, honeypot }),
-    })
   }
 
   if (!bg) {
