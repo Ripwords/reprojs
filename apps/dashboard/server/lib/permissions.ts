@@ -5,12 +5,13 @@ import { db } from "../db"
 import { projectMembers } from "../db/schema"
 import { auth } from "./auth"
 
-export type ProjectRoleName = "viewer" | "developer" | "owner"
+export type ProjectRoleName = "viewer" | "manager" | "developer" | "owner"
 
 const ROLE_RANK: Record<ProjectRoleName, number> = {
   viewer: 1,
-  developer: 2,
-  owner: 3,
+  manager: 2,
+  developer: 3,
+  owner: 4,
 }
 
 export function compareRole(actual: ProjectRoleName, min: ProjectRoleName): boolean {
