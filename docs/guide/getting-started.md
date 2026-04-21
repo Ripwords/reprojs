@@ -9,6 +9,7 @@ Pick where to start:
 
 - [**Self-host the dashboard**](/self-hosting/) — you need a running dashboard before the SDK has anywhere to send reports. Most people start here.
 - [**Embed the SDK**](/guide/sdk) — once the dashboard is up and you have a project key.
+- [**Tester Chrome extension**](/guide/extension) — for internal QA teams that need to file reports on sites they don't control.
 - [**Architecture**](/guide/architecture) — how the pieces fit together.
 
 ## Why Repro

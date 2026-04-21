@@ -40,6 +40,10 @@ export default defineConfig({
           text: "SDK",
           items: [{ text: "Embed + API", link: "/guide/sdk" }],
         },
+        {
+          text: "Tester extension",
+          items: [{ text: "Chrome extension", link: "/guide/extension" }],
+        },
       ],
       "/self-hosting/": [
         {
