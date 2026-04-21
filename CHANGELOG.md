@@ -1,5 +1,56 @@
 # Changelog
 
+## v0.1.11
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.10...v0.1.11)
+
+### 🚀 Enhancements
+
+- **extension:** Scaffold apps/extension MV3 + crxjs skeleton ([62a36a5](https://github.com/Ripwords/reprojs/commit/62a36a5))
+- **extension:** Add chrome.storage.local config wrapper ([9a03d07](https://github.com/Ripwords/reprojs/commit/9a03d07))
+- **extension:** Add origin matching utility ([b9fd648](https://github.com/Ripwords/reprojs/commit/b9fd648))
+- **extension:** Add chrome.permissions helpers ([e1b166e](https://github.com/Ripwords/reprojs/commit/e1b166e))
+- **extension:** Add SDK sync script ([1d940b8](https://github.com/Ripwords/reprojs/commit/1d940b8))
+- **extension:** Inject SDK via chrome.scripting on tab load ([5384731](https://github.com/Ripwords/reprojs/commit/5384731))
+- **extension:** Popup shell + config list component ([1720e78](https://github.com/Ripwords/reprojs/commit/1720e78))
+- **extension:** Add-config form with permission request ([282f7ce](https://github.com/Ripwords/reprojs/commit/282f7ce))
+- **ci:** Add chrome web store publishing workflow ([030669b](https://github.com/Ripwords/reprojs/commit/030669b))
+- **extension:** Sync icons from dashboard SVG at build time ([613f82b](https://github.com/Ripwords/reprojs/commit/613f82b))
+- **extension:** Proxy SDK fetch through the service worker ([ff40433](https://github.com/Ripwords/reprojs/commit/ff40433))
+- **extension:** Redesign popup/options + fix first-add race ([318666d](https://github.com/Ripwords/reprojs/commit/318666d))
+- **extension:** Remember last intake endpoint in Add form ([e9f7b91](https://github.com/Ripwords/reprojs/commit/e9f7b91))
+
+### 🩹 Fixes
+
+- **github:** Drop env-source guard from disconnect endpoint ([7e3e04c](https://github.com/Ripwords/reprojs/commit/7e3e04c))
+- **extension:** Tsconfig types reference "bun" not "bun-types" ([682a979](https://github.com/Ripwords/reprojs/commit/682a979))
+- **extension:** Guard against double SDK injection ([6de3900](https://github.com/Ripwords/reprojs/commit/6de3900))
+- **extension:** Close the double-inject race properly ([f077804](https://github.com/Ripwords/reprojs/commit/f077804))
+- **core:** Remove DOM fallback from screenshot auto mode ([a4ec71b](https://github.com/Ripwords/reprojs/commit/a4ec71b))
+- **ui:** Cancelling the capture prompt closes the reporter ([3f3a7b7](https://github.com/Ripwords/reprojs/commit/3f3a7b7))
+- **extension:** Harden bootRepro + add proxy diagnostics ([81367ac](https://github.com/Ripwords/reprojs/commit/81367ac))
+- **intake:** Accept X-Repro-Origin from extension SW proxy ([84a683d](https://github.com/Ripwords/reprojs/commit/84a683d))
+
+### 📖 Documentation
+
+- Add tester chrome extension design spec ([8ec9f10](https://github.com/Ripwords/reprojs/commit/8ec9f10))
+- Add tester chrome extension implementation plan ([0af8870](https://github.com/Ripwords/reprojs/commit/0af8870))
+- **plan:** Use dedicated e2e manifest for playwright injection test ([12c3181](https://github.com/Ripwords/reprojs/commit/12c3181))
+- Note apps/extension in repo layout ([72f3d13](https://github.com/Ripwords/reprojs/commit/72f3d13))
+- Add privacy policy page ([8af07a9](https://github.com/Ripwords/reprojs/commit/8af07a9))
+
+### 🏡 Chore
+
+- **extension:** Add ext:\* scripts to root ([7aba1b9](https://github.com/Ripwords/reprojs/commit/7aba1b9))
+
+### ✅ Tests
+
+- **extension:** Playwright MV3 injection coverage ([2b3cbfd](https://github.com/Ripwords/reprojs/commit/2b3cbfd))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.10
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.9...v0.1.10)
