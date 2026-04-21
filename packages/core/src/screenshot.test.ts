@@ -126,12 +126,16 @@ describe("capture (orchestration)", () => {
     expect(domToBlobCalls).toBe(0)
   })
 
-  test("auto: falls back to DOM when display-media returns null", async () => {
+  test("auto: returns null when display-media returns null (no DOM fallback)", async () => {
+    // The DOM fallback used to run here, but it can stall indefinitely on
+    // heavy pages and strands users on the "Capturing…" overlay. A null
+    // result lets the wizard advance to the description step without a
+    // screenshot.
     displayMediaResult = null
     const blob = await capture({ method: "auto" })
-    expect(blob).toBeInstanceOf(Blob)
+    expect(blob).toBeNull()
     expect(displayMediaCalls).toBe(1)
-    expect(domToBlobCalls).toBe(1)
+    expect(domToBlobCalls).toBe(0)
   })
 
   test("auto is the default method", async () => {

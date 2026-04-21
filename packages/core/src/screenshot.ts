@@ -14,14 +14,16 @@ export type CaptureMethod = "auto" | "display-media" | "dom"
 
 export interface CaptureOptions {
   // Which capture path to use. Defaults to "auto":
-  //   1. Try the browser's getDisplayMedia (pixel-perfect, ~50ms after the
-  //      user accepts the "Share this tab?" prompt — no DOM cloning, no
-  //      font inlining, no shadow-DOM traps).
-  //   2. Fall back to the DOM path (modern-screenshot) when the user
-  //      denies, the API is missing, or the frame grab fails.
-  // Set "dom" to skip the prompt entirely (older UX, slower on heavy pages
-  // but no permission flow). Set "display-media" to require the API and
-  // return null if it's unavailable.
+  //   "auto" / "display-media" — use the browser's getDisplayMedia
+  //     (pixel-perfect, ~50ms after the user accepts the "Share this tab?"
+  //     prompt, no DOM cloning, no font inlining, no shadow-DOM traps).
+  //     Returns null if the user declines or the API is unavailable. Does
+  //     NOT fall back to DOM capture: the fallback could stall indefinitely
+  //     on heavy pages (CSS-in-JS, web components, slow CDN fonts) and a
+  //     hung "Capturing…" overlay is strictly worse than a missing
+  //     screenshot — the wizard keeps moving with the description step.
+  //   "dom" — skip the permission prompt entirely and use modern-screenshot.
+  //     Opt-in only, for hosts that don't want the browser prompt.
   method?: CaptureMethod
   // Extra selectors to skip during the DOM-path snapshot. Useful for
   // third-party widgets that stall modern-screenshot (Vercel toolbar,
@@ -76,10 +78,15 @@ async function captureViaDom(opts: CaptureOptions): Promise<Blob | null> {
 
 export async function capture(opts: CaptureOptions = {}): Promise<Blob | null> {
   const method = opts.method ?? "auto"
-  if (method === "display-media" || method === "auto") {
-    const frame = await withHiddenHost(() => captureViaDisplayMedia())
-    if (frame) return frame
-    if (method === "display-media") return null
+  if (method === "dom") {
+    return await captureViaDom(opts)
   }
-  return await captureViaDom(opts)
+  // "auto" and "display-media" both behave identically now: try the browser's
+  // screen capture once and return null on any failure (user declined, API
+  // missing, track errored). Historically "auto" fell back to modern-
+  // screenshot on failure, but that path stalls indefinitely on real apps
+  // (Next.js dev overlays, CSS-in-JS, slow-inlining CDN fonts) and strands
+  // users on "Capturing…". A null screenshot lets the wizard advance to the
+  // description step without blocking.
+  return await withHiddenHost(() => captureViaDisplayMedia())
 }
