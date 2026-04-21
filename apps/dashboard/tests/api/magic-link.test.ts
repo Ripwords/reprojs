@@ -122,6 +122,61 @@ describe("magic-link auth", () => {
     expect(row?.status).toBe("active")
   })
 
+  test("invited member does NOT auto-promote to admin even when they're the only user", async () => {
+    // REGRESSION (BLOCKER-2): the old `promoteInvitedOrFirstUser` used
+    // `|updatedAt - createdAt| < 2s` as a "brand-new user" signal. Rows
+    // inserted by the admin-invite endpoint (users/index.post.ts:60-61) set
+    // both timestamps to new Date(), so this heuristic falsely matched
+    // freshly-invited members and, when they were the only user in the
+    // table, silently promoted them to admin — bypassing the role the
+    // inviting admin specified.
+    const id = randomBytes(16).toString("hex")
+    const now = new Date()
+    await db.insert(user).values({
+      id,
+      email: "invited-member@example.com",
+      name: "invited",
+      emailVerified: false,
+      role: "member",
+      status: "invited",
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    const cookie = await signIn("invited-member@example.com")
+    expect(cookie.length).toBeGreaterThan(0)
+
+    const [row] = await db.select().from(user).where(eq(user.id, id))
+    expect(row?.role).toBe("member")
+    expect(row?.status).toBe("active")
+  })
+
+  test("brand-new sign-in when user table is empty becomes admin (first-user bootstrap)", async () => {
+    // Baseline behavior: a fresh install must hand admin to the first
+    // person who signs in. Verifies the move to `databaseHooks.user.create
+    // .after` preserves this semantic when it's actually warranted.
+    const cookie = await signIn("first@example.com")
+    expect(cookie.length).toBeGreaterThan(0)
+
+    const [row] = await db.select().from(user).where(eq(user.email, "first@example.com"))
+    expect(row?.role).toBe("admin")
+    expect(row?.status).toBe("active")
+  })
+
+  test("brand-new sign-in when an admin already exists stays member", async () => {
+    // The bootstrap check must only fire when NO other user exists. A
+    // brand-new user arriving at a populated install gets the default
+    // `member` role, not admin.
+    await createUser("existing-admin@example.com", "admin")
+
+    const cookie = await signIn("newcomer@example.com")
+    expect(cookie.length).toBeGreaterThan(0)
+
+    const [row] = await db.select().from(user).where(eq(user.email, "newcomer@example.com"))
+    expect(row?.role).toBe("member")
+    expect(row?.status).toBe("active")
+  })
+
   test("signupGated=true still lets an existing active user sign in (and does NOT delete their row)", async () => {
     // REGRESSION: the after-hook previously looked up by status='invited' and
     // called db.delete(user) when no match was found — which wiped EXISTING

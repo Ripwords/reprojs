@@ -1,4 +1,4 @@
-import { count, eq } from "drizzle-orm"
+import { count, eq, sql } from "drizzle-orm"
 import { betterAuth } from "better-auth"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
@@ -59,43 +59,40 @@ async function enforceDomainGate(newUser: {
 }
 
 /**
- * First-sign-in promotion:
- *   - Pre-invited user (status=`invited`) → flip to `active`.
- *   - Brand-new user who is also the only user in the install → promote to
- *     `admin`. This is the bootstrapping rule that hands the first person
- *     to sign in ownership of a fresh deployment.
+ * Flip `status=invited` → `active` on first successful sign-in.
  *
- * "Brand-new" is detected by the user row's `createdAt` being within a few
- * seconds of its `updatedAt` — magic-link's `internalAdapter.createUser`
- * emits identical timestamps for both, whereas a user returning for another
- * sign-in will have `updatedAt > createdAt` by at least the gap between
- * their first sign-in and this one. This disambiguation matters for tests
- * (and any other path) that insert user rows directly with role=member:
- * those rows must NOT get silently promoted to admin just because the row
- * happens to be the only one in the table when that user signs in.
+ * Pre-invited rows are inserted by `POST /api/users` with status=`invited`;
+ * better-auth's `findUserByEmail` resolves them before calling createUser,
+ * so they never trip the signup-gate in `create.before`. This hook just
+ * promotes them to `active` once they actually sign in.
  */
-async function promoteInvitedOrFirstUser(userId: string): Promise<void> {
+async function promoteInvitedToActive(userId: string): Promise<void> {
   const [existing] = await db.select().from(user).where(eq(user.id, userId))
-  if (!existing) return
+  if (!existing || existing.status !== "invited") return
+  await db.update(user).set({ status: "active" }).where(eq(user.id, userId))
+}
 
-  const [countRow] = await db.select({ c: count() }).from(user)
-  const totalUsers = countRow?.c ?? 0
-
-  // Created-at and updated-at must be from the same request to be considered
-  // brand-new. 2s covers clock drift on the db-round-trip.
-  const createdAtMs = existing.createdAt.getTime()
-  const updatedAtMs = existing.updatedAt.getTime()
-  const wasJustCreated = Math.abs(updatedAtMs - createdAtMs) < 2_000
-
-  const updates: Partial<typeof user.$inferInsert> = {}
-  if (existing.status === "invited") {
-    updates.status = "active"
-  }
-  if (wasJustCreated && totalUsers === 1 && existing.role !== "admin") {
-    updates.role = "admin"
-  }
-  if (Object.keys(updates).length === 0) return
-  await db.update(user).set(updates).where(eq(user.id, userId))
+/**
+ * First-user bootstrap: if this brand-new user is the only row in the
+ * table, promote them to `admin` so a fresh self-host install hands
+ * ownership to the first person who signs in.
+ *
+ * Called from `databaseHooks.user.create.after` — which fires only on a
+ * legitimate brand-new INSERT — so we have an unambiguous signal that
+ * this is a new user, not a returning or invited one. Wrapped in a
+ * Postgres advisory lock so two concurrent first-user sign-ups can't
+ * both see `totalUsers === 1` and both claim admin.
+ */
+async function bootstrapFirstUserAsAdmin(userId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    // hashtext() + advisory xact lock auto-releases on commit/rollback.
+    // Key is a constant string unique to this promotion.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('auth.first_admin'))`)
+    const [countRow] = await tx.select({ c: count() }).from(user)
+    const totalUsers = countRow?.c ?? 0
+    if (totalUsers !== 1) return
+    await tx.update(user).set({ role: "admin" }).where(eq(user.id, userId))
+  })
 }
 
 export const auth = betterAuth({
@@ -180,6 +177,12 @@ export const auth = betterAuth({
           const url = new URL("/auth/sign-in?error=not_invited", ctx.context.baseURL).toString()
           throw ctx.redirect(url)
         },
+        // First-user bootstrap lives here (not in the auth after-hook) so
+        // we have an unambiguous "brand-new row just inserted" signal
+        // instead of timestamp heuristics. See bootstrapFirstUserAsAdmin.
+        after: async (newUser) => {
+          await bootstrapFirstUserAsAdmin(newUser.id)
+        },
       },
     },
   },
@@ -218,7 +221,7 @@ export const auth = betterAuth({
         ).toString()
         throw ctx.redirect(errorUrl)
       }
-      await promoteInvitedOrFirstUser(newUser.id)
+      await promoteInvitedToActive(newUser.id)
     }),
   },
 })
