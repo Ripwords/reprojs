@@ -8,7 +8,7 @@
 // via changelogen's built-in `--github` step (disabled with --no-github in
 // scripts/release-sdk.sh).
 export default {
-  repo: "Ripwords/reprojs",
+  repo: "Ripwords/ReproJs",
   output: "CHANGELOG.md",
   templates: {
     commitMessage: "chore(release): sdk-v{{newVersion}}",
