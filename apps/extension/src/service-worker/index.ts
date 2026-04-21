@@ -95,15 +95,26 @@ async function tryInject(tabId: number, url: string): Promise<void> {
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // A real navigation (fresh load, URL change, OR page refresh) starts with
+  // `status: "loading"`. The page-world SDK is gone as of this event, so
+  // invalidate the dedupe key *before* the matching "complete" lands — that
+  // way tryInject re-injects the SDK. Without this, a refresh leaves the
+  // stale dedupe entry in place, tryInject bails, and the user sees no
+  // launcher after hitting F5. HMR/Fast-Refresh does NOT emit tabs.onUpdated
+  // (modules swap via WebSocket without tab navigation), so this clear is
+  // safe — it only fires on genuine navigations.
+  if (changeInfo.status === "loading") {
+    injectedForTab.delete(tabId)
+    return
+  }
   if (changeInfo.status !== "complete") return
   if (!tab.url) return
   void tryInject(tabId, tab.url)
 })
 
-// A real navigation (not an HMR cycle) should clear the dedupe key so the
-// SDK gets a fresh mount on the new page. changeInfo.url is only populated
-// when the tab's URL actually changed — Fast Refresh and subframe completes
-// don't emit it.
+// Belt-and-suspenders: URL change emits earlier than `status: "loading"`
+// in some Chrome edge cases (cross-origin redirects, history API). Keep
+// this as a secondary trigger so a URL change always wipes the dedupe.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url) {
     injectedForTab.delete(tabId)
