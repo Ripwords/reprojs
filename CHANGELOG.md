@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.1.13
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.12...v0.1.13)
+
+### 🚀 Enhancements
+
+- **extension:** Pre-fill Add form with active tab's origin ([ef78c25](https://github.com/Ripwords/reprojs/commit/ef78c25))
+
+### 🩹 Fixes
+
+- **security:** ⚠️  Close H1/H2/M2/M3/M4 from pre-publish audit ([1f7b72a](https://github.com/Ripwords/reprojs/commit/1f7b72a))
+
+### 📖 Documentation
+
+- Add tester Chrome extension guide ([e8d3c58](https://github.com/Ripwords/reprojs/commit/e8d3c58))
+
+### 🏡 Chore
+
+- **ci:** Exempt CHANGELOG files from oxfmt ([0b7dae0](https://github.com/Ripwords/reprojs/commit/0b7dae0))
+
+### 🤖 CI
+
+- **docker:** Create GitHub Release as part of publish workflow ([2514731](https://github.com/Ripwords/reprojs/commit/2514731))
+
+#### ⚠️ Breaking Changes
+
+- **security:** ⚠️  Close H1/H2/M2/M3/M4 from pre-publish audit ([1f7b72a](https://github.com/Ripwords/reprojs/commit/1f7b72a))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.12
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.11...v0.1.12)
