@@ -18,5 +18,5 @@ export default defineManifest({
   },
   action: { default_popup: "index.html" },
   options_page: "options.html",
-  web_accessible_resources: [{ resources: ["repro.iife.js"], matches: ["<all_urls>"] }],
+  // No web_accessible_resources — matches the production manifest.
 })

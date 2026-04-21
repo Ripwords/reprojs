@@ -27,10 +27,9 @@ export default defineManifest({
     },
   },
   options_page: "options.html",
-  web_accessible_resources: [
-    {
-      resources: ["repro.iife.js"],
-      matches: ["<all_urls>"],
-    },
-  ],
+  // M4: no web_accessible_resources. chrome.scripting.executeScript({
+  // files }) from the service worker loads the SDK IIFE directly
+  // without needing to expose it to page-initiated fetches. Omitting
+  // this prevents fingerprinting via `fetch("chrome-extension://<id>/
+  // repro.iife.js")` from arbitrary pages.
 })

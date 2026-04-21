@@ -136,6 +136,16 @@ export function registerProxyHandler(): void {
           reject(sendResponse, "proxy: missing url")
           return
         }
+        // H2 guard: restrict HTTP methods to what the intake API actually
+        // accepts. OPTIONS handles preflights even though the SW fetch
+        // doesn't preflight itself — kept permissive only for correctness
+        // if the SDK ever probes. Anything else is denied outright so a
+        // compromised page can't reach a future DELETE/PATCH route.
+        const method = msg.method ?? "GET"
+        if (method !== "POST" && method !== "OPTIONS") {
+          reject(sendResponse, "proxy: method not allowed")
+          return
+        }
         let targetUrl: URL
         try {
           targetUrl = new URL(msg.url)
@@ -173,23 +183,28 @@ export function registerProxyHandler(): void {
         }
 
         const body = msg.body ? deserializeBody(msg.body) : undefined
-        const headers: Record<string, string> = { ...msg.headers }
-        // fetch refuses to set these from any context; the browser sets them.
-        delete headers.host
-        delete headers.origin
-        delete headers.referer
-        // Strip auth that could ride along from the page context.
-        delete headers.authorization
-        delete headers.cookie
-        // For FormData let fetch compute Content-Type with the boundary.
-        if (msg.body?.kind === "formData") delete headers["content-type"]
+
+        // H1 guard: header ALLOWLIST, not blocklist. A MAIN-world attacker
+        // on an allowlisted tab can post anything in msg.headers, and the
+        // SW-authenticated X-Repro-Origin we attach makes the intake treat
+        // the whole request as trusted. Blocklisting means every new
+        // auth-sensitive or trust-bearing header we don't think of is an
+        // attack. Allowlist is O(1) to audit: only content-type (when not
+        // FormData; fetch owns it with boundary otherwise) is forwarded.
+        // Any other header worth passing gets added here intentionally.
+        const headers: Record<string, string> = {}
+        const suppliedContentType = msg.headers?.["content-type"] ?? msg.headers?.["Content-Type"]
+        if (suppliedContentType && msg.body?.kind !== "formData") {
+          headers["content-type"] = suppliedContentType
+        }
         // F3 guard: X-Repro-Origin is set from the SW-derived tab origin,
-        // NEVER from msg.pageOrigin. A compromised page cannot claim to
-        // speak for a different allowlisted origin.
+        // NEVER from msg.pageOrigin or any msg.headers entry (those are
+        // dropped by the allowlist above). A compromised page cannot
+        // claim to speak for a different allowlisted origin.
         headers["x-repro-origin"] = tabOrigin
 
         const response = await fetch(targetUrl.href, {
-          method: msg.method ?? "GET",
+          method,
           headers,
           body,
         })

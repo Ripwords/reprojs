@@ -28,6 +28,16 @@ export default defineEventHandler(async (event) => {
   }
 
   const rawOrigin = getHeader(event, "origin") ?? ""
+  // M2: reject when there is no browser-set Origin at all. The whole
+  // security model leans on the browser attaching Origin to the request;
+  // a request without one is a non-browser client that we deliberately
+  // don't accept (direct-embed SDK always attaches Origin for POSTs; the
+  // extension SW always attaches `chrome-extension://<id>`). Refuse
+  // before emitting any ACAO so a client cannot coax us into echoing an
+  // empty/arbitrary value.
+  if (!rawOrigin) {
+    throw createError({ statusCode: 403, statusMessage: "Origin header required" })
+  }
   // When an extension service worker posts on behalf of a tester, the
   // browser sets Origin to chrome-extension://<id> — unforgeable from
   // a regular webpage. In that narrow case, fall back to the page origin
@@ -39,6 +49,13 @@ export default defineEventHandler(async (event) => {
   const origin = rawOrigin.startsWith("chrome-extension://")
     ? (getHeader(event, "x-repro-origin") ?? "")
     : rawOrigin
+  // M3 belt-and-braces: even if allowedOrigins somehow contained "" in
+  // persisted data, the empty X-Repro-Origin fallback must not let a
+  // chrome-extension:// source slip through. isOriginAllowed below also
+  // rejects empty, but guarding here makes the intent unambiguous.
+  if (!origin) {
+    throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
+  }
   // TRUST_XFF is OFF by default — a public deployment must not be trivially
   // rate-limit-bypassed via a spoofed X-Forwarded-For header.
   const ip = getRequestIP(event, { xForwardedFor: env.TRUST_XFF }) ?? "unknown"
@@ -92,7 +109,9 @@ export default defineEventHandler(async (event) => {
   // Use the RAW origin for CORS — the browser checks ACAO against the fetch
   // client's actual origin, which for an extension SW proxy is
   // chrome-extension://<id>, not the page-origin fallback we accepted above.
-  applyIntakePostCors(event, rawOrigin || origin)
+  // rawOrigin is guaranteed non-empty by the guard at the top of this
+  // handler; never echo client-supplied X-Repro-Origin as ACAO.
+  applyIntakePostCors(event, rawOrigin)
 
   // S1: Honeypot check BEFORE rate-limit takes. Bots that set _hp must not
   // consume quota — tarpit them cheaply without burning the project's budget.
