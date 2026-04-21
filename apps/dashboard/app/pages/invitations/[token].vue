@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import type { InvitationDetailDTO } from "@reprojs/shared"
 
-definePageMeta({ middleware: [] })
-
+// $fetch in SSR does NOT forward the incoming request's cookies even with
+// `credentials: "include"` — that option is a browser concept. The server
+// call then hits requireSession with no session and 401s, we catch and
+// navigateTo, and navigateTo's internal useNuxtApp() occasionally loses
+// its AsyncLocalStorage context across the await boundary and throws
+// "[nuxt] instance unavailable" (surfaced as a 500 Server Error to the
+// user). Use useRequestFetch so cookies forward on SSR, and wrap the
+// post-await navigateTo in runWithContext so the context is preserved
+// regardless of how the awaits chain.
 const route = useRoute()
 const token = computed(() => String(route.params.token))
 const toast = useToast()
 const { signOut } = useSession()
+const nuxtApp = useNuxtApp()
+const requestFetch = useRequestFetch()
 
 const invite = ref<InvitationDetailDTO | null>(null)
 const errorCode = ref<"email_mismatch" | "expired" | "revoked" | "accepted" | "not_found" | null>(
@@ -20,13 +29,13 @@ useHead({ title: "Accept invitation" })
 async function load() {
   pending.value = true
   try {
-    invite.value = await $fetch<InvitationDetailDTO>(`/api/invitations/${token.value}`, {
-      credentials: "include",
-    })
+    invite.value = await requestFetch<InvitationDetailDTO>(`/api/invitations/${token.value}`)
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode
     if (status === 401) {
-      await navigateTo(`/auth/sign-in?returnTo=/invitations/${token.value}`)
+      await nuxtApp.runWithContext(() =>
+        navigateTo(`/auth/sign-in?returnTo=/invitations/${token.value}`),
+      )
       return
     }
     if (status === 409) {
@@ -50,12 +59,12 @@ await load()
 async function accept() {
   submitting.value = true
   try {
-    const res = await $fetch<{ projectId: string; role: string }>(
+    const res = await requestFetch<{ projectId: string; role: string }>(
       `/api/invitations/${token.value}/accept`,
-      { method: "POST", credentials: "include" },
+      { method: "POST" },
     )
     toast.add({ title: "Invitation accepted", color: "success", icon: "i-heroicons-check-circle" })
-    await navigateTo(`/projects/${res.projectId}`)
+    await nuxtApp.runWithContext(() => navigateTo(`/projects/${res.projectId}`))
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode
     const msg = (err as { statusMessage?: string }).statusMessage ?? ""
@@ -77,11 +86,8 @@ async function accept() {
 async function decline() {
   submitting.value = true
   try {
-    await $fetch(`/api/invitations/${token.value}/decline`, {
-      method: "POST",
-      credentials: "include",
-    })
-    await navigateTo("/")
+    await requestFetch(`/api/invitations/${token.value}/decline`, { method: "POST" })
+    await nuxtApp.runWithContext(() => navigateTo("/"))
   } catch (err: unknown) {
     toast.add({
       title: "Could not decline",
