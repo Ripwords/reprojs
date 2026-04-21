@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks"
+import { useEffect, useState } from "preact/hooks"
 import type { ConfigInput } from "../types"
 
 const KEY_RE = /^rp_pk_[A-Za-z0-9]{24}$/
@@ -9,6 +9,11 @@ type Props = {
   submitLabel?: string
   /** Pre-fills the intake endpoint field — typically the user's last saved value. */
   defaultIntakeEndpoint?: string
+  /**
+   * Pre-fills the origin field — typically the active tab's origin. Leave
+   * undefined/empty in contexts without a tab (options page).
+   */
+  defaultOrigin?: string
 }
 
 function validate(input: ConfigInput): string | null {
@@ -42,9 +47,13 @@ export function AddConfigForm({
   onCancel,
   submitLabel = "Add origin",
   defaultIntakeEndpoint = "",
+  defaultOrigin = "",
 }: Props) {
   const [label, setLabel] = useState("")
-  const [origin, setOrigin] = useState("")
+  // Lazy init so the prop value at mount time becomes initial state. The
+  // popup's Add mode remounts this form each time the user opens it, so
+  // the active-tab origin captured on entry is always the current one.
+  const [origin, setOrigin] = useState(() => defaultOrigin)
   const [projectKey, setProjectKey] = useState("")
   // Lazy init so the prop value at mount time becomes the initial state;
   // subsequent re-renders won't clobber the user's edits. The form remounts
@@ -53,6 +62,14 @@ export function AddConfigForm({
   const [intakeEndpoint, setIntakeEndpoint] = useState(() => defaultIntakeEndpoint)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // chrome.tabs.query can resolve after the first paint. If it does, adopt
+  // the tab origin into the input — but only if the user hasn't typed
+  // anything yet. Once they start editing, their input wins.
+  useEffect(() => {
+    if (defaultOrigin && origin === "") setOrigin(defaultOrigin)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to defaultOrigin arriving; intentionally don't re-run on origin edits.
+  }, [defaultOrigin])
 
   async function handleSubmit(e: Event) {
     e.preventDefault()

@@ -3,12 +3,14 @@ import { AddConfigForm } from "./AddConfigForm"
 import { ConfigList } from "./ConfigList"
 // oxlint-disable-next-line eslint-plugin-import/no-unassigned-import
 import "./styles.css"
+import { useActiveTabOrigin } from "./useActiveTabOrigin"
 import { useConfigs } from "./useConfigs"
 
 type Mode = "list" | "add"
 
 export function App() {
   const { items, add, remove, regrant, lastIntakeEndpoint } = useConfigs()
+  const activeTabOrigin = useActiveTabOrigin()
   const [mode, setMode] = useState<Mode>("list")
 
   const originsMeta =
@@ -60,6 +62,7 @@ export function App() {
             onSubmit={handleAdd}
             onCancel={() => setMode("list")}
             defaultIntakeEndpoint={lastIntakeEndpoint}
+            defaultOrigin={activeTabOrigin ?? ""}
           />
         </>
       )}
