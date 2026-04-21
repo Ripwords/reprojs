@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.14
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.13...v0.1.14)
+
+### 🚀 Enhancements
+
+- **dashboard:** Pending-invitations page + fix stale list after accept ([b7ffeac](https://github.com/Ripwords/reprojs/commit/b7ffeac))
+
+### 🩹 Fixes
+
+- **dashboard:** Invitations page 500s on SSR due to cookie forwarding ([3bd3c66](https://github.com/Ripwords/reprojs/commit/3bd3c66))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.13
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.12...v0.1.13)
