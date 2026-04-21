@@ -77,9 +77,15 @@ NEW_VERSION=$(node -e '
 TAG="v${NEW_VERSION}"
 
 echo "→ bumping dashboard $CURRENT_VERSION → $NEW_VERSION via changelogen..."
+# --no-github so the script only bumps + commits + tags. GitHub Release
+# creation is owned by publish-docker.yml, which runs on the tag push:
+# centralizing the gh release step in CI means a mid-flight local
+# interrupt (pre-commit hook, Ctrl-C, connectivity blip) can't leave us
+# with a tag but no release, the way v0.1.11/v0.1.12 did before.
 bunx changelogen --release \
   -r "$NEW_VERSION" \
-  --from "$LAST_DASHBOARD_TAG"
+  --from "$LAST_DASHBOARD_TAG" \
+  --no-github
 
 echo ""
 echo "✓ tagged $TAG locally with CHANGELOG entry."
