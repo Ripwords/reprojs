@@ -38,7 +38,7 @@ Repro gives end users of any web app a one-click way to report bugs from the pag
 │   Host web app       │                 │   Repro Dashboard              │
 │                      │   POST report   │   (Nuxt 4: Vue UI + Nitro API) │
 │  ┌────────────────┐  │ ──────────────► │                                │
-│  │ @reprojs/core │  │    multipart    │  /api/intake/*   (SDK ingress) │
+│  │ @reprojs/core  │  │    multipart    │  /api/intake/*   (SDK ingress) │
 │  │   SDK widget   │  │                 │  /api/tickets/*  (triage)      │
 │  └────────────────┘  │                 │  /api/auth/*     (better-auth) │
 └──────────────────────┘                 │  /api/integrations/github/*    │
