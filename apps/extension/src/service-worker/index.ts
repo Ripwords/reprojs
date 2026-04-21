@@ -1,19 +1,20 @@
+import { installBridge } from "../bootstrap/bridge"
+import { bootRepro, injectConfig } from "../bootstrap/set-config"
+import { installFetchProxy } from "../bootstrap/proxy-fetch"
 import { findConfigForUrl, toOrigin } from "../lib/origin"
 import { hasOriginPermission } from "../lib/permissions"
 import { listConfigs } from "../lib/storage"
-import { bootRepro, injectConfig } from "../bootstrap/set-config"
+import { registerProxyHandler } from "./proxy-handler"
+
+registerProxyHandler()
 
 // Per-tab dedupe + in-flight lock. Two concurrent tabs.onUpdated firings for
 // the same tab (common on framework dev servers that emit multiple complete
 // events per navigation) would otherwise both pass the "have I injected?"
-// check and race through the 3-step executeScript chain. Each IIFE load gets
-// its own module-scoped WeakMap for the shadow-DOM host, so the second race
-// winner tries to re-attachShadow on the host the first race already
-// claimed, and the attachShadow call throws NotSupportedError.
-//
-// Fix: set the Map BEFORE the awaited work so the second tryInject sees the
-// entry and bails. Clear on explicit URL change or failure, so real
-// navigations and permission-denied cases can re-inject correctly.
+// check and race through the executeScript chain, with the second IIFE load
+// colliding with the first on attachShadow. Set the Map BEFORE the awaited
+// work so the second tryInject sees the entry and bails. Clear on throw or
+// explicit URL change.
 //
 // The Map is lost when the service worker is torn down (~30s idle in MV3).
 // The bootRepro DOM-existence check in set-config.ts is the backstop for
@@ -40,18 +41,46 @@ async function tryInject(tabId: number, url: string): Promise<void> {
   // permission/navigation failure can retry on the next onUpdated cycle.
   injectedForTab.set(tabId, origin)
 
+  let intakeOrigin: string
   try {
+    intakeOrigin = new URL(match.intakeEndpoint).origin
+  } catch {
+    injectedForTab.delete(tabId)
+    console.debug("[repro-extension] bad intakeEndpoint in config", match.id)
+    return
+  }
+
+  try {
+    // 1. Write __REPRO_CONFIG__ into the page world.
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
       world: "MAIN",
       func: injectConfig,
       args: [match.projectKey, match.intakeEndpoint],
     })
+    // 2. Install the fetch proxy BEFORE the SDK loads so the SDK's intake
+    //    POST is routed through the service worker instead of hitting the
+    //    page's connect-src CSP.
+    await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [0] },
+      world: "MAIN",
+      func: installFetchProxy,
+      args: [intakeOrigin],
+    })
+    // 3. Install the ISOLATED-world bridge so window.postMessage from the
+    //    fetch proxy can reach chrome.runtime.sendMessage.
+    await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [0] },
+      world: "ISOLATED",
+      func: installBridge,
+    })
+    // 4. Load the bundled SDK IIFE in the page world.
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
       world: "MAIN",
       files: ["repro.iife.js"],
     })
+    // 5. Call Repro.init(). Guarded against double-init inside bootRepro.
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
       world: "MAIN",

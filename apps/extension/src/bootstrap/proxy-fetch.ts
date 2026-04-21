@@ -1,0 +1,185 @@
+// Runs in the page's MAIN world via chrome.scripting.executeScript({ func }).
+// Must be self-contained — no imports — because executeScript serializes the
+// function to a string before evaluating it inside the tab.
+//
+// Monkey-patches window.fetch so that any request whose URL starts with the
+// extension's configured intake endpoint is routed through the extension
+// service worker instead of going out from the page context. This sidesteps
+// the page's Content-Security-Policy `connect-src`, which would otherwise
+// refuse the SDK's report POST on CSP-strict apps.
+//
+// The proxy posts a repro-proxy message on window.postMessage, which is
+// picked up by the ISOLATED-world bridge (apps/extension/src/bootstrap/
+// bridge.ts), forwarded to the service worker over chrome.runtime.sendMessage,
+// fetched there, and the response is relayed back.
+
+export function installFetchProxy(endpointOrigin: string): void {
+  const g = globalThis as unknown as {
+    __REPRO_PROXY_INSTALLED__?: boolean
+    fetch: typeof fetch
+  }
+  if (g.__REPRO_PROXY_INSTALLED__) return
+  g.__REPRO_PROXY_INSTALLED__ = true
+
+  const SOURCE = "repro-proxy"
+  const originalFetch = g.fetch.bind(globalThis)
+  let counter = 0
+  const pending = new Map<string, (response: unknown) => void>()
+
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) return
+    const data = event.data as { source?: string; type?: string; id?: string } | null
+    if (!data || data.source !== SOURCE || data.type !== "response") return
+    if (typeof data.id !== "string") return
+    const resolver = pending.get(data.id)
+    if (!resolver) return
+    pending.delete(data.id)
+    resolver(data)
+  })
+
+  // Nested helpers stay inside installFetchProxy because executeScript({func})
+  // serializes the outer function to a string; references to module-scope
+  // identifiers would be undefined when the serialized body runs in the page.
+  // oxlint-disable-next-line eslint-plugin-unicorn/consistent-function-scoping
+  function toBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer)
+    let binary = ""
+    const CHUNK = 0x8000
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)))
+    }
+    return btoa(binary)
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn/consistent-function-scoping
+  function fromBase64(b64: string): ArrayBuffer {
+    const binary = atob(b64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return bytes.buffer
+  }
+
+  async function serializeBody(body: BodyInit | null | undefined): Promise<unknown> {
+    if (body == null) return { kind: "none" }
+    if (typeof body === "string") return { kind: "text", value: body }
+    if (body instanceof ArrayBuffer) return { kind: "bytes", b64: toBase64(body) }
+    if (body instanceof Blob) {
+      return { kind: "bytes", b64: toBase64(await body.arrayBuffer()), contentType: body.type }
+    }
+    if (body instanceof FormData) {
+      const entries: unknown[] = []
+      for (const [name, value] of body.entries()) {
+        if (typeof value === "string") {
+          entries.push({ kind: "string", name, value })
+        } else {
+          const blob = value as Blob
+          entries.push({
+            kind: "blob",
+            name,
+            type: blob.type,
+            filename: (blob as File).name ?? null,
+            b64: toBase64(await blob.arrayBuffer()),
+          })
+        }
+      }
+      return { kind: "formData", entries }
+    }
+    // URLSearchParams and ReadableStream fall back to text; our intake never
+    // sends a stream body.
+    return { kind: "text", value: String(body) }
+  }
+
+  g.fetch = async function proxiedFetch(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> {
+    const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+    let targetUrl: string
+    try {
+      targetUrl = new URL(rawUrl, location.href).href
+    } catch {
+      return originalFetch(input, init)
+    }
+    if (!targetUrl.startsWith(endpointOrigin)) {
+      return originalFetch(input, init)
+    }
+
+    const method = init?.method ?? (input instanceof Request ? input.method : "GET")
+    const headersInit = init?.headers ?? (input instanceof Request ? input.headers : undefined)
+    const headers: Record<string, string> = {}
+    if (headersInit) {
+      const h = new Headers(headersInit)
+      h.forEach((value, key) => {
+        headers[key] = value
+      })
+    }
+
+    let bodyInit: BodyInit | null | undefined = init?.body
+    if (bodyInit == null && input instanceof Request) {
+      try {
+        bodyInit = await input.clone().arrayBuffer()
+      } catch {
+        bodyInit = null
+      }
+    }
+    const body = await serializeBody(bodyInit ?? null)
+
+    const id = `repro-${Date.now().toString(36)}-${counter++}`
+    const request = {
+      source: SOURCE,
+      type: "request",
+      id,
+      url: targetUrl,
+      method,
+      headers,
+      body,
+    }
+
+    const response = await new Promise<{
+      ok: boolean
+      status: number
+      statusText: string
+      bodyKind: "text" | "bytes" | "none"
+      body: string | null
+      contentType?: string
+      error?: string
+    }>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pending.delete(id)
+        reject(new Error("repro proxy: timeout"))
+      }, 60_000)
+      pending.set(id, (msg) => {
+        clearTimeout(timeout)
+        resolve(
+          msg as {
+            ok: boolean
+            status: number
+            statusText: string
+            bodyKind: "text" | "bytes" | "none"
+            body: string | null
+            contentType?: string
+            error?: string
+          },
+        )
+      })
+      window.postMessage(request, window.location.origin)
+    })
+
+    if (response.error) {
+      throw new TypeError(`repro proxy: ${response.error}`)
+    }
+
+    let responseBody: BodyInit | null = null
+    if (response.bodyKind === "text" && typeof response.body === "string") {
+      responseBody = response.body
+    } else if (response.bodyKind === "bytes" && typeof response.body === "string") {
+      responseBody = fromBase64(response.body)
+    }
+
+    return new Response(responseBody, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.contentType ? { "content-type": response.contentType } : undefined,
+    })
+  }
+}
