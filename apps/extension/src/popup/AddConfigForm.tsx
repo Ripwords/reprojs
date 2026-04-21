@@ -7,6 +7,8 @@ type Props = {
   onSubmit: (input: ConfigInput) => Promise<{ ok: true } | { ok: false; message: string }>
   onCancel?: () => void
   submitLabel?: string
+  /** Pre-fills the intake endpoint field — typically the user's last saved value. */
+  defaultIntakeEndpoint?: string
 }
 
 function validate(input: ConfigInput): string | null {
@@ -35,11 +37,20 @@ function validate(input: ConfigInput): string | null {
   return null
 }
 
-export function AddConfigForm({ onSubmit, onCancel, submitLabel = "Add origin" }: Props) {
+export function AddConfigForm({
+  onSubmit,
+  onCancel,
+  submitLabel = "Add origin",
+  defaultIntakeEndpoint = "",
+}: Props) {
   const [label, setLabel] = useState("")
   const [origin, setOrigin] = useState("")
   const [projectKey, setProjectKey] = useState("")
-  const [intakeEndpoint, setIntakeEndpoint] = useState("")
+  // Lazy init so the prop value at mount time becomes the initial state;
+  // subsequent re-renders won't clobber the user's edits. The form remounts
+  // each time the user switches to Add mode, so a newly-saved last value
+  // will show up on the next visit.
+  const [intakeEndpoint, setIntakeEndpoint] = useState(() => defaultIntakeEndpoint)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -64,7 +75,9 @@ export function AddConfigForm({ onSubmit, onCancel, submitLabel = "Add origin" }
       setLabel("")
       setOrigin("")
       setProjectKey("")
-      setIntakeEndpoint("")
+      // Preserve the intake endpoint so a tester adding several configs in a
+      // row on the options page doesn't retype their dashboard URL each time.
+      setIntakeEndpoint(input.intakeEndpoint)
     } else {
       setError(result.message)
     }

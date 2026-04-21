@@ -7,7 +7,7 @@ import "./styles.css"
 import { useConfigs } from "../popup/useConfigs"
 
 export function App() {
-  const { items, add, remove, regrant } = useConfigs()
+  const { items, add, remove, regrant, lastIntakeEndpoint, loading } = useConfigs()
 
   return (
     <div class="opt-shell">
@@ -31,7 +31,9 @@ export function App() {
           <div class="opt-section-head">
             <span class="opt-section-title">Add a new origin</span>
           </div>
-          <AddConfigForm onSubmit={add} />
+          {/* Defer mounting the form until storage has loaded so the pre-fill
+              for the intake endpoint is in place before the user interacts. */}
+          {!loading && <AddConfigForm onSubmit={add} defaultIntakeEndpoint={lastIntakeEndpoint} />}
         </section>
       </div>
 

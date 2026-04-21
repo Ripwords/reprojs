@@ -8,7 +8,7 @@ import { useConfigs } from "./useConfigs"
 type Mode = "list" | "add"
 
 export function App() {
-  const { items, add, remove, regrant } = useConfigs()
+  const { items, add, remove, regrant, lastIntakeEndpoint } = useConfigs()
   const [mode, setMode] = useState<Mode>("list")
 
   const originsMeta =
@@ -56,7 +56,11 @@ export function App() {
               ← Back
             </button>
           </div>
-          <AddConfigForm onSubmit={handleAdd} onCancel={() => setMode("list")} />
+          <AddConfigForm
+            onSubmit={handleAdd}
+            onCancel={() => setMode("list")}
+            defaultIntakeEndpoint={lastIntakeEndpoint}
+          />
         </>
       )}
     </div>

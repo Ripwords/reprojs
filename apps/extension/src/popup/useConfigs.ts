@@ -6,7 +6,13 @@ import {
   requestOriginPermission,
   requestOriginPermissions,
 } from "../lib/permissions"
-import { addConfig, deleteConfig, listConfigs } from "../lib/storage"
+import {
+  addConfig,
+  deleteConfig,
+  getLastIntakeEndpoint,
+  listConfigs,
+  setLastIntakeEndpoint,
+} from "../lib/storage"
 
 export type PermissionStatus = "granted" | "pending"
 export type ConfigWithStatus = Config & { permission: PermissionStatus }
@@ -41,11 +47,13 @@ async function computeStatus(configs: readonly Config[]): Promise<ConfigWithStat
 export function useConfigs() {
   const [items, setItems] = useState<ConfigWithStatus[]>([])
   const [loading, setLoading] = useState(true)
+  const [lastIntakeEndpoint, setLastIntake] = useState("")
 
   const refresh = useCallback(async () => {
-    const stored = await listConfigs()
+    const [stored, lastIntake] = await Promise.all([listConfigs(), getLastIntakeEndpoint()])
     const withStatus = await computeStatus(stored)
     setItems(withStatus)
+    setLastIntake(lastIntake)
     setLoading(false)
   }, [])
 
@@ -72,8 +80,10 @@ export function useConfigs() {
         return { ok: false, message: "Invalid intake endpoint URL." }
       }
       // Persist FIRST — survives popup tear-down triggered by the native
-      // permission prompt.
+      // permission prompt. setLastIntakeEndpoint captures the explicit choice
+      // so the next Add form pre-fills it.
       await addConfig(input)
+      await setLastIntakeEndpoint(input.intakeEndpoint)
       await refresh()
       // Fire-and-forget the permission request. Whether it resolves before
       // the popup dies or after is irrelevant now: storage is already
@@ -113,5 +123,5 @@ export function useConfigs() {
     [items],
   )
 
-  return { items, loading, refresh, add, remove, regrant }
+  return { items, loading, lastIntakeEndpoint, refresh, add, remove, regrant }
 }
