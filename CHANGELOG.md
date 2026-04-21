@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.1.16
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.15...v0.1.16)
+
+### 🩹 Fixes
+
+- **docs:** Update URLs after repo rename to ReproJs ([ee6ff03](https://github.com/Ripwords/ReproJs/commit/ee6ff03))
+- **dashboard:** Signup gate deletes existing users on sign-in ([6ae40df](https://github.com/Ripwords/ReproJs/commit/6ae40df))
+
+### 📖 Documentation
+
+- **spec:** Admin overview + manager role design ([32f8851](https://github.com/Ripwords/ReproJs/commit/32f8851))
+- **plans:** Manager role + admin overview implementation plans ([656f630](https://github.com/Ripwords/ReproJs/commit/656f630))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.15
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.14...v0.1.15)
