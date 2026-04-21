@@ -11,6 +11,9 @@
 
 set -euo pipefail
 
+# shellcheck source=lib/ci-gate.sh
+. "$(dirname "$0")/lib/ci-gate.sh"
+
 BUMP="${1:-patch}"
 case "$BUMP" in
   patch|minor|major) ;;
@@ -28,6 +31,8 @@ if [ "$CURRENT_BRANCH" != "main" ]; then
   echo "error: release:extension must run from main (currently on $CURRENT_BRANCH)" >&2
   exit 1
 fi
+
+require_green_ci
 
 echo "→ running prerelease checks (lint, test:sdk, sdk:build)..."
 bun run prerelease

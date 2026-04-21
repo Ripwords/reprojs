@@ -138,3 +138,26 @@ jobs:
           name: dev-server-log
           path: /tmp/dev.log
           if-no-files-found: ignore
+
+  # Smoke-builds the dashboard production Docker image on every push to main
+  # and every PR. Catches Nuxt-prod-build failures (TS config drift, missing
+  # env handling, stale imports) that dev-mode tests don't surface — the
+  # exact class of bug that broke the v0.1.11 Docker publish. No push; just
+  # verifies the image CAN be built before a tag is ever cut.
+  build-dashboard-docker:
+    name: Dashboard Docker build (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/dashboard/Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: repro-dashboard:ci-smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

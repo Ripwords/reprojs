@@ -23,6 +23,9 @@
 
 set -euo pipefail
 
+# shellcheck source=lib/ci-gate.sh
+. "$(dirname "$0")/lib/ci-gate.sh"
+
 BUMP_FLAG="${1:-}"  # "", "--minor", or "--major"
 case "$BUMP_FLAG" in
   "")        BUMP="patch" ;;
@@ -45,6 +48,8 @@ if [ "$CURRENT_BRANCH" != "main" ]; then
   echo "error: release must run from main (currently on $CURRENT_BRANCH)" >&2
   exit 1
 fi
+
+require_green_ci
 
 echo "→ running prerelease checks..."
 bun run prerelease
