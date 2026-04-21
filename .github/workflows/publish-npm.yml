@@ -133,11 +133,23 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           awk '/^## / { if (++n > 1) exit; next } n == 1 { print }' \
-            packages/core/CHANGELOG.md > /tmp/release-notes.md
-          if [ ! -s /tmp/release-notes.md ]; then
+            packages/core/CHANGELOG.md > /tmp/release-notes.body
+          if [ ! -s /tmp/release-notes.body ]; then
             echo "error: could not extract release notes from packages/core/CHANGELOG.md" >&2
             exit 1
           fi
+          # VERSION is derived from $TAG (which is github.ref_name, already
+          # constrained by the workflow's sdk-v*.*.* trigger — no untrusted
+          # input reaches the shell).
+          VERSION="${TAG#sdk-v}"
+          {
+            printf '> 📦 **Repro SDK** — `@reprojs/core@%s` on [npm](https://www.npmjs.com/package/@reprojs/core/v/%s)\n\n' "$VERSION" "$VERSION"
+            cat /tmp/release-notes.body
+          } > /tmp/release-notes.md
+          # --latest=false so SDK releases don't contest the Dashboard's
+          # Latest badge. The descriptive title makes the track obvious on
+          # the /releases list.
           gh release create "$TAG" \
-            --title "$TAG" \
-            --notes-file /tmp/release-notes.md
+            --title "📦 SDK v${VERSION} (@reprojs/core)" \
+            --notes-file /tmp/release-notes.md \
+            --latest=false

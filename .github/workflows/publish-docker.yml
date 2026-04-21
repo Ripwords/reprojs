@@ -131,17 +131,30 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           awk '/^## / { if (++n > 1) exit; next } n == 1 { print }' \
-            CHANGELOG.md > /tmp/release-notes.md
-          if [ ! -s /tmp/release-notes.md ]; then
+            CHANGELOG.md > /tmp/release-notes.body
+          if [ ! -s /tmp/release-notes.body ]; then
             echo "warning: could not extract release notes — using placeholder" >&2
-            echo "Published dashboard image ripwords/reprojs-dashboard:$TAG." > /tmp/release-notes.md
+            echo "Published dashboard image ripwords/reprojs-dashboard:${TAG}." > /tmp/release-notes.body
           fi
+          # VERSION derives from $TAG (github.ref_name, already constrained
+          # to v*.*.* by the workflow trigger). No new untrusted input.
+          VERSION="${TAG#v}"
+          {
+            printf '> 🚀 **Repro Dashboard** v%s — self-hostable Docker image: `ripwords/reprojs-dashboard:%s`.\n\n' "$VERSION" "$TAG"
+            cat /tmp/release-notes.body
+          } > /tmp/release-notes.md
+          TITLE="🚀 Dashboard v${VERSION}"
+          # Dashboard owns the "Latest" badge (GitHub can only flag one
+          # release per repo); SDK and Extension releases pass --latest=false
+          # so they don't contest it. Descriptive titles keep all three
+          # tracks scannable on the /releases page.
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" \
-              --title "$TAG" \
+              --title "$TITLE" \
               --notes-file /tmp/release-notes.md
           else
             gh release create "$TAG" \
-              --title "$TAG" \
-              --notes-file /tmp/release-notes.md
+              --title "$TITLE" \
+              --notes-file /tmp/release-notes.md \
+              --latest
           fi

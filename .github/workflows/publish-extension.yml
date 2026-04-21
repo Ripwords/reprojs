@@ -108,13 +108,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
+          # awk on a missing CHANGELOG would fail the step under set -e —
+          # touch it so a first-time bootstrap release doesn't crash.
+          touch apps/extension/CHANGELOG.md
           awk '/^## / { if (++n > 1) exit; next } n == 1 { print }' \
-            apps/extension/CHANGELOG.md > /tmp/release-notes.md
-          if [ ! -s /tmp/release-notes.md ]; then
+            apps/extension/CHANGELOG.md > /tmp/release-notes.body
+          if [ ! -s /tmp/release-notes.body ]; then
             echo "warning: no CHANGELOG entry — using placeholder body" >&2
-            echo "Published @reprojs/extension $TAG to the Chrome Web Store." > /tmp/release-notes.md
+            echo "Published to the Chrome Web Store." > /tmp/release-notes.body
           fi
+          # VERSION derives from $TAG (github.ref_name, already constrained
+          # to extension-v*.*.* by the workflow trigger). No new untrusted
+          # input reaches the shell.
+          VERSION="${TAG#extension-v}"
+          {
+            printf '> 🧩 **Repro tester Chrome extension** v%s — zip bundle attached below; also published to the Chrome Web Store.\n\n' "$VERSION"
+            cat /tmp/release-notes.body
+          } > /tmp/release-notes.md
           gh release create "$TAG" \
-            --title "$TAG" \
+            --title "🧩 Tester Extension v${VERSION}" \
             --notes-file /tmp/release-notes.md \
+            --latest=false \
             repro-tester.zip
