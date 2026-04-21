@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.1.17
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.16...v0.1.17)
+
+### 🩹 Fixes
+
+- **dashboard:** Stop auto-promoting invited members to admin on first sign-in ([28d3e71](https://github.com/Ripwords/ReproJs/commit/28d3e71))
+- **dashboard:** Stop domain-allowlist tightening from deleting existing users ([60a7199](https://github.com/Ripwords/ReproJs/commit/60a7199))
+- **dashboard:** Lowercase email in admin invite endpoint ([60c8550](https://github.com/Ripwords/ReproJs/commit/60c8550))
+- **dashboard:** Fail-closed when app_settings row is missing ([d9b952c](https://github.com/Ripwords/ReproJs/commit/d9b952c))
+
+### ✅ Tests
+
+- **dashboard:** Verify /magic-link/verify rate limit (token-probe defense) ([e029ae0](https://github.com/Ripwords/ReproJs/commit/e029ae0))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.16
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.15...v0.1.16)
