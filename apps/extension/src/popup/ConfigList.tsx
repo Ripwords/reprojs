@@ -1,27 +1,75 @@
-import type { Config } from "../types"
+import { useMemo } from "preact/hooks"
+import type { ConfigWithStatus } from "./useConfigs"
 
 type Props = {
-  configs: Config[]
-  onDelete: (id: string) => void
+  configs: readonly ConfigWithStatus[]
+  onRemove: (id: string) => void
+  onRegrant: (id: string) => void
 }
 
-export function ConfigList({ configs, onDelete }: Props) {
+export function ConfigList({ configs, onRemove, onRegrant }: Props) {
   if (configs.length === 0) {
-    return <p class="empty">No origins configured yet.</p>
+    return (
+      <div class="list-empty">
+        No origins configured yet.
+        <div class="list-empty-hint">Click "New origin" to add one.</div>
+      </div>
+    )
   }
   return (
-    <ul class="config-list">
+    <div class="list">
       {configs.map((c) => (
-        <li key={c.id} class="config-item">
-          <div>
-            <div class="label">{c.label}</div>
-            <div class="origin">{c.origin}</div>
-          </div>
-          <button class="btn danger" onClick={() => onDelete(c.id)} type="button">
-            Remove
-          </button>
-        </li>
+        <ConfigItem key={c.id} config={c} onRemove={onRemove} onRegrant={onRegrant} />
       ))}
-    </ul>
+    </div>
+  )
+}
+
+type ItemProps = {
+  config: ConfigWithStatus
+  onRemove: (id: string) => void
+  onRegrant: (id: string) => void
+}
+
+function ConfigItem({ config, onRemove, onRegrant }: ItemProps) {
+  const destHost = useMemo(() => {
+    try {
+      return new URL(config.intakeEndpoint).host
+    } catch {
+      return config.intakeEndpoint
+    }
+  }, [config.intakeEndpoint])
+
+  return (
+    <article class="cfg" data-permission={config.permission}>
+      <span class="cfg-stripe" aria-hidden="true" />
+      <div class="cfg-body">
+        <div class="cfg-label">{config.label}</div>
+        <div class="cfg-origin" title={config.origin}>
+          {config.origin}
+        </div>
+        <div class="cfg-dest" title={config.intakeEndpoint}>
+          {destHost}
+        </div>
+      </div>
+      <div class="cfg-actions">
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs btn-danger"
+          onClick={() => onRemove(config.id)}
+          aria-label={`Remove ${config.label}`}
+        >
+          Remove
+        </button>
+      </div>
+      {config.permission === "pending" && (
+        <div class="cfg-warn" role="status">
+          <span>Host permission needed — the widget won't load until granted.</span>
+          <button type="button" class="btn btn-xs btn-warn" onClick={() => onRegrant(config.id)}>
+            Grant
+          </button>
+        </div>
+      )}
+    </article>
   )
 }

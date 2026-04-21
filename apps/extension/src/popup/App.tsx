@@ -1,64 +1,64 @@
-import { useEffect, useState } from "preact/hooks"
-import type { Config, ConfigInput } from "../types"
-import { addConfig, deleteConfig, listConfigs } from "../lib/storage"
-import { removeOriginPermission, requestOriginPermissions } from "../lib/permissions"
+import { useState } from "preact/hooks"
 import { AddConfigForm } from "./AddConfigForm"
 import { ConfigList } from "./ConfigList"
 // oxlint-disable-next-line eslint-plugin-import/no-unassigned-import
 import "./styles.css"
+import { useConfigs } from "./useConfigs"
+
+type Mode = "list" | "add"
 
 export function App() {
-  const [configs, setConfigs] = useState<Config[]>([])
+  const { items, add, remove, regrant } = useConfigs()
+  const [mode, setMode] = useState<Mode>("list")
 
-  async function refresh() {
-    setConfigs(await listConfigs())
-  }
-
-  useEffect(() => {
-    void refresh()
-  }, [])
+  const originsMeta =
+    items.length === 0 ? "empty" : `${items.length} ${items.length === 1 ? "origin" : "origins"}`
 
   async function handleAdd(
-    input: ConfigInput,
+    input: Parameters<typeof add>[0],
   ): Promise<{ ok: true } | { ok: false; message: string }> {
-    let intakeOrigin: string
-    try {
-      intakeOrigin = new URL(input.intakeEndpoint).origin
-    } catch {
-      return { ok: false, message: "Invalid intake endpoint URL." }
+    const result = await add(input)
+    if (result.ok) {
+      // Snap back to the list even though the native permission prompt may
+      // close the popup before this paint. If reopened the list renders
+      // with the new config (status: pending or granted depending on
+      // whether the user accepted the prompt).
+      setMode("list")
     }
-    // Grant both the page origin (for SDK injection) and the intake origin
-    // (so the service worker's proxy fetch can reach it from its CSP-less
-    // context) in a single consent prompt.
-    const granted = await requestOriginPermissions([input.origin, intakeOrigin])
-    if (!granted) {
-      return {
-        ok: false,
-        message:
-          "Host permission denied — the extension needs access to both the test site and the intake endpoint.",
-      }
-    }
-    await addConfig(input)
-    await refresh()
-    return { ok: true }
-  }
-
-  async function handleDelete(id: string) {
-    const target = configs.find((c) => c.id === id)
-    if (!target) return
-    await deleteConfig(id)
-    // Only drop the page-origin permission. Leave the intake-origin permission
-    // in place — it may still be in use by another saved config pointing at
-    // the same dashboard.
-    await removeOriginPermission(target.origin)
-    await refresh()
+    return result
   }
 
   return (
     <div class="app">
-      <h1>Configured origins</h1>
-      <ConfigList configs={configs} onDelete={handleDelete} />
-      <AddConfigForm onSubmit={handleAdd} />
+      <header class="mast">
+        <span class="mast-brand">Repro Tester</span>
+        <span class="mast-meta">{mode === "add" ? "new origin" : originsMeta}</span>
+      </header>
+
+      {mode === "list" ? (
+        <>
+          <div class="section-head">
+            <span class="section-title">
+              Origins
+              {items.length > 0 && <span class="section-title-count">{items.length}</span>}
+            </span>
+            <button type="button" class="btn" onClick={() => setMode("add")}>
+              + New origin
+            </button>
+          </div>
+          <ConfigList configs={items} onRemove={remove} onRegrant={regrant} />
+        </>
+      ) : (
+        <>
+          <div class="section-head">
+            <span class="section-title">New origin</span>
+            <button type="button" class="btn btn-ghost" onClick={() => setMode("list")}>
+              ← Back
+            </button>
+          </div>
+          <AddConfigForm onSubmit={handleAdd} onCancel={() => setMode("list")} />
+        </>
+      )}
     </div>
   )
 }

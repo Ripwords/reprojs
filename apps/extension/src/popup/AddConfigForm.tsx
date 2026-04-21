@@ -5,11 +5,15 @@ const KEY_RE = /^rp_pk_[A-Za-z0-9]{24}$/
 
 type Props = {
   onSubmit: (input: ConfigInput) => Promise<{ ok: true } | { ok: false; message: string }>
+  onCancel?: () => void
+  submitLabel?: string
 }
 
 function validate(input: ConfigInput): string | null {
   if (input.label.trim().length === 0) return "Label is required."
-  if (!KEY_RE.test(input.projectKey)) return "projectKey must match rp_pk_[24 chars]."
+  if (!KEY_RE.test(input.projectKey)) {
+    return "Project key must match rp_pk_ followed by 24 letters or digits."
+  }
   let originUrl: URL
   try {
     originUrl = new URL(input.origin)
@@ -31,7 +35,7 @@ function validate(input: ConfigInput): string | null {
   return null
 }
 
-export function AddConfigForm({ onSubmit }: Props) {
+export function AddConfigForm({ onSubmit, onCancel, submitLabel = "Add origin" }: Props) {
   const [label, setLabel] = useState("")
   const [origin, setOrigin] = useState("")
   const [projectKey, setProjectKey] = useState("")
@@ -67,45 +71,70 @@ export function AddConfigForm({ onSubmit }: Props) {
   }
 
   return (
-    <form class="form" onSubmit={handleSubmit}>
+    <form class="form" onSubmit={handleSubmit} noValidate>
+      <div class="hint-bar">
+        After saving, Chrome will ask for permission on the site origin and the intake endpoint. If
+        the popup closes mid-prompt, your config is already saved — you can <strong>Grant</strong>{" "}
+        it from the list.
+      </div>
+
       <div class="field">
         <label for="label">Label</label>
         <input
           id="label"
           value={label}
+          placeholder="staging"
           onInput={(e) => setLabel((e.target as HTMLInputElement).value)}
         />
       </div>
+
       <div class="field">
         <label for="origin">Origin</label>
         <input
           id="origin"
           placeholder="https://staging.acme.com"
           value={origin}
+          spellcheck={false}
           onInput={(e) => setOrigin((e.target as HTMLInputElement).value)}
         />
+        <div class="field-hint">scheme + host + optional port — no path</div>
       </div>
+
       <div class="field">
         <label for="projectKey">Project key</label>
         <input
           id="projectKey"
+          placeholder="rp_pk_xxxxxxxxxxxxxxxxxxxxxxxx"
           value={projectKey}
+          spellcheck={false}
           onInput={(e) => setProjectKey((e.target as HTMLInputElement).value)}
         />
       </div>
+
       <div class="field">
         <label for="intakeEndpoint">Intake endpoint</label>
         <input
           id="intakeEndpoint"
-          placeholder="https://repro.example.com"
+          placeholder="https://feedback.example.com"
           value={intakeEndpoint}
+          spellcheck={false}
           onInput={(e) => setIntakeEndpoint((e.target as HTMLInputElement).value)}
         />
+        <div class="field-hint">the dashboard URL — SDK posts to this host</div>
       </div>
-      {error ? <div class="error">{error}</div> : null}
-      <button type="submit" class="btn primary" disabled={submitting}>
-        {submitting ? "Requesting permission…" : "Add origin"}
-      </button>
+
+      {error ? <div class="error-bar">{error}</div> : null}
+
+      <div class="form-actions">
+        {onCancel ? (
+          <button type="button" class="btn" onClick={onCancel} disabled={submitting}>
+            Cancel
+          </button>
+        ) : null}
+        <button type="submit" class="btn btn-primary" disabled={submitting}>
+          {submitting ? "Saving…" : submitLabel}
+        </button>
+      </div>
     </form>
   )
 }

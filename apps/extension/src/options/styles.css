@@ -1,0 +1,123 @@
+body.options {
+  width: auto;
+  min-height: 100vh;
+  padding: 56px 24px 80px;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% -10%, #ecfdf5 0%, transparent 60%),
+    radial-gradient(ellipse 500px 300px at 80% 0%, #fafafa 0%, transparent 70%), var(--surface);
+}
+
+.opt-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 12px 32px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.opt-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 28px 32px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.opt-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.opt-title::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+.opt-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: 0.05em;
+}
+
+.opt-body {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.opt-section {
+  padding: 18px 32px 24px;
+}
+.opt-section + .opt-section {
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.opt-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.opt-section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.opt-section-title strong {
+  color: var(--ink);
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+/* Reuse .list but without the popup's height constraint. */
+body.options .list {
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+}
+body.options .form {
+  padding: 0;
+}
+body.options .field input {
+  font-size: 14px;
+  padding: 9px 12px;
+}
+body.options .cfg {
+  padding: 14px 16px 14px 0;
+}
+body.options .cfg-label {
+  font-size: 15px;
+}
+body.options .cfg-origin {
+  font-size: 13px;
+}
+body.options .cfg-dest {
+  font-size: 12px;
+}
+
+.opt-foot {
+  padding: 16px 32px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  display: flex;
+  justify-content: space-between;
+  background: var(--surface);
+}
