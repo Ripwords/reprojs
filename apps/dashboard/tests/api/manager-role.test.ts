@@ -224,6 +224,10 @@ describe("manager role — forbidden actions", () => {
 })
 
 describe("viewer role — regression guard after manager insertion", () => {
+  beforeAll(async () => {
+    await truncateReports()
+    await truncateDomain()
+  })
   afterEach(async () => {
     await truncateReports()
     await truncateDomain()
