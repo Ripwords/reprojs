@@ -13,12 +13,21 @@ export function bootRepro(): void {
     __REPRO_BOOTED__?: boolean
     Repro?: { init: (opts: { projectKey: string; endpoint: string }) => void }
   }
-  // The IIFE's shadow-DOM host is keyed in a module-scoped WeakMap. A second
-  // IIFE load gets a fresh empty WeakMap and tries to re-attachShadow on the
-  // same host element, which throws NotSupportedError. Pin a sentinel on
-  // window so we no-op on any re-entry, regardless of how many times the
-  // service worker injected the files bundle.
+  // Two-layer guard. The IIFE's shadow-DOM host is keyed in a module-scoped
+  // WeakMap, so a second IIFE load gets a fresh empty WeakMap and tries to
+  // re-attachShadow on the same host element, throwing NotSupportedError.
+  //
+  //   (1) window sentinel — catches the common case where both bootRepro
+  //       calls share window state.
+  //   (2) DOM existence check — authoritative fallback when the window
+  //       sentinel is somehow wiped (Turbopack/Fast-Refresh edge cases,
+  //       history replacement, or an earlier failed mount that left the
+  //       host element in the DOM).
   if (g.__REPRO_BOOTED__) return
+  if (document.getElementById("repro-host")) {
+    g.__REPRO_BOOTED__ = true
+    return
+  }
   const cfg = g.__REPRO_CONFIG__
   if (!cfg || !g.Repro) return
   g.__REPRO_BOOTED__ = true
