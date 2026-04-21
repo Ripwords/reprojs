@@ -2,7 +2,7 @@ import { setup } from "@nuxt/test-utils/e2e"
 import { afterEach, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test"
 import { eq } from "drizzle-orm"
 import { db } from "../../server/db"
-import { projectMembers } from "../../server/db/schema"
+import { githubIntegrations, projectMembers, reports } from "../../server/db/schema"
 import {
   apiFetch,
   createUser,
@@ -139,6 +139,48 @@ describe("manager role — allowed actions", () => {
     })
     expect(status).toBe(200)
   })
+
+  test("manager can POST github-sync on a linked project", async () => {
+    const adminId = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    await db.insert(githubIntegrations).values({
+      projectId,
+      installationId: 42,
+      repoOwner: "acme",
+      repoName: "app",
+    })
+    const reportId = await submitReport("sync me")
+    const { cookie } = await seedMemberAtRole("manager@example.com", projectId, "manager")
+
+    const { status } = await apiFetch(
+      `/api/projects/${projectId}/reports/${reportId}/github-sync`,
+      { method: "POST", headers: { cookie } },
+    )
+    expect(status).toBe(200)
+  })
+
+  test("manager can POST github-unlink on an unlinked report (no-op 200)", async () => {
+    const adminId = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    const reportId = await submitReport("unlink me")
+    const { cookie } = await seedMemberAtRole("manager@example.com", projectId, "manager")
+
+    const { status } = await apiFetch(
+      `/api/projects/${projectId}/reports/${reportId}/github-unlink`,
+      { method: "POST", headers: { cookie } },
+    )
+    expect(status).toBe(200)
+  })
 })
 
 describe("manager role — forbidden actions", () => {
@@ -253,5 +295,6 @@ describe("viewer role — regression guard after manager insertion", () => {
   })
 })
 
-// Unused-import appeasement — `eq` is referenced in helpers but not this file
+// Unused-import appeasement — kept for future DB-state assertions.
 void eq
+void reports
