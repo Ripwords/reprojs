@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   const body = await readValidatedBody(event, (b: unknown) => TriagePatchInput.parse(b))
 
-  // Guard: assignee must be a developer or owner of this project.
+  // Guard: assignee must be authorized for triage (not a viewer).
   if (body.assigneeId !== undefined && body.assigneeId !== null) {
     const [member] = await db
       .select({ role: projectMembers.role })
