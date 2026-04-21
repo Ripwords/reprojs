@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.1.12
+
+[compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.11...v0.1.12)
+
+### 🩹 Fixes
+
+- **extension:** ⚠️ Harden SW proxy (security review F1/F3/F6/F7) ([1bded3e](https://github.com/Ripwords/reprojs/commit/1bded3e))
+- **dashboard:** ⚠️ Pin Docker base image to bun 1.3 ([eec6980](https://github.com/Ripwords/reprojs/commit/eec6980))
+- **dashboard:** Copy apps/extension/package.json in Docker build ([88b29f5](https://github.com/Ripwords/reprojs/commit/88b29f5))
+
+### 🏡 Chore
+
+- **ci:** Smoke-build dashboard image + gate release scripts on CI ([85fb50c](https://github.com/Ripwords/reprojs/commit/85fb50c))
+
+#### ⚠️ Breaking Changes
+
+- **extension:** ⚠️ Harden SW proxy (security review F1/F3/F6/F7) ([1bded3e](https://github.com/Ripwords/reprojs/commit/1bded3e))
+- **dashboard:** ⚠️ Pin Docker base image to bun 1.3 ([eec6980](https://github.com/Ripwords/reprojs/commit/eec6980))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.11
 
 [compare changes](https://github.com/Ripwords/reprojs/compare/v0.1.10...v0.1.11)
