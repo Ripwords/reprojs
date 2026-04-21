@@ -31,6 +31,9 @@ let nextResult: GetDisplayMediaResult = "stream"
 let stoppedTracks = 0
 let getDisplayMediaCalls = 0
 let lastConstraints: unknown = null
+// Ordered log of significant events within a single capture. Lets tests
+// assert, e.g., that rAF fires before grabFrame (compositor-settle wait).
+const events: string[] = []
 
 function makeFakeBitmap() {
   return { width: 4, height: 4, close: () => {} } as unknown as ImageBitmap
@@ -48,8 +51,18 @@ function installFakes() {
   ;(globalThis as unknown as { ImageCapture?: unknown }).ImageCapture = class {
     constructor(public _track: unknown) {}
     async grabFrame() {
+      events.push("grabFrame")
       return makeFakeBitmap()
     }
+  }
+  // Stub rAF so tests can observe ordering. happy-dom provides one, but we
+  // replace it to log into the shared event list and run on a microtask so
+  // async tests don't stall waiting for a real animation frame.
+  ;(
+    globalThis as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number }
+  ).requestAnimationFrame = (cb: FrameRequestCallback) => {
+    events.push("raf")
+    return setTimeout(() => cb(performance.now()), 0) as unknown as number
   }
   ;(globalThis.navigator as unknown as { mediaDevices: unknown }).mediaDevices = {
     getDisplayMedia: async (constraints: unknown) => {
@@ -86,6 +99,7 @@ beforeEach(() => {
   stoppedTracks = 0
   getDisplayMediaCalls = 0
   lastConstraints = null
+  events.length = 0
 })
 
 describe("captureViaDisplayMedia", () => {
@@ -135,5 +149,83 @@ describe("captureViaDisplayMedia", () => {
     expect(c.preferCurrentTab).toBe(true)
     expect(c.selfBrowserSurface).toBe("include")
     expect(c.audio).toBe(false)
+  })
+
+  test("waits for a frame tick between stream-ready and grabFrame so the tab-capture compositor has produced a fully-composited frame (no broken-image glyphs on assets that render fine on the live page)", async () => {
+    await captureViaDisplayMedia()
+    const rafIdx = events.indexOf("raf")
+    const grabIdx = events.indexOf("grabFrame")
+    expect(rafIdx).toBeGreaterThanOrEqual(0)
+    expect(grabIdx).toBeGreaterThanOrEqual(0)
+    expect(rafIdx).toBeLessThan(grabIdx)
+  })
+
+  test("forces decode() only on <img> elements that are already fully loaded — skips pending/src-less images whose decode() would never resolve and strand the MediaStream active", async () => {
+    // Already-loaded image — should have decode() called on it.
+    const loaded = document.createElement("img")
+    let loadedDecodes = 0
+    ;(loaded as unknown as { decode: () => Promise<void> }).decode = async () => {
+      loadedDecodes += 1
+    }
+    Object.defineProperty(loaded, "complete", { value: true, configurable: true })
+    Object.defineProperty(loaded, "naturalWidth", { value: 100, configurable: true })
+    document.body.appendChild(loaded)
+
+    // Image with no src (React skeleton / placeholder pattern). decode()
+    // on this would hang forever on a real page — we must NOT await it.
+    const pending = document.createElement("img")
+    let pendingDecodes = 0
+    ;(pending as unknown as { decode: () => Promise<void> }).decode = () => {
+      pendingDecodes += 1
+      return new Promise<void>(() => {}) // never resolves
+    }
+    Object.defineProperty(pending, "complete", { value: false, configurable: true })
+    Object.defineProperty(pending, "naturalWidth", { value: 0, configurable: true })
+    document.body.appendChild(pending)
+
+    try {
+      // This MUST NOT hang. If the fix regressed, the test will time out.
+      const blob = await captureViaDisplayMedia()
+      expect(blob).toBeInstanceOf(Blob)
+      expect(loadedDecodes).toBe(1)
+      expect(pendingDecodes).toBe(0)
+    } finally {
+      loaded.remove()
+      pending.remove()
+    }
+  })
+
+  test("a rejected decode (e.g. broken <img> src) does not abort the capture", async () => {
+    const img = document.createElement("img")
+    ;(img as unknown as { decode: () => Promise<void> }).decode = async () => {
+      throw new Error("decode failed")
+    }
+    Object.defineProperty(img, "complete", { value: true, configurable: true })
+    Object.defineProperty(img, "naturalWidth", { value: 100, configurable: true })
+    document.body.appendChild(img)
+    try {
+      const blob = await captureViaDisplayMedia()
+      expect(blob).toBeInstanceOf(Blob)
+    } finally {
+      img.remove()
+    }
+  })
+
+  test("a hanging decode() on a ready image does not strand the capture — timeout bounds the wait", async () => {
+    const img = document.createElement("img")
+    ;(img as unknown as { decode: () => Promise<void> }).decode = () => new Promise<void>(() => {}) // never resolves
+    Object.defineProperty(img, "complete", { value: true, configurable: true })
+    Object.defineProperty(img, "naturalWidth", { value: 100, configurable: true })
+    document.body.appendChild(img)
+    try {
+      const start = Date.now()
+      const blob = await captureViaDisplayMedia()
+      const elapsed = Date.now() - start
+      expect(blob).toBeInstanceOf(Blob)
+      // Must not hang — timeout is 300ms, plus some slack for test runner.
+      expect(elapsed).toBeLessThan(1_000)
+    } finally {
+      img.remove()
+    }
   })
 })

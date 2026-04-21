@@ -39,6 +39,16 @@ export async function captureViaDisplayMedia(): Promise<Blob | null> {
     stream = await navigator.mediaDevices.getDisplayMedia(constraints as DisplayMediaStreamOptions)
     const track = stream.getVideoTracks()[0]
     if (!track) return null
+    // Between the user clicking "Share" and grabFrame running there is a
+    // race against the tab-capture compositor: the MediaStream goes active
+    // instantly, but the first frame it produces can land before pending
+    // image layers have been uploaded to the GPU. grabFrame returns
+    // whatever is buffered, so an early grab shows broken-image glyphs on
+    // assets that are fine on the live page. Force any pending <img>
+    // decodes first, then wait one frame for the compositor to produce a
+    // clean frame before grabbing.
+    await primePendingImageDecodes()
+    await nextAnimationFrame()
     return await grabFrame(track, stream)
   } catch {
     // Most common path: NotAllowedError (user denied) or NotSupportedError.
@@ -140,5 +150,46 @@ async function videoFrameToBlob(stream: MediaStream): Promise<Blob | null> {
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
   return new Promise((resolve) => {
     canvas.toBlob((b) => resolve(b), "image/png")
+  })
+}
+
+async function primePendingImageDecodes(): Promise<void> {
+  if (typeof document === "undefined") return
+  // Use getElementsByTagName rather than document.images — the latter is
+  // a convenience collection that some DOM test doubles (e.g. happy-dom)
+  // do not implement.
+  const imgs = Array.from(document.getElementsByTagName("img")) as HTMLImageElement[]
+  // Important: only prime images that are ALREADY fully loaded. Calling
+  // `img.decode()` on an <img> with no src — or one whose src is still
+  // in-flight — returns a promise that may NEVER resolve per the HTML
+  // spec. Real pages contain many such elements (React skeletons, lazy-
+  // loaded images below the fold, placeholder nodes). Awaiting them would
+  // block the whole capture, which means the MediaStream stays active and
+  // Chrome's "<URL> is sharing your screen" indicator hangs until the user
+  // manually stops it.
+  const ready = imgs.filter((img) => img.complete && img.naturalWidth > 0)
+  if (ready.length === 0) return
+  // Even for ready images, decode() should be fast — but we race against a
+  // short timeout so a pathological decode (cross-origin taint, corrupted
+  // bitmap) can't strand the capture. 300ms is generous; real decodes
+  // resolve in well under 10ms.
+  const decodes = Promise.all(
+    ready.map((img) =>
+      typeof img.decode === "function" ? img.decode().catch(() => {}) : Promise.resolve(),
+    ),
+  )
+  const timeout = new Promise((resolve) => setTimeout(resolve, 300))
+  await Promise.race([decodes, timeout])
+}
+
+function nextAnimationFrame(): Promise<void> {
+  // Route through globalThis so tests can stub this (and so `this`-binding
+  // on the hosting browser's rAF stays correct — some DOM implementations
+  // require the call site to be `window.requestAnimationFrame`).
+  const raf = (globalThis as { requestAnimationFrame?: (cb: FrameRequestCallback) => number })
+    .requestAnimationFrame
+  if (typeof raf !== "function") return Promise.resolve()
+  return new Promise((resolve) => {
+    raf.call(globalThis, () => resolve())
   })
 }
