@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test"
+import { eq } from "drizzle-orm"
 import type { UserDTO } from "@reprojs/shared"
+import { db } from "../../server/db"
+import { user } from "../../server/db/schema"
 import { apiFetch, createUser, signIn, truncateDomain } from "../helpers"
 
 setDefaultTimeout(30000)
@@ -38,6 +41,38 @@ describe("users API", () => {
     })
     expect(status).toBe(200)
     expect((body as UserDTO).role).toBe("admin")
+  })
+
+  test("admin invite stores email lowercased regardless of input casing", async () => {
+    // REGRESSION (BLOCKER-3): POST /api/users used `body.email` verbatim,
+    // so an admin inviting `MixedCase@Example.com` stored the raw-case
+    // email. When signup_gated=true, better-auth's findUserByEmail
+    // (which lowercases) then missed the mixed-case row on the
+    // invitee's sign-in attempt, `create.before` fired, and the gate
+    // rejected them — permanently locking out the legitimately invited
+    // user. Every other code path in the repo already lowercases
+    // (project-invitations, better-auth internals); the admin-invite
+    // path was the outlier.
+    await createUser("admin@example.com", "admin")
+    const cookie = await signIn("admin@example.com")
+
+    const { status } = await apiFetch("/api/users", {
+      method: "POST",
+      headers: { cookie },
+      body: JSON.stringify({
+        email: "MixedCase@Example.com",
+        role: "member",
+      }),
+    })
+    expect(status).toBe(200)
+
+    const [row] = await db.select().from(user).where(eq(user.email, "mixedcase@example.com"))
+    expect(row).toBeDefined()
+    expect(row?.email).toBe("mixedcase@example.com")
+
+    // And no raw-case row snuck through:
+    const [rawCase] = await db.select().from(user).where(eq(user.email, "MixedCase@Example.com"))
+    expect(rawCase).toBeUndefined()
   })
 
   test("cannot demote the last admin", async () => {

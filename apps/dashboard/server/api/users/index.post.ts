@@ -23,7 +23,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 429, statusMessage: "Too many invites — slow down" })
   }
 
-  const [existing] = await db.select().from(user).where(eq(user.email, body.email))
+  // Normalize email to lowercase BEFORE any lookup or insert. Every other
+  // path in the repo (better-auth internals, project-invitations, auth
+  // hooks) compares emails lowercased; inserting raw-case strands the
+  // invitee when the signup gate is on because findUserByEmail lowercases
+  // the lookup and misses the mixed-case row.
+  const emailLower = body.email.toLowerCase()
+
+  const [existing] = await db.select().from(user).where(eq(user.email, emailLower))
   if (existing) {
     throw createError({ statusCode: 409, statusMessage: "User already exists" })
   }
@@ -34,7 +41,7 @@ export default defineEventHandler(async (event) => {
   // domain directly and letting the invitee claim the pre-created row.
   const [settings] = await db.select().from(appSettings).limit(1)
   if (settings?.signupGated && settings.allowedEmailDomains.length > 0) {
-    const domain = body.email.split("@")[1]?.toLowerCase() ?? ""
+    const domain = emailLower.split("@")[1] ?? ""
     if (!settings.allowedEmailDomains.includes(domain)) {
       throw createError({
         statusCode: 400,
@@ -52,8 +59,8 @@ export default defineEventHandler(async (event) => {
     .insert(user)
     .values({
       id: randomBytes(16).toString("hex"),
-      email: body.email,
-      name: body.name ?? body.email.split("@")[0] ?? body.email,
+      email: emailLower,
+      name: body.name ?? emailLower.split("@")[0] ?? emailLower,
       emailVerified: false,
       role: body.role,
       status: "invited",
