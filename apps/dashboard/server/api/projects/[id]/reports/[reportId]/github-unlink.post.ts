@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   if (!projectId || !reportId) {
     throw createError({ statusCode: 400, statusMessage: "missing params" })
   }
-  const { session } = await requireProjectRole(event, projectId, "developer")
+  const { session } = await requireProjectRole(event, projectId, "manager")
 
   return await db.transaction(async (tx) => {
     const [current] = await tx
