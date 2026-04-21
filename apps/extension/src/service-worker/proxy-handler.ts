@@ -2,9 +2,25 @@
 // the fetch from the service worker's own origin (which isn't subject to
 // the page's connect-src CSP), and returns the response.
 //
+// Security model:
+//   - Any script in the MAIN world of an injected page can postMessage a
+//     proxy-fetch request — the bridge forwards without authentication
+//     because the whole point is letting page JS talk to the SW.
+//   - The SW MUST NOT trust anything in the message beyond its structure.
+//     The authoritative source of "which origin is speaking" is
+//     sender.tab?.url — populated by Chrome, not forgeable.
+//   - To prevent the proxy from being an open SSRF primitive, the SW only
+//     forwards fetches whose target URL belongs to the intake endpoint of
+//     a stored config for the sender tab's origin.
+//   - X-Repro-Origin is set from sender.tab's origin, never from a
+//     client-supplied value. A compromised page therefore cannot claim to
+//     speak for a different allowlisted origin.
+//
 // All binaries travel as base64 strings because chrome.runtime.sendMessage
 // serializes messages as JSON in MV3, and ArrayBuffer round-trips through
 // JSON as {} without this wrapping.
+
+import { listConfigs } from "../lib/storage"
 
 type SerializedBody =
   | { kind: "none" }
@@ -25,11 +41,8 @@ type ProxyRequest = {
   method: string
   headers: Record<string, string>
   body: SerializedBody
-  // The page's own origin, captured by the MAIN-world proxy before the
-  // message hop. The service worker uses it to set X-Repro-Origin so the
-  // intake allowlist check can treat the request as if it came from the
-  // page — the browser's Origin header on an extension-initiated fetch is
-  // chrome-extension://<id>, which won't be in any project's allowlist.
+  // Kept for wire compatibility but NEVER trusted. The SW derives the real
+  // page origin from sender.tab?.url.
   pageOrigin?: string
 }
 
@@ -85,42 +98,97 @@ function looksLikeText(contentType: string): boolean {
   )
 }
 
+function reject(sendResponse: (response: unknown) => void, error: string, status = 0): void {
+  sendResponse({
+    ok: false,
+    status,
+    statusText: "",
+    bodyKind: "none",
+    body: null,
+    error,
+  })
+}
+
 export function registerProxyHandler(): void {
-  chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     const msg = message as Partial<ProxyRequest> | null
     if (!msg || msg.type !== "proxy-fetch") return false
 
     void (async () => {
       try {
-        if (!msg.url) {
-          sendResponse({
-            ok: false,
-            status: 0,
-            statusText: "",
-            bodyKind: "none",
-            body: null,
-            error: "missing url in proxy-fetch message",
-          })
+        // F1 guard: require a sender tab and derive its origin ourselves.
+        // sender.tab.url is set by Chrome from the actual tab URL — it
+        // cannot be spoofed by the page's JS.
+        const tabUrl = sender.tab?.url
+        if (!tabUrl) {
+          reject(sendResponse, "proxy: no sender tab")
           return
         }
+        let tabOrigin: string
+        try {
+          tabOrigin = new URL(tabUrl).origin
+        } catch {
+          reject(sendResponse, "proxy: unparseable sender tab url")
+          return
+        }
+
+        if (!msg.url) {
+          reject(sendResponse, "proxy: missing url")
+          return
+        }
+        let targetUrl: URL
+        try {
+          targetUrl = new URL(msg.url)
+        } catch {
+          reject(sendResponse, "proxy: unparseable target url")
+          return
+        }
+
+        // F1 + F7 guard: target URL must match the intake endpoint of a
+        // config whose page origin matches the sender tab. Prevents the SW
+        // from becoming an open proxy for arbitrary URLs just because the
+        // extension has host permissions for them.
+        const configs = await listConfigs()
+        const match = configs.find((c) => c.origin === tabOrigin)
+        if (!match) {
+          reject(sendResponse, "proxy: sender tab origin not in any config")
+          return
+        }
+        let intakeOrigin: string
+        try {
+          intakeOrigin = new URL(match.intakeEndpoint).origin
+        } catch {
+          reject(sendResponse, "proxy: config has unparseable intake endpoint")
+          return
+        }
+        if (targetUrl.origin !== intakeOrigin) {
+          reject(sendResponse, "proxy: target origin not allowed for this tab")
+          return
+        }
+        // Further bound the path to the intake API. Anything else on the
+        // intake host (/admin, /api/tickets, etc.) is off-limits.
+        if (!targetUrl.pathname.startsWith("/api/intake/")) {
+          reject(sendResponse, "proxy: target path not allowed")
+          return
+        }
+
         const body = msg.body ? deserializeBody(msg.body) : undefined
         const headers: Record<string, string> = { ...msg.headers }
         // fetch refuses to set these from any context; the browser sets them.
         delete headers.host
         delete headers.origin
         delete headers.referer
+        // Strip auth that could ride along from the page context.
+        delete headers.authorization
+        delete headers.cookie
         // For FormData let fetch compute Content-Type with the boundary.
         if (msg.body?.kind === "formData") delete headers["content-type"]
-        // Pass the original page origin through as a custom header. The
-        // intake server checks this when the standard Origin is
-        // chrome-extension://* (the browser's value for extension-
-        // initiated fetches). Can't set the Origin header directly:
-        // fetch treats it as a forbidden header name.
-        if (msg.pageOrigin) {
-          headers["x-repro-origin"] = msg.pageOrigin
-        }
+        // F3 guard: X-Repro-Origin is set from the SW-derived tab origin,
+        // NEVER from msg.pageOrigin. A compromised page cannot claim to
+        // speak for a different allowlisted origin.
+        headers["x-repro-origin"] = tabOrigin
 
-        const response = await fetch(msg.url, {
+        const response = await fetch(targetUrl.href, {
           method: msg.method ?? "GET",
           headers,
           body,
@@ -147,14 +215,7 @@ export function registerProxyHandler(): void {
           contentType,
         })
       } catch (err) {
-        sendResponse({
-          ok: false,
-          status: 0,
-          statusText: "",
-          bodyKind: "none",
-          body: null,
-          error: err instanceof Error ? err.message : String(err),
-        })
+        reject(sendResponse, err instanceof Error ? err.message : String(err))
       }
     })()
 

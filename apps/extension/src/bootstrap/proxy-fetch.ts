@@ -25,7 +25,6 @@ export function installFetchProxy(endpointOrigin: string): void {
 
   const SOURCE = "repro-proxy"
   const originalFetch = g.fetch.bind(globalThis)
-  let counter = 0
   const pending = new Map<string, (response: unknown) => void>()
   console.info("[repro-extension] fetch proxy installed for", endpointOrigin)
 
@@ -133,7 +132,14 @@ export function installFetchProxy(endpointOrigin: string): void {
     // so the intake's allowlist check behaves the same as when the SDK
     // posts directly. `location.origin` is the MAIN-world document's own
     // origin — the one the tester configured.
-    const id = `repro-${Date.now().toString(36)}-${counter++}`
+    // crypto.randomUUID() instead of a time+counter id — unpredictable ids
+    // make it harder for a hostile MAIN-world script to race the response
+    // handler by pre-registering a matching id. Residual risk (any script
+    // on the page can still passively snoop repro-proxy-response messages)
+    // is bounded by F1's SW-side URL gating: the only data broadcast over
+    // this channel is the intake response body, which contains only the
+    // new report ID and not sensitive data.
+    const id = crypto.randomUUID()
     const request = {
       source: SOURCE,
       type: "request",
