@@ -17,6 +17,10 @@ WORKDIR /repo
 
 COPY package.json bun.lock ./
 COPY apps/dashboard/package.json apps/dashboard/
+# apps/extension doesn't ship in the dashboard image, but its package.json
+# contributes to the workspace graph in bun.lock. Omit it and
+# `bun install --frozen-lockfile` treats the lockfile as drifted.
+COPY apps/extension/package.json apps/extension/
 COPY packages/core/package.json packages/core/
 COPY packages/ui/package.json packages/ui/
 COPY packages/shared/package.json packages/shared/
