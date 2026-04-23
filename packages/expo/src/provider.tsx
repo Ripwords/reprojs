@@ -88,14 +88,17 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
 
   async function openWizard(opts?: { initialTitle?: string; initialDescription?: string }) {
     setWizardInit(opts ?? {})
+    if (!rootRef.current) {
+      console.warn("[repro] rootRef not mounted — opening wizard without screenshot")
+      setScreenshot(null)
+      setWizardOpen(true)
+      return
+    }
     try {
-      if (rootRef.current) {
-        const shot = await captureView(rootRef)
-        setScreenshot({ uri: shot.uri, width: rootSize.w, height: rootSize.h })
-      } else {
-        setScreenshot(null)
-      }
-    } catch {
+      const shot = await captureView(rootRef)
+      setScreenshot({ uri: shot.uri, width: rootSize.w, height: rootSize.h })
+    } catch (err) {
+      console.warn("[repro] screenshot capture failed — opening wizard anyway", err)
       setScreenshot(null)
     }
     setWizardOpen(true)

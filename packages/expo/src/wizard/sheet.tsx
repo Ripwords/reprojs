@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
-import { Modal, SafeAreaView, Text, View } from "react-native"
+import { Dimensions, Modal, SafeAreaView, Text, View } from "react-native"
 import { FlattenView, type FlattenHandle } from "../capture/flatten"
 import { StepForm } from "./step-form"
 import { StepAnnotate } from "./step-annotate"
@@ -74,14 +74,15 @@ export function WizardSheet({
             onDescriptionChange={setDescription}
           />
         )}
-        {step === "annotate" && screenshot && (
-          <StepAnnotate
-            imageUri={screenshot.uri}
-            width={screenshot.width}
-            height={screenshot.height}
-            store={store}
-          />
-        )}
+        {step === "annotate" &&
+          (() => {
+            const fallback = Dimensions.get("window")
+            const w = screenshot?.width && screenshot.width > 0 ? screenshot.width : fallback.width
+            const h = screenshot?.height && screenshot.height > 0 ? screenshot.height : 320
+            return (
+              <StepAnnotate imageUri={screenshot?.uri ?? null} width={w} height={h} store={store} />
+            )
+          })()}
         {step === "submit" && (
           <StepSubmit
             submitting={submitting}
