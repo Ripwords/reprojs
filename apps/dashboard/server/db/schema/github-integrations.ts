@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm"
-import { bigint, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core"
 import { projects } from "./projects"
 import { reports } from "./reports"
 
@@ -27,6 +36,14 @@ export const githubIntegrations = pgTable(
     connectedBy: text("connected_by"),
     connectedAt: timestamp("connected_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    autoCreateOnIntake: boolean("auto_create_on_intake").default(false).notNull(),
+    pushOnEdit: boolean("push_on_edit").default(false).notNull(),
+    labelsLastSyncedAt: timestamp("labels_last_synced_at", { withTimezone: true, mode: "date" }),
+    milestonesLastSyncedAt: timestamp("milestones_last_synced_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    membersLastSyncedAt: timestamp("members_last_synced_at", { withTimezone: true, mode: "date" }),
   },
   (table) => ({
     installationIdIdx: index("github_integrations_installation_id_idx").on(table.installationId),

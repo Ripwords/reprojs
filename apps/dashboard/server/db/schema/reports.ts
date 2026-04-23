@@ -40,6 +40,13 @@ export const reports = pgTable(
     githubIssueNumber: integer("github_issue_number"),
     githubIssueNodeId: text("github_issue_node_id"),
     githubIssueUrl: text("github_issue_url"),
+    milestoneNumber: integer("milestone_number"),
+    milestoneTitle: text("milestone_title"),
+    githubSyncedAt: timestamp("github_synced_at", { withTimezone: true, mode: "date" }),
+    githubCommentsSyncedAt: timestamp("github_comments_synced_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
   },
   (table) => ({
     projectCreatedIdx: index("reports_project_created_idx").on(

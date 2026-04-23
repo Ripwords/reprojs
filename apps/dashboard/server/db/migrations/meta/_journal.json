@@ -57,6 +57,13 @@
       "when": 1776968419008,
       "tag": "0007_young_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776968447311,
+      "tag": "0008_solid_marauders",
+      "breakpoints": true
     }
   ]
 }
