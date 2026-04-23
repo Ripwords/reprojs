@@ -21,6 +21,13 @@ export {
   updateIssueState,
 } from "./issue-writes"
 export type { IssueStateUpdate } from "./issue-writes"
+export {
+  createIssueComment,
+  updateIssueComment,
+  deleteIssueComment,
+  listIssueComments,
+} from "./comments"
+export type { GithubComment } from "./comments"
 
 export function createInstallationClient(
   opts: InstallationClientOptions,
