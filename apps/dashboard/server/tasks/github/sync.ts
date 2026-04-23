@@ -3,7 +3,12 @@ import { and, eq, lt, lte, sql } from "drizzle-orm"
 import { defineTask } from "nitropack/runtime"
 import { db } from "../../db"
 import { reportSyncJobs } from "../../db/schema"
-import { ReconcileSkipped, reconcileReport } from "../../lib/github-reconcile"
+import {
+  ReconcileSkipped,
+  reconcileReport,
+  reconcileCommentUpsertJob,
+  reconcileCommentDeleteJob,
+} from "../../lib/github-reconcile"
 import { computeBackoff } from "../../lib/github-helpers"
 
 type SyncJob = typeof reportSyncJobs.$inferSelect
@@ -21,7 +26,15 @@ async function processJob(job: SyncJob): Promise<void> {
     .set({ state: "syncing", updatedAt: new Date() })
     .where(eq(reportSyncJobs.reportId, job.reportId))
   try {
-    await reconcileReport(job.reportId)
+    const payload = job.payload
+    if (payload?.kind === "comment_upsert") {
+      await reconcileCommentUpsertJob(job.reportId, payload.commentId)
+    } else if (payload?.kind === "comment_delete") {
+      await reconcileCommentDeleteJob(job.reportId, payload.commentId, payload.githubCommentId)
+    } else {
+      // null/undefined or kind === "reconcile" — standard report reconcile
+      await reconcileReport(job.reportId)
+    }
     await db.delete(reportSyncJobs).where(eq(reportSyncJobs.reportId, job.reportId))
   } catch (err) {
     if (err instanceof ReconcileSkipped) {

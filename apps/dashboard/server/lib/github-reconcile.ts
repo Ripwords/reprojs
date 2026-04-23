@@ -1,9 +1,13 @@
 // apps/dashboard/server/lib/github-reconcile.ts
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { type LogsAttachment, type ReportContext } from "@reprojs/shared"
 import {
   addAssignees,
+  createIssueComment,
+  deleteIssueComment,
+  listIssueComments,
   removeAssignees,
+  updateIssueComment,
   updateIssueMilestone,
   updateIssueState,
   updateIssueTitle,
@@ -20,6 +24,7 @@ import {
   githubIntegrations,
   reportAssignees,
   reportAttachments,
+  reportComments,
   reports,
   reportSyncJobs,
   userIdentities,
@@ -27,12 +32,17 @@ import {
 import {
   diffAssignees,
   signAssignees,
+  signCommentDelete,
+  signCommentUpsert,
   signLabels,
   signMilestone,
   signState,
   signTitle,
 } from "./github-diff"
 import { recordWriteLock } from "./github-write-locks"
+import { withBotFooter, hasBotFooter, stripBotFooter } from "./comment-serializer"
+import { resolveGithubUser } from "./github-identities"
+import type { GithubIntegration } from "../db/schema"
 
 export class ReconcileSkipped extends Error {}
 
@@ -286,6 +296,208 @@ function buildTestOctokitShim(
   } as unknown as Octokit
 }
 
+// --- Comment reconcilers ---
+
+async function reconcileCommentUpsert(
+  commentId: string,
+  octokit: Octokit,
+  gi: GithubIntegration,
+): Promise<void> {
+  const [comment] = await db
+    .select()
+    .from(reportComments)
+    .where(eq(reportComments.id, commentId))
+    .limit(1)
+  if (!comment || comment.deletedAt) return // orphan or already deleted
+
+  const authorRow = comment.userId
+    ? await db
+        .select({ name: userIdentities.externalName, handle: userIdentities.externalHandle })
+        .from(userIdentities)
+        .where(
+          and(eq(userIdentities.userId, comment.userId), eq(userIdentities.provider, "github")),
+        )
+        .limit(1)
+        .then((rows) => rows[0] ?? null)
+    : null
+
+  // Also get the user's name from the user table if no github identity
+  let authorName: string | null = null
+  if (comment.userId && !authorRow) {
+    const { user } = await import("../db/schema/auth-schema")
+    const [userRow] = await db
+      .select({ name: user.name })
+      .from(user)
+      .where(eq(user.id, comment.userId))
+      .limit(1)
+    authorName = userRow?.name ?? null
+  }
+
+  const serializedBody = withBotFooter(comment.body, {
+    name: authorRow?.name ?? authorName,
+    githubLogin: authorRow?.handle ?? null,
+  })
+
+  if (comment.githubCommentId === null) {
+    // Create on GitHub
+    const [report] = await db
+      .select()
+      .from(reports)
+      .where(eq(reports.id, comment.reportId))
+      .limit(1)
+    if (!report?.githubIssueNumber) return // ticket unlinked between enqueue and run
+    const created = await createIssueComment(
+      octokit,
+      gi.repoOwner,
+      gi.repoName,
+      report.githubIssueNumber,
+      serializedBody,
+    )
+    await recordWriteLock(db, {
+      reportId: comment.reportId,
+      kind: "comment_upsert",
+      signature: signCommentUpsert(created.id, serializedBody),
+    })
+    await db
+      .update(reportComments)
+      .set({ githubCommentId: created.id, updatedAt: new Date() })
+      .where(eq(reportComments.id, comment.id))
+  } else {
+    // Update on GitHub
+    await recordWriteLock(db, {
+      reportId: comment.reportId,
+      kind: "comment_upsert",
+      signature: signCommentUpsert(comment.githubCommentId, serializedBody),
+    })
+    await updateIssueComment(
+      octokit,
+      gi.repoOwner,
+      gi.repoName,
+      comment.githubCommentId,
+      serializedBody,
+    )
+  }
+}
+
+async function reconcileCommentDelete(
+  commentId: string,
+  githubCommentId: number,
+  reportId: string,
+  octokit: Octokit,
+  gi: GithubIntegration,
+): Promise<void> {
+  await recordWriteLock(db, {
+    reportId,
+    kind: "comment_delete",
+    signature: signCommentDelete(githubCommentId),
+  })
+  await deleteIssueComment(octokit, gi.repoOwner, gi.repoName, githubCommentId)
+}
+
+// --- Exported comment job dispatchers (called from sync task) ---
+
+export async function reconcileCommentUpsertJob(
+  reportId: string,
+  commentId: string,
+): Promise<void> {
+  const [row] = await db
+    .select({ gi: githubIntegrations })
+    .from(reports)
+    .leftJoin(githubIntegrations, eq(githubIntegrations.projectId, reports.projectId))
+    .where(eq(reports.id, reportId))
+    .limit(1)
+
+  if (!row?.gi || row.gi.status !== "connected") {
+    throw new ReconcileSkipped("no connected integration for comment upsert")
+  }
+
+  const octokit = await getRawOctokit(row.gi.installationId)
+  await reconcileCommentUpsert(commentId, octokit, row.gi)
+}
+
+export async function reconcileCommentDeleteJob(
+  reportId: string,
+  commentId: string,
+  githubCommentId: number,
+): Promise<void> {
+  const [row] = await db
+    .select({ gi: githubIntegrations })
+    .from(reports)
+    .leftJoin(githubIntegrations, eq(githubIntegrations.projectId, reports.projectId))
+    .where(eq(reports.id, reportId))
+    .limit(1)
+
+  if (!row?.gi || row.gi.status !== "connected") {
+    throw new ReconcileSkipped("no connected integration for comment delete")
+  }
+
+  const octokit = await getRawOctokit(row.gi.installationId)
+  await reconcileCommentDelete(commentId, githubCommentId, reportId, octokit, row.gi)
+}
+
+// --- Backfill existing GitHub comments on first link ---
+
+async function backfillGithubComments(
+  reportId: string,
+  issueNumber: number,
+  octokit: Octokit,
+  gi: GithubIntegration,
+): Promise<void> {
+  const { inArray } = await import("drizzle-orm")
+  const comments = await listIssueComments(octokit, gi.repoOwner, gi.repoName, issueNumber)
+  if (comments.length === 0) {
+    await db
+      .update(reports)
+      .set({ githubCommentsSyncedAt: new Date() })
+      .where(eq(reports.id, reportId))
+    return
+  }
+
+  // Batch-check which github comment ids already exist
+  const githubIds = comments.map((c) => c.id)
+  const existingRows = await db
+    .select({ githubCommentId: reportComments.githubCommentId })
+    .from(reportComments)
+    .where(inArray(reportComments.githubCommentId, githubIds))
+  const existingSet = new Set(existingRows.map((r) => r.githubCommentId))
+
+  const newComments = comments.filter((c) => !existingSet.has(c.id))
+  if (newComments.length === 0) {
+    await db
+      .update(reports)
+      .set({ githubCommentsSyncedAt: new Date() })
+      .where(eq(reports.id, reportId))
+    return
+  }
+
+  // Resolve all authors in parallel
+  const resolved = await Promise.all(
+    newComments.map((c) => resolveGithubUser(String(c.user.id), c.user.login, c.user.avatar_url)),
+  )
+
+  const valuesToInsert = newComments.map((c, i) => {
+    const authorResolved = resolved[i]
+    const body = hasBotFooter(c.body) ? stripBotFooter(c.body) : c.body
+    return {
+      reportId,
+      userId: authorResolved?.kind === "dashboard-user" ? authorResolved.userId : null,
+      githubLogin: c.user.login,
+      body,
+      githubCommentId: c.id,
+      source: "github" as const,
+      createdAt: new Date(c.createdAt),
+      updatedAt: new Date(c.updatedAt),
+    }
+  })
+
+  await db.insert(reportComments).values(valuesToInsert).onConflictDoNothing()
+
+  await db
+    .update(reports)
+    .set({ githubCommentsSyncedAt: new Date() })
+    .where(eq(reports.id, reportId))
+}
+
 // --- Main reconciler ---
 
 export async function reconcileReport(reportId: string): Promise<void> {
@@ -401,6 +613,16 @@ export async function reconcileReport(reportId: string): Promise<void> {
         githubSyncedAt: new Date(),
       })
       .where(eq(reports.id, report.id))
+
+    // Backfill existing GitHub comments on first link (only if issue existed before)
+    if (report.githubCommentsSyncedAt === null && existing !== null) {
+      try {
+        const octokit = await getRawOctokit(gi.installationId)
+        await backfillGithubComments(report.id, ref.number, octokit, gi)
+      } catch {
+        // Backfill is best-effort — don't fail the whole reconcile
+      }
+    }
     return
   }
 
