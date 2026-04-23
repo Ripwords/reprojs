@@ -1,6 +1,7 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 import { db } from "../db"
 import { userIdentities } from "../db/schema/user-identities"
+import { user } from "../db/schema/auth-schema"
 
 export type ResolvedIdentity =
   | { kind: "dashboard-user"; userId: string; githubLogin: string; avatarUrl: string | null }
@@ -73,4 +74,27 @@ export async function unlinkGithubIdentity(userId: string): Promise<void> {
   await db
     .delete(userIdentities)
     .where(and(eq(userIdentities.userId, userId), eq(userIdentities.provider, "github")))
+}
+
+export type LinkedUserMini = { id: string; name: string | null; email: string | null }
+
+export async function resolveGithubUsers(
+  externalIds: string[],
+): Promise<Map<string, LinkedUserMini>> {
+  if (externalIds.length === 0) return new Map()
+  const rows = await db
+    .select({
+      externalId: userIdentities.externalId,
+      userId: userIdentities.userId,
+      name: user.name,
+      email: user.email,
+    })
+    .from(userIdentities)
+    .innerJoin(user, eq(user.id, userIdentities.userId))
+    .where(
+      and(eq(userIdentities.provider, "github"), inArray(userIdentities.externalId, externalIds)),
+    )
+  const out = new Map<string, LinkedUserMini>()
+  for (const r of rows) out.set(r.externalId, { id: r.userId, name: r.name, email: r.email })
+  return out
 }
