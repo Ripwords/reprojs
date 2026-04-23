@@ -9,16 +9,16 @@ import { PALETTE, STROKE_WIDTHS, newShapeId } from "@reprojs/sdk-utils"
 
 interface Props {
   imageUri: string | null
-  width: number
-  height: number
   store: AnnotationStore
+  onSizeChange?: (size: { w: number; h: number }) => void
 }
 
-export function StepAnnotate({ imageUri, width, height, store }: Props) {
+export function StepAnnotate({ imageUri, store, onSizeChange }: Props) {
   const [tool, setTool] = useState<Tool>("pen")
   const [color, setColor] = useState<string>(PALETTE[0])
   const [strokeWidth, setStrokeWidth] = useState<number>(STROKE_WIDTHS[1])
   const [textPoint, setTextPoint] = useState<{ x: number; y: number } | null>(null)
+  const [size, setSize] = useState({ w: 0, h: 0 })
 
   function handleTextTap(point: { x: number; y: number }) {
     setTextPoint(point)
@@ -56,21 +56,31 @@ export function StepAnnotate({ imageUri, width, height, store }: Props) {
         onStrokeWidthChange={setStrokeWidth}
         store={store}
       />
-      <View style={{ width, height, position: "relative", backgroundColor: "#f3f4f6" }}>
-        {imageUri ? (
+      <View
+        style={{ flex: 1, position: "relative", backgroundColor: "#f3f4f6" }}
+        onLayout={(e) => {
+          const next = {
+            w: Math.round(e.nativeEvent.layout.width),
+            h: Math.round(e.nativeEvent.layout.height),
+          }
+          setSize(next)
+          onSizeChange?.(next)
+        }}
+      >
+        {imageUri && size.w > 0 && size.h > 0 ? (
           <Image
             source={{ uri: imageUri }}
-            style={{ position: "absolute", top: 0, left: 0, width, height }}
-            resizeMode="cover"
+            style={{ position: "absolute", top: 0, left: 0, width: size.w, height: size.h }}
+            resizeMode="contain"
           />
-        ) : (
+        ) : !imageUri ? (
           <View
             style={{
               position: "absolute",
               top: 0,
               left: 0,
-              width,
-              height,
+              right: 0,
+              bottom: 0,
               alignItems: "center",
               justifyContent: "center",
               padding: 24,
@@ -80,16 +90,18 @@ export function StepAnnotate({ imageUri, width, height, store }: Props) {
               Screenshot unavailable — annotate on a blank canvas, or go Back and try again.
             </Text>
           </View>
+        ) : null}
+        {size.w > 0 && size.h > 0 && (
+          <AnnotationCanvas
+            width={size.w}
+            height={size.h}
+            tool={tool}
+            color={color}
+            strokeWidth={strokeWidth}
+            store={store}
+            onTextTap={handleTextTap}
+          />
         )}
-        <AnnotationCanvas
-          width={width}
-          height={height}
-          tool={tool}
-          color={color}
-          strokeWidth={strokeWidth}
-          store={store}
-          onTextTap={handleTextTap}
-        />
       </View>
       <TextInputModal
         visible={textPoint !== null}

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react"
-import { Dimensions, Modal, SafeAreaView, Text, View } from "react-native"
+import { Modal, SafeAreaView, Text, View } from "react-native"
 import { FlattenView, type FlattenHandle } from "../capture/flatten"
 import { StepForm } from "./step-form"
 import { StepAnnotate } from "./step-annotate"
 import { StepSubmit } from "./step-submit"
 import { createAnnotationStore } from "../annotation/store"
+import { useAnnotationShapes } from "../annotation/use-shapes"
 
 export interface WizardArgs {
   initialTitle?: string
@@ -31,8 +32,12 @@ export function WizardSheet({
   const [description, setDescription] = useState(initialDescription ?? "")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [annotateSize, setAnnotateSize] = useState({ w: 0, h: 0 })
   const store = useRef(createAnnotationStore()).current
   const flattenRef = useRef<FlattenHandle | null>(null)
+
+  // Subscribe so the offscreen FlattenView re-renders whenever shapes change.
+  const shapes = useAnnotationShapes(store)
 
   useEffect(() => {
     setStep("form")
@@ -43,9 +48,20 @@ export function WizardSheet({
     setError(null)
     try {
       let annotated: string | null = null
-      if (screenshot && store.snapshot().length > 0 && flattenRef.current) {
-        const flat = await flattenRef.current.flatten()
-        annotated = flat.uri
+      if (
+        screenshot &&
+        shapes.length > 0 &&
+        flattenRef.current &&
+        annotateSize.w > 0 &&
+        annotateSize.h > 0
+      ) {
+        try {
+          const flat = await flattenRef.current.flatten()
+          annotated = flat.uri
+        } catch {
+          // flatten failed — fall back to the raw screenshot
+          annotated = null
+        }
       }
       await onSubmit({
         title,
@@ -74,15 +90,13 @@ export function WizardSheet({
             onDescriptionChange={setDescription}
           />
         )}
-        {step === "annotate" &&
-          (() => {
-            const fallback = Dimensions.get("window")
-            const w = screenshot?.width && screenshot.width > 0 ? screenshot.width : fallback.width
-            const h = screenshot?.height && screenshot.height > 0 ? screenshot.height : 320
-            return (
-              <StepAnnotate imageUri={screenshot?.uri ?? null} width={w} height={h} store={store} />
-            )
-          })()}
+        {step === "annotate" && (
+          <StepAnnotate
+            imageUri={screenshot?.uri ?? null}
+            store={store}
+            onSizeChange={setAnnotateSize}
+          />
+        )}
         {step === "submit" && (
           <StepSubmit
             submitting={submitting}
@@ -91,13 +105,13 @@ export function WizardSheet({
             onCancel={onClose}
           />
         )}
-        {screenshot && (
+        {screenshot && annotateSize.w > 0 && annotateSize.h > 0 && (
           <FlattenView
             ref={flattenRef}
             uri={screenshot.uri}
-            width={screenshot.width}
-            height={screenshot.height}
-            shapes={store.snapshot()}
+            width={annotateSize.w}
+            height={annotateSize.h}
+            shapes={shapes}
           />
         )}
         <View style={{ flexDirection: "row", padding: 12, gap: 8 }}>
