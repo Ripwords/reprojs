@@ -1,2 +1,5 @@
-// Public API populated by subsequent tasks.
-export {}
+export { ReproProvider } from "./provider"
+export { ReproLauncher } from "./launcher"
+export { useRepro, type ReproHandle } from "./use-repro"
+export { Repro } from "./singleton"
+export type { ReproConfigInput } from "./config"

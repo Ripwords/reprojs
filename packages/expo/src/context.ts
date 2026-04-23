@@ -10,7 +10,10 @@ export interface ReproInternalContext {
   getMetadata: () => Record<string, string | number | boolean>
   setMetadata: (patch: Record<string, string | number | boolean>) => void
   logBreadcrumb: (event: string, data?: Record<string, string | number | boolean | null>) => void
-  openWizard: (opts?: { initialTitle?: string; initialDescription?: string }) => void
+  openWizard: (opts?: {
+    initialTitle?: string
+    initialDescription?: string
+  }) => Promise<void> | void
   closeWizard: () => void
   captureRoot: () => Promise<{ uri: string; width: number; height: number; bytes: number }>
   snapshotBreadcrumbs: () => Breadcrumb[]

@@ -10,7 +10,7 @@ export interface CaptureResult {
   bytes: number
 }
 
-export async function captureView(ref: RefObject<View>): Promise<CaptureResult> {
+export async function captureView(ref: RefObject<View | null>): Promise<CaptureResult> {
   if (!ref.current) throw new Error("Repro: capture target not mounted")
   const uri = await captureRef(ref as RefObject<View>, {
     format: "png",
