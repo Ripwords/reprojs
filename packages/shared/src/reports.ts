@@ -115,9 +115,11 @@ export const ReportPriority = z.enum(["low", "normal", "high", "urgent"])
 export type ReportPriority = z.infer<typeof ReportPriority>
 
 export const ReportAssigneeDTO = z.object({
-  id: z.string(),
+  id: z.string().nullable(), // dashboard user id (null for github-only)
   name: z.string().nullable(),
-  email: z.email(),
+  email: z.string().nullable(),
+  githubLogin: z.string().nullable(),
+  githubAvatarUrl: z.string().nullable(),
 })
 export type ReportAssigneeDTO = z.infer<typeof ReportAssigneeDTO>
 
@@ -128,6 +130,13 @@ export const ReportEventKind = z.enum([
   "tag_added",
   "tag_removed",
   "github_unlinked",
+  "assignee_added",
+  "assignee_removed",
+  "milestone_changed",
+  "comment_added",
+  "comment_edited",
+  "comment_deleted",
+  "github_labels_updated",
 ])
 export type ReportEventKind = z.infer<typeof ReportEventKind>
 
@@ -143,14 +152,14 @@ export type ReportEventDTO = z.infer<typeof ReportEventDTO>
 export const TriagePatchInput = z
   .object({
     status: ReportStatus.optional(),
-    assigneeId: z.string().nullable().optional(),
+    assigneeIds: z.array(z.string()).optional(),
     priority: ReportPriority.optional(),
     tags: z.array(z.string().min(1).max(40)).max(20).optional(),
   })
   .refine(
     (v) =>
       v.status !== undefined ||
-      v.assigneeId !== undefined ||
+      v.assigneeIds !== undefined ||
       v.priority !== undefined ||
       v.tags !== undefined,
     { message: "At least one field must be present" },
@@ -161,10 +170,10 @@ export const BulkUpdateInput = z
   .object({
     reportIds: z.array(z.uuid()).min(1).max(100),
     status: ReportStatus.optional(),
-    assigneeId: z.string().nullable().optional(),
+    assigneeIds: z.array(z.string()).optional(),
   })
-  .refine((v) => v.status !== undefined || v.assigneeId !== undefined, {
-    message: "At least one of status or assigneeId must be present",
+  .refine((v) => v.status !== undefined || v.assigneeIds !== undefined, {
+    message: "At least one of status or assigneeIds must be present",
   })
 export type BulkUpdateInput = z.infer<typeof BulkUpdateInput>
 
@@ -211,7 +220,7 @@ export const ReportSummaryDTO = z.object({
   tags: z.array(z.string()),
   githubIssueNumber: z.number().int().nullable(),
   githubIssueUrl: z.string().nullable(),
-  assignee: ReportAssigneeDTO.nullable(),
+  assignees: z.array(ReportAssigneeDTO).default([]),
 })
 export type ReportSummaryDTO = z.infer<typeof ReportSummaryDTO>
 
