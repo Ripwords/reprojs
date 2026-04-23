@@ -64,6 +64,13 @@
       "when": 1776968447311,
       "tag": "0008_solid_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776970200000,
+      "tag": "0009_backfill_user_identities_from_account",
+      "breakpoints": true
     }
   ]
 }
