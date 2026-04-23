@@ -1,4 +1,6 @@
 // packages/integrations/github/src/client.ts
+export { listRepoLabels, listAssignableUsers, listMilestones } from "./repo-read"
+export type { RepoLabel, AssignableUser, RepoMilestone } from "./repo-read"
 import { createAppAuth } from "@octokit/auth-app"
 import { Octokit } from "@octokit/rest"
 import type {
