@@ -14,6 +14,10 @@
     <a href="https://ripwords.github.io/ReproJs/guide/sdk"><strong>SDK</strong></a> ·
     <a href="https://ripwords.github.io/ReproJs/guide/extension"><strong>Tester extension</strong></a>
   </p>
+
+  <p>
+    <a href="https://buymeacoffee.com/ripwords" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+  </p>
 </div>
 
 ---

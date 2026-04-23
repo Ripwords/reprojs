@@ -38,3 +38,11 @@ features:
   - title: Open source
     details: MIT-licensed. Contribute on GitHub. No seat-based pricing; no data lock-in.
 ---
+
+<div style="text-align: center; margin: 3rem 0;">
+  <p style="margin-bottom: 1rem; color: var(--vp-c-text-2);">Repro is free and open source. If it helps you, consider supporting ongoing development:</p>
+  <a href="https://buymeacoffee.com/ripwords" target="_blank" rel="noopener">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="41" width="174" />
+  </a>
+</div>
+
