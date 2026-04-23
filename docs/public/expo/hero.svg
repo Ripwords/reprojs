@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="960" height="620" role="img" aria-labelledby="t">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 660" width="960" height="660" role="img" aria-labelledby="t">
   <title id="t">Repro Expo SDK — bug-report wizard across three steps: details, annotate, review</title>
   <defs>
     <linearGradient id="flame" x1="0" y1="0" x2="1" y2="0">
@@ -10,19 +10,18 @@
       <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000" flood-opacity="0.45"/>
     </filter>
     <clipPath id="phone-clip">
-      <rect x="0" y="0" width="240" height="440" rx="26" ry="26"/>
+      <rect x="0" y="0" width="240" height="480" rx="28" ry="28"/>
     </clipPath>
   </defs>
 
-  <!-- Background: mist-950 equivalent so the hero blends into VitePress dark mode
-       and reads as an intentional dark promo block in light mode. -->
-  <rect width="960" height="620" fill="#1d2530"/>
+  <!-- Background: mist-950 equivalent so the hero blends into VitePress dark mode. -->
+  <rect width="960" height="660" fill="#1d2530"/>
 
   <!-- Brand eyebrow -->
   <text x="48" y="56" font-family="ui-monospace,SFMono-Regular,Menlo,monospace"
         font-size="12" letter-spacing="4" fill="url(#flame)" font-weight="700">REPRO · EXPO SDK</text>
 
-  <!-- Title — sans-serif display, generous tracking for a mobile-first headline -->
+  <!-- Title -->
   <text x="48" y="102" font-family="ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif"
         font-size="36" letter-spacing="-0.8" fill="#f9fafb" font-weight="700">Mobile bug reports, from tap to triage.</text>
 
@@ -30,17 +29,17 @@
   <text x="48" y="132" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif"
         font-size="14" fill="#9ca3af" letter-spacing="0.1">Annotated screenshot · Console &amp; network · Offline queue · 0 runtime deps</text>
 
-  <!-- Phone 1: Form step -->
+  <!-- Phone 1: Form -->
   <g transform="translate(90,168)" filter="url(#shadow)">
-    <rect x="-8" y="-8" width="256" height="456" rx="32" ry="32" fill="#0b0b0b"/>
+    <rect x="-8" y="-8" width="256" height="496" rx="34" ry="34" fill="#0b0b0b"/>
     <g clip-path="url(#phone-clip)">
-      <rect width="240" height="440" fill="#ffffff"/>
+      <rect width="240" height="480" fill="#ffffff"/>
       <rect x="92" y="0" width="56" height="16" rx="8" fill="#0b0b0b"/>
       <text x="20" y="50" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="2.5" fill="url(#flame)" font-weight="700">REPRO</text>
       <text x="20" y="72" font-family="ui-sans-serif,system-ui" font-size="16" fill="#25343f" font-weight="700">Report a bug</text>
       <circle cx="214" cy="60" r="13" fill="#edf0f1"/>
       <path d="M 209 55 L 219 65 M 219 55 L 209 65" stroke="#6c7a87" stroke-width="2" stroke-linecap="round"/>
-      <g transform="translate(20,96)">
+      <g transform="translate(20,100)">
         <circle cx="10" cy="10" r="10" fill="url(#flame)"/>
         <text x="10" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#fff" font-weight="700">1</text>
         <rect x="26" y="9" width="48" height="2" rx="1" fill="#dde2e5"/>
@@ -50,36 +49,36 @@
         <circle cx="158" cy="10" r="10" fill="#edf0f1"/>
         <text x="158" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#9aa4ae" font-weight="700">3</text>
       </g>
-      <g transform="translate(20,134)" font-family="ui-sans-serif,system-ui" font-size="8" fill="#9aa4ae" letter-spacing="1">
+      <g transform="translate(20,138)" font-family="ui-sans-serif,system-ui" font-size="8" fill="#9aa4ae" letter-spacing="1">
         <text font-weight="600" fill="#25343f">DETAILS</text>
         <text x="74">ANNOTATE</text>
         <text x="148">REVIEW</text>
       </g>
-      <line x1="0" y1="154" x2="240" y2="154" stroke="#edf0f1"/>
-      <text x="20" y="182" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#25343f" font-weight="700">TITLE</text>
-      <rect x="20" y="192" width="200" height="42" rx="10" fill="#f5f7f8" stroke="#dde2e5"/>
-      <text x="32" y="218" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">What went wrong?</text>
-      <text x="20" y="258" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#25343f" font-weight="700">DETAILS</text>
-      <text x="72" y="258" font-family="ui-sans-serif,system-ui" font-size="9" fill="#9aa4ae" font-style="italic">optional</text>
-      <rect x="20" y="268" width="200" height="88" rx="10" fill="#f5f7f8" stroke="#dde2e5"/>
-      <text x="32" y="292" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">Steps to reproduce,</text>
-      <text x="32" y="310" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">expected vs actual…</text>
-      <rect x="20" y="384" width="200" height="42" rx="12" fill="url(#flame)"/>
-      <text x="120" y="410" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Continue</text>
+      <line x1="0" y1="158" x2="240" y2="158" stroke="#edf0f1"/>
+      <text x="20" y="192" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#25343f" font-weight="700">TITLE</text>
+      <rect x="20" y="202" width="200" height="46" rx="10" fill="#f5f7f8" stroke="#dde2e5"/>
+      <text x="32" y="230" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">What went wrong?</text>
+      <text x="20" y="274" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#25343f" font-weight="700">DETAILS</text>
+      <text x="72" y="274" font-family="ui-sans-serif,system-ui" font-size="9" fill="#9aa4ae" font-style="italic">optional</text>
+      <rect x="20" y="284" width="200" height="110" rx="10" fill="#f5f7f8" stroke="#dde2e5"/>
+      <text x="32" y="310" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">Steps to reproduce,</text>
+      <text x="32" y="328" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">expected vs actual…</text>
+      <rect x="20" y="420" width="200" height="44" rx="12" fill="url(#flame)"/>
+      <text x="120" y="448" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Continue</text>
     </g>
   </g>
 
-  <!-- Phone 2: Annotate step -->
+  <!-- Phone 2: Annotate -->
   <g transform="translate(360,168)" filter="url(#shadow)">
-    <rect x="-8" y="-8" width="256" height="456" rx="32" ry="32" fill="#0b0b0b"/>
+    <rect x="-8" y="-8" width="256" height="496" rx="34" ry="34" fill="#0b0b0b"/>
     <g clip-path="url(#phone-clip)">
-      <rect width="240" height="440" fill="#ffffff"/>
+      <rect width="240" height="480" fill="#ffffff"/>
       <rect x="92" y="0" width="56" height="16" rx="8" fill="#0b0b0b"/>
       <text x="20" y="50" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="2.5" fill="url(#flame)" font-weight="700">REPRO</text>
       <text x="20" y="72" font-family="ui-sans-serif,system-ui" font-size="16" fill="#25343f" font-weight="700">Report a bug</text>
       <circle cx="214" cy="60" r="13" fill="#edf0f1"/>
       <path d="M 209 55 L 219 65 M 219 55 L 209 65" stroke="#6c7a87" stroke-width="2" stroke-linecap="round"/>
-      <g transform="translate(20,96)">
+      <g transform="translate(20,100)">
         <circle cx="10" cy="10" r="10" fill="url(#flame)"/>
         <text x="10" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#fff" font-weight="700">1</text>
         <rect x="26" y="9" width="48" height="2" rx="1" fill="url(#flame)"/>
@@ -89,13 +88,13 @@
         <circle cx="158" cy="10" r="10" fill="#edf0f1"/>
         <text x="158" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#9aa4ae" font-weight="700">3</text>
       </g>
-      <g transform="translate(20,134)" font-family="ui-sans-serif,system-ui" font-size="8" fill="#9aa4ae" letter-spacing="1">
+      <g transform="translate(20,138)" font-family="ui-sans-serif,system-ui" font-size="8" fill="#9aa4ae" letter-spacing="1">
         <text>DETAILS</text>
         <text x="74" font-weight="600" fill="#25343f">ANNOTATE</text>
         <text x="148">REVIEW</text>
       </g>
-      <line x1="0" y1="154" x2="240" y2="154" stroke="#edf0f1"/>
-      <g transform="translate(12,166)">
+      <line x1="0" y1="158" x2="240" y2="158" stroke="#edf0f1"/>
+      <g transform="translate(12,172)">
         <rect x="0" y="0" width="32" height="32" rx="7" fill="url(#flame)"/>
         <path d="M 10 22 L 20 12 L 24 16 L 14 26 Z" fill="#fff"/>
         <rect x="38" y="0" width="32" height="32" rx="7" fill="#f5f7f8"/>
@@ -107,7 +106,7 @@
         <rect x="152" y="0" width="32" height="32" rx="7" fill="#f5f7f8"/>
         <path d="M 160 10 L 176 10 M 168 10 L 168 24" stroke="#25343f" stroke-width="2" stroke-linecap="round"/>
       </g>
-      <g transform="translate(18,206)">
+      <g transform="translate(18,214)">
         <circle cx="8" cy="8" r="8" fill="#e53935"/>
         <circle cx="8" cy="8" r="10" stroke="url(#flame)" stroke-width="1.5" fill="none"/>
         <circle cx="28" cy="8" r="8" fill="#fb8c00"/>
@@ -119,36 +118,36 @@
         <circle cx="174" cy="8" r="4" fill="#25343f"/>
         <circle cx="194" cy="8" r="5" fill="#25343f"/>
       </g>
-      <rect x="12" y="238" width="216" height="140" fill="#f5f7f8"/>
-      <g transform="translate(20,252)" opacity="0.35">
-        <rect width="200" height="10" rx="2" fill="#25343f"/>
-        <rect y="22" width="150" height="8" rx="2" fill="#25343f"/>
-        <rect y="42" width="200" height="28" rx="4" fill="#25343f"/>
-        <rect y="80" width="200" height="28" rx="4" fill="#25343f"/>
+      <rect x="12" y="246" width="216" height="160" fill="#f5f7f8"/>
+      <g transform="translate(20,262)" opacity="0.35">
+        <rect width="200" height="12" rx="2" fill="#25343f"/>
+        <rect y="26" width="150" height="8" rx="2" fill="#25343f"/>
+        <rect y="50" width="200" height="30" rx="4" fill="#25343f"/>
+        <rect y="92" width="200" height="30" rx="4" fill="#25343f"/>
       </g>
       <g stroke="#e53935" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.9">
-        <rect x="28" y="300" width="170" height="32" rx="3"/>
-        <path d="M 54 352 Q 78 340 96 328"/>
-        <path d="M 88 332 L 96 328 L 94 336"/>
+        <rect x="28" y="314" width="170" height="34" rx="3"/>
+        <path d="M 56 378 Q 78 366 96 354"/>
+        <path d="M 88 358 L 96 354 L 94 362"/>
       </g>
-      <rect x="20" y="384" width="60" height="42" rx="12" fill="#edf0f1"/>
-      <text x="50" y="410" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#6c7a87" font-weight="500">Back</text>
-      <rect x="88" y="384" width="132" height="42" rx="12" fill="url(#flame)"/>
-      <text x="154" y="410" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Continue</text>
+      <rect x="20" y="420" width="60" height="44" rx="12" fill="#edf0f1"/>
+      <text x="50" y="448" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#6c7a87" font-weight="500">Back</text>
+      <rect x="88" y="420" width="132" height="44" rx="12" fill="url(#flame)"/>
+      <text x="154" y="448" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Continue</text>
     </g>
   </g>
 
-  <!-- Phone 3: Review step with inline floating launcher on the phone -->
+  <!-- Phone 3: Review -->
   <g transform="translate(630,168)" filter="url(#shadow)">
-    <rect x="-8" y="-8" width="256" height="456" rx="32" ry="32" fill="#0b0b0b"/>
+    <rect x="-8" y="-8" width="256" height="496" rx="34" ry="34" fill="#0b0b0b"/>
     <g clip-path="url(#phone-clip)">
-      <rect width="240" height="440" fill="#ffffff"/>
+      <rect width="240" height="480" fill="#ffffff"/>
       <rect x="92" y="0" width="56" height="16" rx="8" fill="#0b0b0b"/>
       <text x="20" y="50" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="2.5" fill="url(#flame)" font-weight="700">REPRO</text>
       <text x="20" y="72" font-family="ui-sans-serif,system-ui" font-size="16" fill="#25343f" font-weight="700">Report a bug</text>
       <circle cx="214" cy="60" r="13" fill="#edf0f1"/>
       <path d="M 209 55 L 219 65 M 219 55 L 209 65" stroke="#6c7a87" stroke-width="2" stroke-linecap="round"/>
-      <g transform="translate(20,96)">
+      <g transform="translate(20,100)">
         <circle cx="10" cy="10" r="10" fill="url(#flame)"/>
         <rect x="26" y="9" width="48" height="2" rx="1" fill="url(#flame)"/>
         <circle cx="84" cy="10" r="10" fill="url(#flame)"/>
@@ -156,29 +155,31 @@
         <circle cx="158" cy="10" r="10" fill="url(#flame)"/>
         <text x="158" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#fff" font-weight="700">3</text>
       </g>
-      <g transform="translate(20,134)" font-family="ui-sans-serif,system-ui" font-size="8" fill="#9aa4ae" letter-spacing="1">
+      <g transform="translate(20,138)" font-family="ui-sans-serif,system-ui" font-size="8" fill="#9aa4ae" letter-spacing="1">
         <text>DETAILS</text>
         <text x="74">ANNOTATE</text>
         <text x="148" font-weight="600" fill="#25343f">REVIEW</text>
       </g>
-      <line x1="0" y1="154" x2="240" y2="154" stroke="#edf0f1"/>
-      <rect x="20" y="172" width="200" height="170" rx="14" fill="#f5f7f8" stroke="#dde2e5"/>
-      <text x="32" y="194" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#6c7a87" font-weight="700">INCLUDED IN THIS REPORT</text>
-      <g font-family="ui-sans-serif,system-ui" font-size="12" fill="#25343f">
-        <circle cx="32" cy="218" r="2.5" fill="url(#flame)"/>
-        <text x="42" y="222">Title &amp; description</text>
-        <circle cx="32" cy="244" r="2.5" fill="url(#flame)"/>
-        <text x="42" y="248">Annotated screenshot</text>
-        <text x="200" y="248" text-anchor="end" font-family="ui-monospace,monospace" font-size="11" fill="#6c7a87">3</text>
-        <circle cx="32" cy="270" r="2.5" fill="url(#flame)"/>
-        <text x="42" y="274">Console, network &amp; breadcrumbs</text>
-        <circle cx="32" cy="296" r="2.5" fill="url(#flame)"/>
-        <text x="42" y="300">Device &amp; environment info</text>
+      <line x1="0" y1="158" x2="240" y2="158" stroke="#edf0f1"/>
+      <rect x="20" y="182" width="200" height="210" rx="14" fill="#f5f7f8" stroke="#dde2e5"/>
+      <text x="32" y="206" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#6c7a87" font-weight="700">INCLUDED IN THIS REPORT</text>
+      <g font-family="ui-sans-serif,system-ui" font-size="11" fill="#25343f">
+        <circle cx="32" cy="234" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="238">Title &amp; description</text>
+        <circle cx="32" cy="262" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="266">Annotated screenshot</text>
+        <text x="208" y="266" text-anchor="end" font-family="ui-monospace,monospace" font-size="10" fill="#6c7a87">3</text>
+        <circle cx="32" cy="290" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="294">Console &amp; network logs</text>
+        <circle cx="32" cy="318" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="322">Breadcrumb trail</text>
+        <circle cx="32" cy="346" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="350">Device &amp; environment</text>
       </g>
-      <rect x="20" y="384" width="60" height="42" rx="12" fill="#edf0f1"/>
-      <text x="50" y="410" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#6c7a87" font-weight="500">Back</text>
-      <rect x="88" y="384" width="132" height="42" rx="12" fill="url(#flame)"/>
-      <text x="154" y="410" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Send report</text>
+      <rect x="20" y="420" width="60" height="44" rx="12" fill="#edf0f1"/>
+      <text x="50" y="448" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#6c7a87" font-weight="500">Back</text>
+      <rect x="88" y="420" width="132" height="44" rx="12" fill="url(#flame)"/>
+      <text x="154" y="448" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Send report</text>
     </g>
   </g>
 </svg>
