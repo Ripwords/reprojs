@@ -93,9 +93,7 @@ export default defineEventHandler(async (event) => {
       const clause = and(eq(reports.source, "expo"), eq(reports.devicePlatform, "android"))
       if (clause) orParts.push(clause)
     }
-    if (orParts.length === 1) {
-      whereParts.push(orParts[0]!)
-    } else if (orParts.length > 1) {
+    if (orParts.length > 0) {
       const combined = or(...orParts)
       if (combined) whereParts.push(combined)
     }
