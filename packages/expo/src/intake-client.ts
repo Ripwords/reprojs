@@ -30,9 +30,12 @@ export function createIntakeClient(opts: {
   return {
     async submit({ idempotencyKey, input, attachments }) {
       const form = new FormData()
-      form.append("report", new Blob([JSON.stringify(input)], { type: "application/json" }))
+      // React Native's FormData does NOT support Blob parts — it drops them or sends
+      // empty bytes. Pass the JSON as a plain string; RN serializes that as a text
+      // multipart part and the server reads it via `reportPart.data.toString("utf8")`.
+      form.append("report", JSON.stringify(input))
       for (const a of attachments) {
-        // In RN, FormData accepts { uri, name, type } shorthand. We use it via a typed helper.
+        // File parts use RN's `{ uri, name, type }` shorthand — supported natively.
         const part = { uri: a.uri, name: `${a.kind}.bin`, type: a.contentType } as unknown as Blob
         form.append(a.kind, part)
       }
