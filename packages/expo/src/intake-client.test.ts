@@ -4,14 +4,16 @@ import { createIntakeClient } from "./intake-client"
 test("POSTs to intakeUrl/reports with multipart body and Idempotency-Key header", async () => {
   let capturedUrl = ""
   let capturedHeaders: Record<string, string> = {}
-  const mockFetch: typeof fetch = async (input, init) => {
+  const mockFetch = (async (input: unknown, init: unknown) => {
     capturedUrl = typeof input === "string" ? input : (input as Request).url
-    capturedHeaders = Object.fromEntries(new Headers(init?.headers).entries())
+    capturedHeaders = Object.fromEntries(
+      new Headers((init as RequestInit | undefined)?.headers).entries(),
+    )
     return new Response(JSON.stringify({ id: "server-id" }), {
       status: 201,
       headers: { "content-type": "application/json" },
     })
-  }
+  }) as unknown as typeof fetch
   const client = createIntakeClient({
     intakeUrl: "https://ex.com/api/intake",
     fetchImpl: mockFetch,
@@ -36,7 +38,8 @@ test("POSTs to intakeUrl/reports with multipart body and Idempotency-Key header"
   expect(res.id).toBe("server-id")
 })
 
-const mockServerErrorFetch: typeof fetch = async () => new Response("boom", { status: 503 })
+const mockServerErrorFetch = (async () =>
+  new Response("boom", { status: 503 })) as unknown as typeof fetch
 
 test("surfaces 5xx errors to the caller", async () => {
   const client = createIntakeClient({

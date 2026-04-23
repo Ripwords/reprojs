@@ -42,7 +42,8 @@ test("flush submits all items and removes on success", async () => {
   }
   const flusher = createQueueFlusher({ queue: q, client, backoffMs: [1, 2, 4, 8] })
   await flusher.flush()
-  expect(submitted.toSorted()).toEqual(["a", "b"])
+  // oxlint-disable-next-line unicorn/no-array-sort
+  expect([...submitted].sort()).toEqual(["a", "b"])
   expect(await q.all()).toEqual([])
 })
 

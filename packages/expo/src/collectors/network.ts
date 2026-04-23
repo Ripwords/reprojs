@@ -31,9 +31,12 @@ function headersToMap(h: HeadersInit | undefined, denylist: string[]): Record<st
     out[lk] = set.has(lk) ? "[redacted]" : v
   }
   if (h instanceof Headers) {
-    h.forEach((v, k) => add(k, v))
+    h.forEach((v: string, k: string) => add(k, v))
   } else if (Array.isArray(h)) {
-    for (const [k, v] of h) add(k, v)
+    for (const pair of h as Array<[string, string]>) {
+      const [k, v] = pair
+      add(k, v)
+    }
   } else {
     for (const [k, v] of Object.entries(h)) add(k, v)
   }

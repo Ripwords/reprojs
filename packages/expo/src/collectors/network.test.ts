@@ -20,7 +20,7 @@ test("records a fetch call with method, URL, status, duration", async () => {
 
   globalThis.fetch = (async () => {
     return new Response("ok", { status: 200, headers: { "content-length": "2" } })
-  }) as typeof fetch
+  }) as unknown as typeof fetch
 
   c.start()
   const res = await fetch("https://api.test/x", { method: "POST" })
@@ -45,7 +45,7 @@ test("records fetch failures as entries with error", async () => {
 
   globalThis.fetch = (async () => {
     throw new Error("network down")
-  }) as typeof fetch
+  }) as unknown as typeof fetch
 
   c.start()
   await expect(fetch("https://api.test/fail")).rejects.toThrow("network down")
@@ -63,7 +63,7 @@ test("redacts denylisted request headers", async () => {
     redact: { headerDenylist: ["authorization"], bodyRedactKeys: [] },
   })
 
-  globalThis.fetch = (async () => new Response("ok", { status: 200 })) as typeof fetch
+  globalThis.fetch = (async () => new Response("ok", { status: 200 })) as unknown as typeof fetch
 
   c.start()
   await fetch("https://api.test/x", { headers: { Authorization: "secret", "X-Ok": "public" } })
