@@ -3,7 +3,13 @@ import { createError, defineEventHandler, getHeader, readRawBody, setResponseSta
 import { and, eq } from "drizzle-orm"
 import { verifyWebhookSignature } from "@reprojs/integrations-github"
 import { db } from "../../../db"
-import { githubIntegrations, reportAssignees, reportEvents, reports } from "../../../db/schema"
+import {
+  githubIntegrations,
+  reportAssignees,
+  reportComments,
+  reportEvents,
+  reports,
+} from "../../../db/schema"
 import { getWebhookSecret } from "../../../lib/github"
 import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
 import { githubCache } from "../../../lib/github-cache"
@@ -15,6 +21,8 @@ import {
   isKnownInstallation,
 } from "../../../lib/github-webhook-auth"
 import {
+  signCommentDelete,
+  signCommentUpsert,
   signLabels,
   signState,
   signAssignees,
@@ -22,6 +30,8 @@ import {
   signTitle,
 } from "../../../lib/github-diff"
 import { consumeWriteLock } from "../../../lib/github-write-locks"
+import { hasBotFooter, stripBotFooter } from "../../../lib/comment-serializer"
+import { resolveGithubUser } from "../../../lib/github-identities"
 
 interface IssueAssignee {
   login: string
@@ -75,6 +85,18 @@ interface InstallationReposPayload {
 interface RepoEventPayload {
   action: string
   repository?: { name: string; owner: { login: string } }
+  installation?: { id: number }
+}
+
+interface IssueCommentPayload {
+  action: "created" | "edited" | "deleted" | string
+  comment: {
+    id: number
+    body: string | null
+    user: { id: number; login: string; avatar_url: string } | null
+  }
+  issue: { number: number }
+  repository: { name: string; owner: { login: string } }
   installation?: { id: number }
 }
 
@@ -468,6 +490,96 @@ export default defineEventHandler(async (event) => {
           .set({ title: newTitle, updatedAt: new Date() })
           .where(eq(reports.id, linked.r.id))
       }
+    }
+  } else if (kind === "issue_comment") {
+    const p = payload as IssueCommentPayload
+    const action = p.action
+    const comment = p.comment
+    const repoOwner = p.repository.owner.login
+    const repoName = p.repository.name
+
+    const linked = await findLinkedReport(p.issue.number, repoOwner, repoName)
+    if (!linked) {
+      setResponseStatus(event, 202)
+      return { ok: true }
+    }
+
+    const commentBody = comment.body ?? ""
+    const githubUser = comment.user
+
+    if (action === "created" || action === "edited") {
+      const commentUpsertSig = signCommentUpsert(comment.id, commentBody)
+      const isEcho = await consumeWriteLock(db, {
+        reportId: linked.r.id,
+        kind: "comment_upsert",
+        signature: commentUpsertSig,
+      })
+      if (isEcho) {
+        setResponseStatus(event, 202)
+        return { ok: true, echo: true }
+      }
+
+      const body = hasBotFooter(commentBody) ? stripBotFooter(commentBody) : commentBody
+      const resolved = githubUser
+        ? await resolveGithubUser(String(githubUser.id), githubUser.login, githubUser.avatar_url)
+        : null
+
+      if (action === "created") {
+        await db
+          .insert(reportComments)
+          .values({
+            reportId: linked.r.id,
+            userId: resolved?.kind === "dashboard-user" ? resolved.userId : null,
+            githubLogin: githubUser?.login ?? null,
+            body,
+            githubCommentId: comment.id,
+            source: "github",
+          })
+          .onConflictDoNothing()
+        await db.insert(reportEvents).values({
+          reportId: linked.r.id,
+          projectId: linked.r.projectId,
+          actorId: null,
+          kind: "comment_added",
+          payload: { githubCommentId: comment.id, source: "github" },
+        })
+      } else {
+        // edited
+        await db
+          .update(reportComments)
+          .set({ body, updatedAt: new Date() })
+          .where(eq(reportComments.githubCommentId, comment.id))
+        await db.insert(reportEvents).values({
+          reportId: linked.r.id,
+          projectId: linked.r.projectId,
+          actorId: null,
+          kind: "comment_edited",
+          payload: { githubCommentId: comment.id, source: "github" },
+        })
+      }
+    } else if (action === "deleted") {
+      const commentDeleteSig = signCommentDelete(comment.id)
+      const isEcho = await consumeWriteLock(db, {
+        reportId: linked.r.id,
+        kind: "comment_delete",
+        signature: commentDeleteSig,
+      })
+      if (isEcho) {
+        setResponseStatus(event, 202)
+        return { ok: true, echo: true }
+      }
+
+      await db
+        .update(reportComments)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(eq(reportComments.githubCommentId, comment.id))
+      await db.insert(reportEvents).values({
+        reportId: linked.r.id,
+        projectId: linked.r.projectId,
+        actorId: null,
+        kind: "comment_deleted",
+        payload: { githubCommentId: comment.id, source: "github" },
+      })
     }
   }
 
