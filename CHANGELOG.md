@@ -1,5 +1,41 @@
 # Changelog
 
+## v0.1.18
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.17...v0.1.18)
+
+### 🚀 Enhancements
+
+- **shared:** Add AdminOverviewDTO for admin overview dashboard ([f76efdb](https://github.com/Ripwords/ReproJs/commit/f76efdb))
+- **api:** GET /api/admin/overview aggregates across all projects ([b17e400](https://github.com/Ripwords/ReproJs/commit/b17e400))
+- **ui:** /admin overview page with tiles, activity, per-project list ([8719c9b](https://github.com/Ripwords/ReproJs/commit/8719c9b))
+- **ui:** Add Overview to admin sidebar section ([5603c5c](https://github.com/Ripwords/ReproJs/commit/5603c5c))
+- **shared:** Add 'manager' to ProjectRole enum ([2996a41](https://github.com/Ripwords/ReproJs/commit/2996a41))
+- **perms:** Slot manager between viewer and developer in rank ([c355fdf](https://github.com/Ripwords/ReproJs/commit/c355fdf))
+- **api:** Lower triage-endpoint minimum from developer to manager ([bc76e5e](https://github.com/Ripwords/ReproJs/commit/bc76e5e))
+- **ui:** Surface manager role in members page and invite default ([4bd7dc1](https://github.com/Ripwords/ReproJs/commit/4bd7dc1))
+
+### 💅 Refactors
+
+- **api:** Drop role-specific wording from triage-guard comments ([b83a359](https://github.com/Ripwords/ReproJs/commit/b83a359))
+- **manager:** Widen stale role casts + cover github-sync/unlink ([1768002](https://github.com/Ripwords/ReproJs/commit/1768002))
+
+### 📖 Documentation
+
+- Add manager to CLAUDE.md project-roles list ([2da9a21](https://github.com/Ripwords/ReproJs/commit/2da9a21))
+
+### ✅ Tests
+
+- **api:** Failing tests for GET /api/admin/overview ([5a18a17](https://github.com/Ripwords/ReproJs/commit/5a18a17))
+- **api:** Manager role permission boundary coverage ([1b27ac2](https://github.com/Ripwords/ReproJs/commit/1b27ac2))
+- **api:** Defense-in-depth beforeAll in viewer regression describe ([508043e](https://github.com/Ripwords/ReproJs/commit/508043e))
+- **api:** Seed reports via db.insert instead of intake ([d967f9d](https://github.com/Ripwords/ReproJs/commit/d967f9d))
+- **ci:** Relax rate limits in test env to unblock full-suite runs ([31f2812](https://github.com/Ripwords/ReproJs/commit/31f2812))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.1.17
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.16...v0.1.17)
