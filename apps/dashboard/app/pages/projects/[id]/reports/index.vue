@@ -97,7 +97,7 @@ async function bulkAssign(assigneeId: string | null) {
   try {
     await $fetch(`/api/projects/${projectId.value}/reports/bulk-update`, {
       method: "POST",
-      body: { reportIds: checkedIds.value, assigneeId },
+      body: { reportIds: checkedIds.value, assigneeIds: assigneeId ? [assigneeId] : [] },
       credentials: "include",
     })
     clearSelection()
@@ -203,8 +203,8 @@ useKeyboardShortcuts({
 // ---- Columns ----
 const timeCompact = (iso: string) => relativeTime(iso, { compact: true })
 
-function initials(name: string | null, email: string): string {
-  const base = name?.trim() || email
+function initials(name: string | null, email: string | null): string {
+  const base = name?.trim() || email || "?"
   return base.slice(0, 2).toUpperCase()
 }
 
@@ -283,10 +283,10 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
     },
   },
   {
-    accessorKey: "assignee",
+    id: "assignee",
     header: "Assignee",
     cell: ({ row }) => {
-      const a = row.original.assignee
+      const a = row.original.assignees?.[0]
       if (!a) return h("span", { class: "text-muted text-xs" }, "—")
       return h("span", { class: "inline-flex items-center gap-2 text-xs" }, [
         h(
@@ -297,7 +297,7 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
           },
           initials(a.name, a.email),
         ),
-        h("span", { class: "truncate max-w-[8rem]" }, a.name ?? a.email),
+        h("span", { class: "truncate max-w-[8rem]" }, a.name ?? a.email ?? "—"),
       ])
     },
   },

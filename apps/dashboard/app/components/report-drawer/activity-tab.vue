@@ -26,6 +26,10 @@ function summary(e: ReportEventDTO): string {
       const to = p.to ? "someone" : "nobody"
       return `reassigned from ${from} to ${to}`
     }
+    case "assignee_added":
+      return `assigned user ${String(p.userId ?? "")}`
+    case "assignee_removed":
+      return `unassigned user ${String(p.userId ?? "")}`
     case "tag_added":
       return `added tag ${String(p.name)}`
     case "tag_removed":

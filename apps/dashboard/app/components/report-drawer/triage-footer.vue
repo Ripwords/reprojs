@@ -152,12 +152,10 @@ const priorityModel = computed<ReportPriority>({
     if (v !== props.report.priority) void patch({ priority: v })
   },
 })
-const assigneeModel = computed<string>({
-  get: () => props.report.assignee?.id ?? "",
-  set: (v) => {
-    const next = v || null
-    const current = props.report.assignee?.id ?? null
-    if (next !== current) void patch({ assigneeId: next })
+const primaryAssignee = computed<string>({
+  get: () => props.report.assignees?.[0]?.id ?? "",
+  set: (value: string | null) => {
+    void patch({ assigneeIds: value ? [value] : [] })
   },
 })
 
@@ -212,7 +210,7 @@ const open = reactive({
         <div class="flex items-center gap-3">
           <label class="w-20 shrink-0 text-xs font-medium text-muted">Assignee</label>
           <USelectMenu
-            v-model="assigneeModel"
+            v-model="primaryAssignee"
             :items="assigneeItems"
             value-key="value"
             size="sm"
