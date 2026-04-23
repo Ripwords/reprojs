@@ -1,6 +1,5 @@
 // packages/ui/src/collectors/network.ts
-import { RingBuffer } from "@reprojs/sdk-utils"
-import { redactBody, redactHeaders, redactUrl } from "./redact"
+import { RingBuffer, redactBody, redactHeaders, redactUrl } from "@reprojs/sdk-utils"
 import { DEFAULT_STRING_REDACTORS, scrubString } from "./serialize"
 
 export interface NetworkEntry {

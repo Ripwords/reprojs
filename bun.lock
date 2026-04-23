@@ -58,7 +58,7 @@
     },
     "apps/extension": {
       "name": "@reprojs/extension",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "preact": "^10.23.0",
       },
@@ -76,7 +76,7 @@
     },
     "packages/core": {
       "name": "@reprojs/core",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "devDependencies": {
         "@preact/signals": "^1.3.0",
         "@reprojs/recorder": "workspace:*",
@@ -116,6 +116,15 @@
         "typescript": "^5.9.2",
       },
     },
+    "packages/sdk-utils": {
+      "name": "@reprojs/sdk-utils",
+      "version": "0.1.0",
+      "devDependencies": {
+        "bun-types": "^1.3.12",
+        "tsdown": "^0.21.9",
+        "typescript": "^5.8",
+      },
+    },
     "packages/shared": {
       "name": "@reprojs/shared",
       "version": "0.1.3",
@@ -129,6 +138,7 @@
       "dependencies": {
         "@preact/signals": "^1.3.0",
         "@reprojs/recorder": "*",
+        "@reprojs/sdk-utils": "workspace:*",
         "@reprojs/shared": "workspace:*",
         "preact": "^10.23.0",
       },
@@ -946,6 +956,8 @@
     "@reprojs/integrations-github": ["@reprojs/integrations-github@workspace:packages/integrations/github"],
 
     "@reprojs/recorder": ["@reprojs/recorder@workspace:packages/recorder"],
+
+    "@reprojs/sdk-utils": ["@reprojs/sdk-utils@workspace:packages/sdk-utils"],
 
     "@reprojs/shared": ["@reprojs/shared@workspace:packages/shared"],
 

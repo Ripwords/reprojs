@@ -1,4 +1,4 @@
-import { type CookieEntry, redactCookies } from "./redact"
+import { type CookieEntry, redactCookies } from "@reprojs/sdk-utils"
 
 export interface CookiesCollectorConfig {
   maskNames?: string[]
