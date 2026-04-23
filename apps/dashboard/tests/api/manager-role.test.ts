@@ -6,7 +6,6 @@ import { githubIntegrations, projectMembers, reports } from "../../server/db/sch
 import {
   apiFetch,
   createUser,
-  makePngBlob,
   seedProject,
   signIn,
   truncateDomain,
@@ -20,37 +19,30 @@ setDefaultTimeout(60000)
 const PK = "rp_pk_MANAGER00000000000000000"
 const ORIGIN = "http://localhost:4000"
 
-async function submitReport(title: string): Promise<string> {
-  const fd = new FormData()
-  fd.set(
-    "report",
-    new Blob(
-      [
-        JSON.stringify({
-          projectKey: PK,
-          title,
-          description: "d",
-          context: {
-            pageUrl: "http://localhost:4000/p",
-            userAgent: "UA",
-            viewport: { w: 1000, h: 800 },
-            timestamp: new Date().toISOString(),
-            reporter: { email: "u@example.com" },
-          },
-          _dwellMs: 2000,
-        }),
-      ],
-      { type: "application/json" },
-    ),
-  )
-  fd.set("screenshot", makePngBlob(), "s.png")
-  const res = await fetch("http://localhost:3000/api/intake/reports", {
-    method: "POST",
-    headers: { Origin: ORIGIN },
-    body: fd,
-  })
-  if (res.status !== 201) throw new Error(`intake failed: ${res.status}`)
-  return ((await res.json()) as { id: string }).id
+/**
+ * Seed a report directly via Drizzle. We bypass the intake endpoint to avoid
+ * sharing rate-limit state with other test files — the intake has per-origin
+ * rate limiting and this file's reports would otherwise starve the suite.
+ * The permission boundary under test is authenticated-session-only, so the
+ * intake path isn't on the critical path here.
+ */
+async function seedReport(projectId: string, title: string): Promise<string> {
+  const [row] = await db
+    .insert(reports)
+    .values({
+      projectId,
+      title,
+      description: "d",
+      context: {
+        pageUrl: "http://localhost:4000/p",
+        userAgent: "UA",
+        viewport: { w: 1000, h: 800 },
+        timestamp: new Date().toISOString(),
+      },
+    })
+    .returning({ id: reports.id })
+  if (!row) throw new Error("seedReport: insert returned no row")
+  return row.id
 }
 
 /**
@@ -86,7 +78,7 @@ describe("manager role — allowed actions", () => {
       allowedOrigins: [ORIGIN],
       createdBy: adminId,
     })
-    const reportId = await submitReport("to triage")
+    const reportId = await seedReport(projectId, "to triage")
     const { cookie } = await seedMemberAtRole("manager@example.com", projectId, "manager")
 
     const { status } = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
@@ -105,8 +97,8 @@ describe("manager role — allowed actions", () => {
       allowedOrigins: [ORIGIN],
       createdBy: adminId,
     })
-    const r1 = await submitReport("one")
-    const r2 = await submitReport("two")
+    const r1 = await seedReport(projectId, "one")
+    const r2 = await seedReport(projectId, "two")
     const { cookie } = await seedMemberAtRole("manager@example.com", projectId, "manager")
 
     const { status } = await apiFetch(`/api/projects/${projectId}/reports/bulk-update`, {
@@ -125,7 +117,7 @@ describe("manager role — allowed actions", () => {
       allowedOrigins: [ORIGIN],
       createdBy: adminId,
     })
-    const reportId = await submitReport("assign me")
+    const reportId = await seedReport(projectId, "assign me")
     const { userId: managerId, cookie } = await seedMemberAtRole(
       "manager@example.com",
       projectId,
@@ -154,7 +146,7 @@ describe("manager role — allowed actions", () => {
       repoOwner: "acme",
       repoName: "app",
     })
-    const reportId = await submitReport("sync me")
+    const reportId = await seedReport(projectId, "sync me")
     const { cookie } = await seedMemberAtRole("manager@example.com", projectId, "manager")
 
     const { status } = await apiFetch(
@@ -172,7 +164,7 @@ describe("manager role — allowed actions", () => {
       allowedOrigins: [ORIGIN],
       createdBy: adminId,
     })
-    const reportId = await submitReport("unlink me")
+    const reportId = await seedReport(projectId, "unlink me")
     const { cookie } = await seedMemberAtRole("manager@example.com", projectId, "manager")
 
     const { status } = await apiFetch(
@@ -283,7 +275,7 @@ describe("viewer role — regression guard after manager insertion", () => {
       allowedOrigins: [ORIGIN],
       createdBy: adminId,
     })
-    const reportId = await submitReport("untouchable")
+    const reportId = await seedReport(projectId, "untouchable")
     const { cookie } = await seedMemberAtRole("viewer@example.com", projectId, "viewer")
 
     const { status } = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
@@ -295,6 +287,6 @@ describe("viewer role — regression guard after manager insertion", () => {
   })
 })
 
-// Unused-import appeasement — kept for future DB-state assertions.
+// `eq` is imported from drizzle-orm but not used directly in this file yet —
+// kept for future DB-state assertions.
 void eq
-void reports
