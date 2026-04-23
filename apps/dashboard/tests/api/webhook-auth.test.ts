@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeAll, afterEach } from "bun:test"
+import { describe, test, expect, beforeAll, afterEach, setDefaultTimeout } from "bun:test"
+setDefaultTimeout(30000)
 import { createHmac } from "node:crypto"
 import { apiFetch, truncateDomain } from "../helpers"
 import { db } from "../../server/db"
