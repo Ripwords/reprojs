@@ -155,13 +155,19 @@ export const TriagePatchInput = z
     assigneeIds: z.array(z.string()).optional(),
     priority: ReportPriority.optional(),
     tags: z.array(z.string().min(1).max(40)).max(20).optional(),
+    githubAssigneeLogins: z.array(z.string()).optional(),
+    milestone: z
+      .union([z.object({ number: z.number().int(), title: z.string() }), z.null()])
+      .optional(),
   })
   .refine(
     (v) =>
       v.status !== undefined ||
       v.assigneeIds !== undefined ||
       v.priority !== undefined ||
-      v.tags !== undefined,
+      v.tags !== undefined ||
+      v.githubAssigneeLogins !== undefined ||
+      v.milestone !== undefined,
     { message: "At least one field must be present" },
   )
 export type TriagePatchInput = z.infer<typeof TriagePatchInput>
@@ -221,6 +227,8 @@ export const ReportSummaryDTO = z.object({
   githubIssueNumber: z.number().int().nullable(),
   githubIssueUrl: z.string().nullable(),
   assignees: z.array(ReportAssigneeDTO).default([]),
+  milestoneNumber: z.number().int().nullable(),
+  milestoneTitle: z.string().nullable(),
 })
 export type ReportSummaryDTO = z.infer<typeof ReportSummaryDTO>
 
