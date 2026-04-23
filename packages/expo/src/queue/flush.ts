@@ -31,6 +31,7 @@ export function createQueueFlusher(opts: {
                   ? "image/png"
                   : "application/json",
             })),
+            logs: item.payload.logs,
           })
           // eslint-disable-next-line no-await-in-loop
           await opts.queue.remove(item.id)

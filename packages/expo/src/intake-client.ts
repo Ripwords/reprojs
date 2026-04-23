@@ -5,6 +5,7 @@ export interface IntakeSubmitArgs {
   idempotencyKey: string
   input: ReportIntakeInput
   attachments: Array<QueueItemAttachment & { contentType: string }>
+  logs?: string
 }
 
 export class IntakeError extends Error {
@@ -28,12 +29,15 @@ export function createIntakeClient(opts: {
   const f = opts.fetchImpl ?? fetch
 
   return {
-    async submit({ idempotencyKey, input, attachments }) {
+    async submit({ idempotencyKey, input, attachments, logs }) {
       const form = new FormData()
       // React Native's FormData does NOT support Blob parts — it drops them or sends
       // empty bytes. Pass the JSON as a plain string; RN serializes that as a text
       // multipart part and the server reads it via `reportPart.data.toString("utf8")`.
       form.append("report", JSON.stringify(input))
+      if (logs) {
+        form.append("logs", logs)
+      }
       for (const a of attachments) {
         // File parts use RN's `{ uri, name, type }` shorthand — supported natively.
         const part = { uri: a.uri, name: `${a.kind}.bin`, type: a.contentType } as unknown as Blob

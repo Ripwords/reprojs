@@ -15,6 +15,7 @@ export interface QueueItem {
   payload: {
     input: ReportIntakeInput
     attachments: QueueItemAttachment[]
+    logs?: string
   }
   attempts: number
   lastErrorAt: string | null

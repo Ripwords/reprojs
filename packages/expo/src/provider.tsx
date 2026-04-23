@@ -112,6 +112,26 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
     annotatedUri: string | null
     rawUri: string | null
   }) {
+    const consoleEntries = config.collectors.console ? consoleRef.current.snapshot() : []
+    const networkEntries = config.collectors.network.enabled ? networkRef.current.snapshot() : []
+    const breadcrumbs = config.collectors.breadcrumbs ? breadcrumbsRef.current.snapshot() : []
+    const hasAnyLogs =
+      consoleEntries.length > 0 || networkEntries.length > 0 || breadcrumbs.length > 0
+    const logsJson = hasAnyLogs
+      ? JSON.stringify({
+          version: 1 as const,
+          console: consoleEntries,
+          network: networkEntries,
+          breadcrumbs,
+          config: {
+            consoleMax: 200,
+            networkMax: 100,
+            breadcrumbsMax: 50,
+            capturesBodies: config.collectors.network.captureBodies,
+            capturesAllHeaders: false,
+          },
+        })
+      : undefined
     const systemInfo = config.collectors.systemInfo
       ? await collectSystemInfo({ pageUrl: "app://current" })
       : undefined
@@ -149,6 +169,7 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
             : []),
           ...(res.rawUri ? [{ kind: "screenshot" as const, uri: res.rawUri, bytes: 0 }] : []),
         ],
+        logs: logsJson,
       },
       attempts: 0,
       lastErrorAt: null,
