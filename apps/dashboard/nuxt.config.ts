@@ -132,6 +132,8 @@ export default defineNuxtConfig({
     },
     scheduledTasks: {
       "*/1 * * * *": ["github:sync"],
+      // Daily at 03:00 UTC — cleans up any unconsumed expired write-lock rows.
+      "0 3 * * *": ["github:cleanup-write-locks"],
     },
     routeRules: {
       // Baseline security headers for every dashboard response.
