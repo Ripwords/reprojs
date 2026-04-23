@@ -1,5 +1,87 @@
 # Changelog
 
+## v0.2.0
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.18...v0.2.0)
+
+### 🚀 Enhancements
+
+- **shared:** Add source discriminator and mobile device fields to ReportContext/SystemInfo ([2f6effc](https://github.com/Ripwords/ReproJs/commit/2f6effc))
+- **shared:** Add source and devicePlatform to ReportSummaryDTO ([95ed429](https://github.com/Ripwords/ReproJs/commit/95ed429))
+- **dashboard:** Add source, device_platform, idempotency_key to reports ([d863a1a](https://github.com/Ripwords/ReproJs/commit/d863a1a))
+- **dashboard:** Idempotency key + source/device persistence in intake ([f98d672](https://github.com/Ripwords/ReproJs/commit/f98d672))
+- **dashboard:** Populate source and devicePlatform in report DTOs ([36c5774](https://github.com/Ripwords/ReproJs/commit/36c5774))
+- **dashboard:** Source filter and facets on reports list ([50ac717](https://github.com/Ripwords/ReproJs/commit/50ac717))
+- **dashboard:** Inbox query supports source facet ([fe4fde3](https://github.com/Ripwords/ReproJs/commit/fe4fde3))
+- **dashboard:** Source facet in the inbox sidebar ([b0d6c55](https://github.com/Ripwords/ReproJs/commit/b0d6c55))
+- **dashboard:** Platform pill in the inbox row ([8c9cf5f](https://github.com/Ripwords/ReproJs/commit/8c9cf5f))
+- **dashboard:** Mobile-aware detail drawer (hide replay, show device card) ([119a8f8](https://github.com/Ripwords/ReproJs/commit/119a8f8))
+- **expo:** Config normalizer and internal context shape ([50e2018](https://github.com/Ripwords/ReproJs/commit/50e2018))
+- **expo:** Console collector with sentinel-guarded patching ([9da4569](https://github.com/Ripwords/ReproJs/commit/9da4569))
+- **expo:** Fetch network collector with header redaction ([13b44f1](https://github.com/Ripwords/ReproJs/commit/13b44f1))
+- **expo:** System info collector assembling mobile device context ([b139522](https://github.com/Ripwords/ReproJs/commit/b139522))
+- **expo:** Persistent queue storage with size + count caps ([beb368a](https://github.com/Ripwords/ReproJs/commit/beb368a))
+- **expo:** Intake client with idempotency-key header ([5f89742](https://github.com/Ripwords/ReproJs/commit/5f89742))
+- **expo:** Queue flusher and netinfo connectivity listener ([921c4e3](https://github.com/Ripwords/ReproJs/commit/921c4e3))
+- **expo:** View-shot capture and SVG-based annotation flatten ([46c1073](https://github.com/Ripwords/ReproJs/commit/46c1073))
+- **expo:** Annotation store and gesture-based canvas (pen tool v1) ([715e63f](https://github.com/Ripwords/ReproJs/commit/715e63f))
+- **expo:** Wizard sheet with form, annotate, and submit steps ([a8c898c](https://github.com/Ripwords/ReproJs/commit/a8c898c))
+- **expo:** Provider, useRepro hook, launcher, and module singleton ([2c84d23](https://github.com/Ripwords/ReproJs/commit/2c84d23))
+- **expo:** Mobile-polished annotation UX — icons, color+stroke pickers, live previews, text input ([6551cc2](https://github.com/Ripwords/ReproJs/commit/6551cc2))
+- **expo:** Attach logs (console + network + breadcrumbs) to intake ([2a89ada](https://github.com/Ripwords/ReproJs/commit/2a89ada))
+- **expo:** Redesign wizard UI + match dashboard flame palette + fix annotation submission ([9688803](https://github.com/Ripwords/ReproJs/commit/9688803))
+- **expo:** Draggable launcher snaps to nearest of 4 corners with persisted choice ([674c638](https://github.com/Ripwords/ReproJs/commit/674c638))
+- **expo:** Silent-disable when projectKey or intakeUrl is empty ([1ae196a](https://github.com/Ripwords/ReproJs/commit/1ae196a))
+
+### 🩹 Fixes
+
+- **dashboard:** Remove non-null assertion in source filter clause ([90a31b6](https://github.com/Ripwords/ReproJs/commit/90a31b6))
+- **expo:** Typecheck cleanup across network, intake, flush tests ([97a0ae9](https://github.com/Ripwords/ReproJs/commit/97a0ae9))
+- **expo:** Align build output extensions with package.json and plugin shim ([50db4a0](https://github.com/Ripwords/ReproJs/commit/50db4a0))
+- **expo:** Export "./app.plugin.js" with extension so Expo plugin resolver works ([ab2df64](https://github.com/Ripwords/ReproJs/commit/ab2df64))
+- **expo:** KeyboardAvoidingView uses "height" on Android so modal stays above keyboard ([aaf83b5](https://github.com/Ripwords/ReproJs/commit/aaf83b5))
+- **expo:** Render screenshot in annotate step + fall back when capture fails ([80efaae](https://github.com/Ripwords/ReproJs/commit/80efaae))
+- **expo:** RunOnJS gesture callbacks + compact toolbar row 2 ([20143b2](https://github.com/Ripwords/ReproJs/commit/20143b2))
+- **sdk-utils:** Hermes-safe newShapeId — fall back when crypto.randomUUID missing ([a3c218b](https://github.com/Ripwords/ReproJs/commit/a3c218b))
+- **expo:** Annotate step fills available space + flatten uses measured canvas size ([84b3e59](https://github.com/Ripwords/ReproJs/commit/84b3e59))
+- **expo:** Send report as string multipart part — RN FormData drops Blob bodies ([f18a7a6](https://github.com/Ripwords/ReproJs/commit/f18a7a6))
+- **expo:** Drop expo-file-system getInfoAsync call — threw on SDK 54 legacy deprecation ([04d2db5](https://github.com/Ripwords/ReproJs/commit/04d2db5))
+- **expo:** Send _dwellMs (wizard-open-to-submit) to satisfy intake anti-abuse gate ([243ffce](https://github.com/Ripwords/ReproJs/commit/243ffce))
+- **expo:** Render arrow with actual arrowhead, not just a line ([9b1d986](https://github.com/Ripwords/ReproJs/commit/9b1d986))
+- **dashboard:** Cap report screenshot at 60vh with letterbox so tall portrait screenshots don't dominate the page ([e26dbbc](https://github.com/Ripwords/ReproJs/commit/e26dbbc))
+- **expo:** Flatten view uses resizeMode=contain to match preview aspect ([45d1e82](https://github.com/Ripwords/ReproJs/commit/45d1e82))
+- **expo:** Flatten PNG uses transparent letterbox bars (alpha preserved) ([9174b49](https://github.com/Ripwords/ReproJs/commit/9174b49))
+- **docs:** Taller phone frames (240x480) + unsquish review card labels ([14d06fb](https://github.com/Ripwords/ReproJs/commit/14d06fb))
+- **dashboard:** Copy new workspace packages (sdk-utils, expo) in Dockerfile ([e4bf0b4](https://github.com/Ripwords/ReproJs/commit/e4bf0b4))
+- **ci,docs:** Fix broken paths + bump SDK build heap to 6 GB ([a72fbc5](https://github.com/Ripwords/ReproJs/commit/a72fbc5))
+- **sdk:build:** Bake in --max-old-space-size=6144 so local + CI both succeed ([795bbc1](https://github.com/Ripwords/ReproJs/commit/795bbc1))
+
+### 💅 Refactors
+
+- **sdk-utils:** Extract ring-buffer from @reprojs/ui ([998a4e1](https://github.com/Ripwords/ReproJs/commit/998a4e1))
+- **sdk-utils:** Extract redact from @reprojs/ui ([0b1406b](https://github.com/Ripwords/ReproJs/commit/0b1406b))
+- **sdk-utils:** Extract breadcrumbs from @reprojs/ui ([eceb072](https://github.com/Ripwords/ReproJs/commit/eceb072))
+- **sdk-utils:** Extract annotation tool geometry from @reprojs/ui ([bac4449](https://github.com/Ripwords/ReproJs/commit/bac4449))
+
+### 📖 Documentation
+
+- Add Expo SDK design spec ([fdbef8c](https://github.com/Ripwords/ReproJs/commit/fdbef8c))
+- Add Expo SDK implementation plan ([5ab2dc1](https://github.com/Ripwords/ReproJs/commit/5ab2dc1))
+- @reprojs/expo release notes and repo docs ([75b9101](https://github.com/Ripwords/ReproJs/commit/75b9101))
+
+### 🏡 Chore
+
+- **sdk-utils:** Scaffold package ([abd9d08](https://github.com/Ripwords/ReproJs/commit/abd9d08))
+- **expo:** Scaffold @reprojs/expo package ([6676e8a](https://github.com/Ripwords/ReproJs/commit/6676e8a))
+- Root script to build @reprojs/expo ([f5c05b7](https://github.com/Ripwords/ReproJs/commit/f5c05b7))
+- Sync bun.lock with expo workspace ([af81274](https://github.com/Ripwords/ReproJs/commit/af81274))
+- Expo:pack script — bundle @reprojs/expo for local install ([a4aeb15](https://github.com/Ripwords/ReproJs/commit/a4aeb15))
+- **intake:** Log zod validation issues on 400 to aid SDK debugging ([7dbc389](https://github.com/Ripwords/ReproJs/commit/7dbc389))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## Unreleased
 
 ### Added
