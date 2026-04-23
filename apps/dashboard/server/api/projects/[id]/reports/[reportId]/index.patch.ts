@@ -3,7 +3,13 @@ import { createError, defineEventHandler, getRouterParam, readValidatedBody } fr
 import { and, eq, inArray, isNotNull } from "drizzle-orm"
 import { TriagePatchInput } from "@reprojs/shared"
 import { db } from "../../../../../db"
-import { projectMembers, reportAssignees, reportEvents, reports } from "../../../../../db/schema"
+import {
+  githubIntegrations,
+  projectMembers,
+  reportAssignees,
+  reportEvents,
+  reports,
+} from "../../../../../db/schema"
 import { buildReportEvents } from "../../../../../lib/report-events"
 import { enqueueSync } from "../../../../../lib/enqueue-sync"
 import { compareRole, requireProjectRole } from "../../../../../lib/permissions"
@@ -51,6 +57,7 @@ export default defineEventHandler(async (event) => {
         tags: reports.tags,
         milestoneNumber: reports.milestoneNumber,
         milestoneTitle: reports.milestoneTitle,
+        githubIssueNumber: reports.githubIssueNumber,
       })
       .from(reports)
       .where(and(eq(reports.id, reportId), eq(reports.projectId, id)))
@@ -232,12 +239,18 @@ export default defineEventHandler(async (event) => {
     const allEvents = [...reportChangeEvents, ...assigneeEvents]
     if (allEvents.length > 0) await tx.insert(reportEvents).values(allEvents)
 
-    // Enqueue a GitHub sync job whenever fields actually changed and the project
-    // has a connected integration. enqueueSync no-ops when the integration isn't
-    // connected. Unlinked reports trigger a create; linked reports trigger an
-    // update (labels/state).
-    if (hasEvents) {
-      await enqueueSync(reportId, id)
+    // Enqueue a GitHub sync job when push_on_edit is enabled and the report is
+    // already linked to a GitHub issue. If not linked, no push-on-edit.
+    // (New-report → GitHub creates still happen via the intake enqueue path.)
+    if (hasEvents && current.githubIssueNumber !== null) {
+      const [gi] = await tx
+        .select({ pushOnEdit: githubIntegrations.pushOnEdit, status: githubIntegrations.status })
+        .from(githubIntegrations)
+        .where(eq(githubIntegrations.projectId, id))
+        .limit(1)
+      if (gi?.status === "connected" && gi.pushOnEdit) {
+        await enqueueSync(reportId, id)
+      }
     }
 
     return { ok: true, updated: true }
