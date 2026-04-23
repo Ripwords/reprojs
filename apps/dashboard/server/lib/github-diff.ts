@@ -39,6 +39,16 @@ export function signTitle(title: string): string {
   return sha256(`title:${title}`)
 }
 
+/** Canonical signature for a comment upsert. Combines the GitHub comment id and SHA of the body. */
+export function signCommentUpsert(githubCommentId: number, body: string): string {
+  return sha256(`${githubCommentId}:${sha256(body)}`)
+}
+
+/** Canonical signature for a comment delete. Keyed only by the GitHub comment id. */
+export function signCommentDelete(githubCommentId: number): string {
+  return sha256(String(githubCommentId))
+}
+
 /** Diff two assignee login sets, returning logins to add and remove. */
 export function diffAssignees(
   current: string[],

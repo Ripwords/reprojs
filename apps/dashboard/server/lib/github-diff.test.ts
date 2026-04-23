@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test"
 import {
   diffAssignees,
   signAssignees,
+  signCommentDelete,
+  signCommentUpsert,
   signLabels,
   signMilestone,
   signState,
@@ -81,6 +83,35 @@ describe("signTitle", () => {
 
   test("different titles produce different signatures", () => {
     expect(signTitle("Bug A")).not.toBe(signTitle("Bug B"))
+  })
+})
+
+describe("signCommentUpsert", () => {
+  test("is stable for same inputs", () => {
+    expect(signCommentUpsert(100, "hello")).toBe(signCommentUpsert(100, "hello"))
+  })
+
+  test("differs across different comment ids", () => {
+    expect(signCommentUpsert(100, "hello")).not.toBe(signCommentUpsert(200, "hello"))
+  })
+
+  test("differs across different bodies", () => {
+    expect(signCommentUpsert(100, "hello")).not.toBe(signCommentUpsert(100, "world"))
+  })
+})
+
+describe("signCommentDelete", () => {
+  test("is stable for same id", () => {
+    expect(signCommentDelete(100)).toBe(signCommentDelete(100))
+  })
+
+  test("differs across different ids", () => {
+    expect(signCommentDelete(100)).not.toBe(signCommentDelete(200))
+  })
+
+  test("differs from signCommentUpsert", () => {
+    // The two signature functions should not collide even with same id
+    expect(signCommentDelete(100)).not.toBe(signCommentUpsert(100, ""))
   })
 })
 
