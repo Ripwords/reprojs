@@ -1,6 +1,18 @@
 // apps/dashboard/server/api/projects/[id]/reports/index.get.ts
 import { defineEventHandler, getQuery, getRouterParam } from "h3"
-import { and, arrayContains, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import {
+  type SQL,
+  and,
+  arrayContains,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm"
 import {
   ReportPriority,
   ReportStatus,
@@ -42,6 +54,9 @@ export default defineEventHandler(async (event) => {
   const priorityTokens = parseCsv(q.priority).filter((v) => ReportPriority.safeParse(v).success)
   const tagTokens = parseCsv(q.tag)
   const assigneeTokens = parseCsv(q.assignee)
+  const sourceTokens = parseCsv(q.source).filter((v) =>
+    ["web", "expo", "ios", "android"].includes(v),
+  )
   const assigneeFilters = resolveAssigneeFilter(assigneeTokens, sessionUserId)
 
   const whereParts: ReturnType<typeof eq>[] = [eq(reports.projectId, id)]
@@ -66,71 +81,102 @@ export default defineEventHandler(async (event) => {
     const searchCondition = or(ilike(reports.title, pat), ilike(reports.description, pat))
     if (searchCondition) whereParts.push(searchCondition)
   }
+  if (sourceTokens.length) {
+    const orParts: SQL[] = []
+    if (sourceTokens.includes("web")) orParts.push(eq(reports.source, "web"))
+    if (sourceTokens.includes("expo")) orParts.push(eq(reports.source, "expo"))
+    if (sourceTokens.includes("ios")) {
+      const clause = and(eq(reports.source, "expo"), eq(reports.devicePlatform, "ios"))
+      if (clause) orParts.push(clause)
+    }
+    if (sourceTokens.includes("android")) {
+      const clause = and(eq(reports.source, "expo"), eq(reports.devicePlatform, "android"))
+      if (clause) orParts.push(clause)
+    }
+    if (orParts.length === 1) {
+      whereParts.push(orParts[0]!)
+    } else if (orParts.length > 1) {
+      const combined = or(...orParts)
+      if (combined) whereParts.push(combined)
+    }
+  }
 
   const whereClause = and(...whereParts)
 
   // Count, main fetch, and facets all use the same whereClause — run concurrently.
-  const [countResult, rows, statusRows, priorityRows, assigneeRows, tagRows] = await Promise.all([
-    db.select({ total: count() }).from(reports).where(whereClause),
-    db
-      .select({
-        id: reports.id,
-        title: reports.title,
-        description: reports.description,
-        context: reports.context,
-        createdAt: reports.createdAt,
-        updatedAt: reports.updatedAt,
-        status: reports.status,
-        priority: reports.priority,
-        tags: reports.tags,
-        source: reports.source,
-        devicePlatform: reports.devicePlatform,
-        assigneeId: reports.assigneeId,
-        assigneeName: userTable.name,
-        assigneeEmail: userTable.email,
-        attachmentId: reportAttachments.id,
-        githubIssueNumber: reports.githubIssueNumber,
-        githubIssueUrl: reports.githubIssueUrl,
-      })
-      .from(reports)
-      .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
-      .leftJoin(
-        reportAttachments,
-        and(eq(reportAttachments.reportId, reports.id), eq(reportAttachments.kind, "screenshot")),
-      )
-      .where(whereClause)
-      .orderBy(...orderBy)
-      .limit(limit)
-      .offset(offset),
-    db
-      .select({ key: reports.status, c: count() })
-      .from(reports)
-      .where(whereClause)
-      .groupBy(reports.status),
-    db
-      .select({ key: reports.priority, c: count() })
-      .from(reports)
-      .where(whereClause)
-      .groupBy(reports.priority),
-    db
-      .select({
-        id: reports.assigneeId,
-        name: userTable.name,
-        email: userTable.email,
-        c: count(),
-      })
-      .from(reports)
-      .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
-      .where(whereClause)
-      .groupBy(reports.assigneeId, userTable.name, userTable.email),
-    db
-      .select({ name: sql<string>`unnest(${reports.tags})`.as("name"), c: count() })
-      .from(reports)
-      .where(whereClause)
-      .groupBy(sql`name`)
-      .orderBy(desc(count()))
-      .limit(20),
-  ])
+  const [countResult, rows, statusRows, priorityRows, assigneeRows, tagRows, sourceFacetRows] =
+    await Promise.all([
+      db.select({ total: count() }).from(reports).where(whereClause),
+      db
+        .select({
+          id: reports.id,
+          title: reports.title,
+          description: reports.description,
+          context: reports.context,
+          createdAt: reports.createdAt,
+          updatedAt: reports.updatedAt,
+          status: reports.status,
+          priority: reports.priority,
+          tags: reports.tags,
+          source: reports.source,
+          devicePlatform: reports.devicePlatform,
+          assigneeId: reports.assigneeId,
+          assigneeName: userTable.name,
+          assigneeEmail: userTable.email,
+          attachmentId: reportAttachments.id,
+          githubIssueNumber: reports.githubIssueNumber,
+          githubIssueUrl: reports.githubIssueUrl,
+        })
+        .from(reports)
+        .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
+        .leftJoin(
+          reportAttachments,
+          and(eq(reportAttachments.reportId, reports.id), eq(reportAttachments.kind, "screenshot")),
+        )
+        .where(whereClause)
+        .orderBy(...orderBy)
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ key: reports.status, c: count() })
+        .from(reports)
+        .where(whereClause)
+        .groupBy(reports.status),
+      db
+        .select({ key: reports.priority, c: count() })
+        .from(reports)
+        .where(whereClause)
+        .groupBy(reports.priority),
+      db
+        .select({
+          id: reports.assigneeId,
+          name: userTable.name,
+          email: userTable.email,
+          c: count(),
+        })
+        .from(reports)
+        .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
+        .where(whereClause)
+        .groupBy(reports.assigneeId, userTable.name, userTable.email),
+      db
+        .select({ name: sql<string>`unnest(${reports.tags})`.as("name"), c: count() })
+        .from(reports)
+        .where(whereClause)
+        .groupBy(sql`name`)
+        .orderBy(desc(count()))
+        .limit(20),
+      // Source facets use only the project-id filter so counts are stable
+      // regardless of what other filters are active (standard facet UX).
+      db
+        .select({
+          source: reports.source,
+          devicePlatform: reports.devicePlatform,
+          c: count(),
+        })
+        .from(reports)
+        .where(and(eq(reports.projectId, id)))
+        .groupBy(reports.source, reports.devicePlatform),
+    ])
   const total = countResult[0]?.total ?? 0
 
   // Determine which of the returned reports have a replay attachment.
@@ -181,6 +227,16 @@ export default defineEventHandler(async (event) => {
   const priorityFacet: Record<string, number> = { low: 0, normal: 0, high: 0, urgent: 0 }
   for (const r of priorityRows) priorityFacet[r.key] = r.c
 
+  const sourceFacets = { web: 0, expo: 0, ios: 0, android: 0 }
+  for (const r of sourceFacetRows) {
+    if (r.source === "web") sourceFacets.web += r.c
+    if (r.source === "expo") {
+      sourceFacets.expo += r.c
+      if (r.devicePlatform === "ios") sourceFacets.ios += r.c
+      if (r.devicePlatform === "android") sourceFacets.android += r.c
+    }
+  }
+
   return {
     items,
     total,
@@ -194,6 +250,7 @@ export default defineEventHandler(async (event) => {
         count: r.c,
       })),
       tags: tagRows.map((r) => ({ name: r.name, count: r.c })),
+      source: sourceFacets,
     },
   }
 })
