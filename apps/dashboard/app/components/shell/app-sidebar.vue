@@ -115,6 +115,7 @@ const projectItems = computed<NavItem[]>(() => {
 const adminItems = computed<NavItem[]>(() => {
   if (!isAdmin.value) return []
   return [
+    { label: "Overview", icon: "i-heroicons-home", to: "/admin", exact: true },
     { label: "Users", icon: "i-heroicons-users", to: "/settings/users" },
     { label: "Access", icon: "i-heroicons-shield-check", to: "/settings/access" },
     { label: "Install", icon: "i-heroicons-code-bracket", to: "/settings/install" },
