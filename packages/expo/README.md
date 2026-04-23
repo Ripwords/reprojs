@@ -8,7 +8,7 @@ Expo SDK for [Repro](https://github.com/Ripwords/reprojs) — submit annotated s
 npx expo install @reprojs/expo \
   react-native-view-shot react-native-svg react-native-gesture-handler \
   @react-native-async-storage/async-storage @react-native-community/netinfo \
-  expo-device expo-constants expo-file-system
+  expo-device expo-constants
 ```
 
 Add the config plugin to `app.json`:

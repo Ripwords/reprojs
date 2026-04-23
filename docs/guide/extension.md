@@ -26,9 +26,17 @@ The extension injects the same `@reprojs/core` SDK the embed uses. Behaviour-wis
 
 The proxy runs on top of the existing origin allowlist — a report is still only accepted if the page's origin is on the project's allowed-origins list, same as the embed path.
 
-## Install (unpacked, pre-publish)
+## Install
 
-While the extension is waiting on Chrome Web Store review, testers install from a shared zip.
+Published on the Chrome Web Store — install in one click:
+
+> 🧩 **[Repro Tester on the Chrome Web Store](https://chromewebstore.google.com/detail/repro-tester/kiedhhobipcjkgiljemcmmmnfcbcmjbg)**
+
+Chrome handles updates automatically; your testers always get the latest build.
+
+### Install unpacked (for local development)
+
+Need to test a dev build before it ships to the store, or don't want to run the Web Store listing? Install unpacked from a zip:
 
 1. Download `repro-tester-vX.Y.Z.zip` from the [GitHub releases page](https://github.com/Ripwords/ReproJs/releases).
 2. Unzip it to a **stable** location — Chrome re-reads the folder on every browser launch, so don't put it in `/tmp` or a download-reaper directory. `~/Documents/repro-tester/` is fine.
@@ -36,8 +44,6 @@ While the extension is waiting on Chrome Web Store review, testers install from 
 4. Toggle **Developer mode** on (top right).
 5. Click **Load unpacked** and select the unzipped folder.
 6. A "Repro Tester" tile appears. The extension icon lands in your Chrome toolbar (you may need to pin it from the puzzle-piece overflow menu).
-
-After Web Store publish: testers install the published listing like any other extension. Chrome handles updates.
 
 ## Configure an origin
 

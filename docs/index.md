@@ -23,10 +23,12 @@ hero:
 features:
   - title: Drop-in widget, any framework
     details: Single script tag or ESM import. Renders inside Shadow DOM so host styles never leak. Works with React, Vue, Svelte, Angular, Nuxt, Next, or plain HTML.
+  - title: Expo / React Native SDK
+    details: Floating bug-report launcher, annotated screenshot, console + network + device context. Offline queue with Idempotency-Key retries. One `<ReproProvider>` wraps your app. [Install guide →](/ReproJs/guide/expo)
   - title: Rich context, zero config
     details: Every report bundles an annotated screenshot, rrweb-compatible replay of the last 30 seconds, console + network logs, cookies, and system info.
   - title: Tester Chrome extension
-    details: Your QA team can file reports from sites the SDK isn't embedded on yet — staging builds, vendor previews, third-party widgets. The service worker proxies intake so strict CSPs don't block submission.
+    details: Your QA team can file reports from sites the SDK isn't embedded on yet — staging builds, vendor previews, third-party widgets. The service worker proxies intake so strict CSPs don't block submission. [Install from the Chrome Web Store →](https://chromewebstore.google.com/detail/repro-tester/kiedhhobipcjkgiljemcmmmnfcbcmjbg)
   - title: Self-hostable end to end
     details: One compose file, four secrets, one command. Pulls the image from Docker Hub, runs migrations, exposes the dashboard on :3000. Reverse-proxy with Caddy for TLS.
   - title: GitHub Issues sync

@@ -43,8 +43,9 @@
     "release:major": "bash ./scripts/release-dashboard.sh --major",
     "postrelease": "git push --follow-tags",
     "release:sdk": "bash ./scripts/release-sdk.sh",
+    "release:expo": "bash ./scripts/release-expo.sh",
     "release:extension": "bash ./scripts/release-extension.sh",
-    "release:all": "bash ./scripts/release-sdk.sh ${BUMP:-patch} && bash ./scripts/release-extension.sh ${BUMP:-patch}"
+    "release:all": "bash ./scripts/release-sdk.sh ${BUMP:-patch} && bash ./scripts/release-expo.sh ${BUMP:-patch} && bash ./scripts/release-extension.sh ${BUMP:-patch}"
   },
   "devDependencies": {
     "@types/bun": "^1.3.12",

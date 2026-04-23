@@ -18,7 +18,6 @@ export default defineConfig([
       "expo",
       "expo-device",
       "expo-constants",
-      "expo-file-system",
     ],
   },
   {

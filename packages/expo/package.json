@@ -17,9 +17,11 @@
     "directory": "packages/expo"
   },
   "files": [
+    "LICENSE",
     "dist",
     "app.plugin.js"
   ],
+  "sideEffects": false,
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -59,7 +61,6 @@
     "expo": ">=52.0.0",
     "expo-constants": ">=16.0.0",
     "expo-device": ">=6.0.0",
-    "expo-file-system": ">=17.0.0",
     "react": ">=18.3.0",
     "react-native": ">=0.74.0",
     "react-native-gesture-handler": ">=2.16.0",
