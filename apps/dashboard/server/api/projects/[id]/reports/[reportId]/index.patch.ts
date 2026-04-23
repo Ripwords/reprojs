@@ -23,13 +23,16 @@ export default defineEventHandler(async (event) => {
     if (body.assigneeIds.length > 10) {
       throw createError({ statusCode: 400, statusMessage: "At most 10 assignees" })
     }
+    const memberRows = await db
+      .select({ userId: projectMembers.userId, role: projectMembers.role })
+      .from(projectMembers)
+      .where(
+        and(eq(projectMembers.projectId, id), inArray(projectMembers.userId, body.assigneeIds)),
+      )
+    const memberMap = new Map(memberRows.map((m) => [m.userId, m.role]))
     for (const uid of body.assigneeIds) {
-      const [member] = await db
-        .select({ role: projectMembers.role })
-        .from(projectMembers)
-        .where(and(eq(projectMembers.projectId, id), eq(projectMembers.userId, uid)))
-        .limit(1)
-      if (!member || !compareRole(member.role as ProjectRoleName, "manager")) {
+      const role = memberMap.get(uid)
+      if (!role || !compareRole(role as ProjectRoleName, "manager")) {
         throw createError({
           statusCode: 400,
           statusMessage: `User ${uid} is not a manager, developer, or owner on this project`,

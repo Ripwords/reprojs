@@ -100,27 +100,44 @@ export default defineEventHandler(async (event) => {
         currentByReport.set(a.reportId, arr)
       }
 
-      for (const reportId of body.reportIds) {
+      // Compute diffs for all reports, then apply writes in parallel.
+      type AssigneeDiff = { reportId: string; toRemove: string[]; toAdd: string[] }
+      const diffs: AssigneeDiff[] = body.reportIds.map((reportId) => {
         const currentIds = currentByReport.get(reportId) ?? []
-        const toRemove = currentIds.filter((uid) => !proposedIds.includes(uid))
-        const toAdd = proposedIds.filter((uid) => !currentIds.includes(uid))
+        return {
+          reportId,
+          toRemove: currentIds.filter((uid) => !proposedIds.includes(uid)),
+          toAdd: proposedIds.filter((uid) => !currentIds.includes(uid)),
+        }
+      })
 
-        if (toRemove.length > 0) {
-          await tx
-            .delete(reportAssignees)
-            .where(
-              and(
-                eq(reportAssignees.reportId, reportId),
-                inArray(reportAssignees.userId, toRemove),
-              ),
+      await Promise.all(
+        diffs.flatMap(({ reportId, toRemove, toAdd }) => {
+          const ops: Promise<unknown>[] = []
+          if (toRemove.length > 0) {
+            ops.push(
+              tx
+                .delete(reportAssignees)
+                .where(
+                  and(
+                    eq(reportAssignees.reportId, reportId),
+                    inArray(reportAssignees.userId, toRemove),
+                  ),
+                ),
             )
-        }
-        if (toAdd.length > 0) {
-          await tx
-            .insert(reportAssignees)
-            .values(toAdd.map((uid) => ({ reportId, userId: uid, assignedBy: actorId })))
-        }
+          }
+          if (toAdd.length > 0) {
+            ops.push(
+              tx
+                .insert(reportAssignees)
+                .values(toAdd.map((uid) => ({ reportId, userId: uid, assignedBy: actorId }))),
+            )
+          }
+          return ops
+        }),
+      )
 
+      for (const { reportId, toRemove, toAdd } of diffs) {
         // Emit granular events for this report's assignee changes
         for (const uid of toRemove) {
           allEvents.push({

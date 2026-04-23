@@ -111,6 +111,20 @@ export default defineNuxtConfig({
         xssValidator: false,
       },
     },
+    // GitHub webhook — nuxt-security's per-IP rate limiter would block
+    // GitHub's exponential-backoff delivery retries during restarts /
+    // deployments. The webhook handler enforces its own defence-in-depth
+    // (5 MB body cap → HMAC-SHA256 signature → delivery dedupe →
+    // installation allowlist), so the nuxt-security layer adds no
+    // meaningful protection here. requestSizeLimiter is also off because
+    // the handler reads and checks body size itself.
+    "/api/integrations/github/webhook": {
+      security: {
+        rateLimiter: false,
+        requestSizeLimiter: false,
+        xssValidator: false,
+      },
+    },
   },
   nitro: {
     experimental: {

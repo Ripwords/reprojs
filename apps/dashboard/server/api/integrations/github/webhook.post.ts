@@ -173,11 +173,13 @@ export default defineEventHandler(async (event) => {
         const tagsChanged = addedTags.length > 0 || removedTags.length > 0
 
         if (priorityChanged || tagsChanged) {
+          // priority is non-null here: priorityChanged = (priority !== null && …)
+          const nextPriority = priority ?? linked.r.priority
           await db.transaction(async (tx) => {
             await tx
               .update(reports)
               .set({
-                ...(priorityChanged ? { priority: priority! } : {}),
+                ...(priorityChanged ? { priority: nextPriority } : {}),
                 ...(tagsChanged ? { tags } : {}),
                 updatedAt: new Date(),
               })
