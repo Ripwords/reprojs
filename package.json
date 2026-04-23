@@ -15,6 +15,7 @@
     "build": "bun --filter dashboard build",
     "sdk:build": "bun run packages/ui/build-css.ts && bun --filter @reprojs/core build",
     "sdk:watch": "bun --filter @reprojs/core dev",
+    "expo:build": "bun --filter @reprojs/expo build",
     "demo": "bun run sdk:build && bun --filter @reprojs/ui demo",
     "ext:dev": "bun --filter @reprojs/extension dev",
     "ext:build": "bun run sdk:build && bun --filter @reprojs/extension build",
