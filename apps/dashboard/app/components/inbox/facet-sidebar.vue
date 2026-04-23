@@ -27,9 +27,11 @@ interface Props {
   priorityCounts: Record<ReportPriority, number>
   assignees: Assignee[]
   tags: Array<{ name: string; count: number }>
+  sourceCounts: { web: number; expo: number; ios: number; android: number }
   selectedPriority: ReportPriority[]
   selectedAssignee: string[]
   selectedTags: string[]
+  selectedSource: string[]
   sessionUserId: string
 }
 
@@ -38,6 +40,7 @@ const emit = defineEmits<{
   priority: [ReportPriority[]]
   assignee: [string[]]
   tag: [string[]]
+  source: [string[]]
 }>()
 
 const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
@@ -60,6 +63,13 @@ function toggleTag(name: string) {
   const has = props.selectedTags.includes(name)
   emit("tag", has ? props.selectedTags.filter((x) => x !== name) : [...props.selectedTags, name])
 }
+function toggleSource(token: string) {
+  const has = props.selectedSource.includes(token)
+  emit(
+    "source",
+    has ? props.selectedSource.filter((x) => x !== token) : [...props.selectedSource, token],
+  )
+}
 
 function isAssigneeSelected(a: Assignee): boolean {
   if (a.id === null) return props.selectedAssignee.includes("unassigned")
@@ -80,6 +90,12 @@ function assigneeLabel(a: Assignee): string {
 function priorityLabel(p: ReportPriority): string {
   return p.charAt(0).toUpperCase() + p.slice(1)
 }
+
+const sourceItems = computed(() => [
+  { token: "web", label: "Web", count: props.sourceCounts.web },
+  { token: "ios", label: "iOS", count: props.sourceCounts.ios },
+  { token: "android", label: "Android", count: props.sourceCounts.android },
+])
 
 // Priority rows get a colored leading dot (urgent=red, high=orange,
 // normal=teal, low=muted). That single dot carries more signal than a
@@ -190,6 +206,42 @@ const priorityDot: Record<ReportPriority, string> = {
               :class="selectedTags.includes(t.name) ? 'text-primary' : 'text-muted'"
             >
               {{ t.count }}
+            </span>
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Source</h3>
+      <ul>
+        <li v-for="item in sourceItems" :key="item.token">
+          <button
+            type="button"
+            :aria-pressed="selectedSource.includes(item.token)"
+            class="group w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors"
+            :class="
+              selectedSource.includes(item.token)
+                ? 'bg-elevated text-default font-semibold'
+                : 'text-muted hover:text-default hover:bg-elevated/60'
+            "
+            @click="toggleSource(item.token)"
+          >
+            <span
+              class="size-1.5 rounded-full shrink-0"
+              :class="
+                selectedSource.includes(item.token)
+                  ? 'bg-primary'
+                  : 'bg-transparent group-hover:bg-muted/60'
+              "
+              aria-hidden="true"
+            />
+            <span class="flex-1 text-left font-medium">{{ item.label }}</span>
+            <span
+              class="text-xs font-medium tabular-nums"
+              :class="selectedSource.includes(item.token) ? 'text-primary' : 'text-muted'"
+            >
+              {{ item.count }}
             </span>
           </button>
         </li>
