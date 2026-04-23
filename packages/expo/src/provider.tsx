@@ -163,12 +163,13 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
       createdAt: now,
       payload: {
         input,
-        attachments: [
-          ...(res.annotatedUri
-            ? [{ kind: "annotated-screenshot" as const, uri: res.annotatedUri, bytes: 0 }]
-            : []),
-          ...(res.rawUri ? [{ kind: "screenshot" as const, uri: res.rawUri, bytes: 0 }] : []),
-        ],
+        // The intake endpoint only reads a "screenshot" multipart part — any other
+        // name is silently dropped. Submit the annotated flatten as kind=screenshot
+        // when available, otherwise fall back to the raw capture.
+        attachments: (() => {
+          const uri = res.annotatedUri ?? res.rawUri
+          return uri ? [{ kind: "screenshot" as const, uri, bytes: 0 }] : []
+        })(),
         logs: logsJson,
       },
       attempts: 0,

@@ -94,6 +94,35 @@ export function RedoIcon({ size = 20, color = "#111827" }: IconProps) {
   )
 }
 
+export function CloseIcon({ size = 14, color = "#111827" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M 6 6 L 18 18 M 18 6 L 6 18"
+        stroke={color}
+        strokeWidth={2.4}
+        fill="none"
+        strokeLinecap="round"
+      />
+    </Svg>
+  )
+}
+
+export function ChevronLeftIcon({ size = 16, color = "#111827" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M 15 6 L 9 12 L 15 18"
+        stroke={color}
+        strokeWidth={2.2}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
 export function TrashIcon({ size = 20, color = "#111827" }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 22 22">

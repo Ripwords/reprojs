@@ -33,7 +33,7 @@ const TOOLS: { key: Tool; Icon: React.ComponentType<{ size?: number; color?: str
   { key: "text", Icon: TextIcon },
 ]
 
-const ACTIVE_BG = "#6366f1"
+const ACTIVE_BG = "#ff9b51"
 const INACTIVE_BG = "#f3f4f6"
 const ACTIVE_ICON = "#ffffff"
 const INACTIVE_ICON = "#111827"
@@ -158,7 +158,7 @@ export function AnnotationToolbar({
                     borderRadius: 12,
                     backgroundColor: swatch,
                     borderWidth: active ? 2 : 0,
-                    borderColor: "#6366f1",
+                    borderColor: "#ff9b51",
                   }}
                 />
               </Pressable>
@@ -188,7 +188,7 @@ export function AnnotationToolbar({
                     width: dotSize,
                     height: dotSize,
                     borderRadius: dotSize / 2,
-                    backgroundColor: active ? "#6366f1" : "#111827",
+                    backgroundColor: active ? "#ff9b51" : "#111827",
                   }}
                 />
               </Pressable>

@@ -24,20 +24,21 @@ export function ReproLauncher({ position = "bottom-right", offset = {}, icon, hi
       <Pressable
         onPress={() => repro.open()}
         accessibilityLabel="Report a bug"
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 24,
-          backgroundColor: "#6366f1",
+        style={({ pressed }) => ({
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: pressed ? "#f27a1f" : "#ff9b51",
           alignItems: "center",
           justifyContent: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
-          elevation: 4,
-        }}
+          shadowColor: "#ff9b51",
+          shadowOpacity: 0.35,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 6,
+        })}
       >
-        {icon ?? <Text style={{ color: "white", fontSize: 20 }}>🐛</Text>}
+        {icon ?? <Text style={{ color: "white", fontSize: 22 }}>🐞</Text>}
       </Pressable>
     </View>
   )

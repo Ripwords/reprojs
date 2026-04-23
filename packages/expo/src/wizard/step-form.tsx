@@ -1,5 +1,7 @@
 import React from "react"
-import { TextInput, View, Text } from "react-native"
+import { ScrollView, TextInput, View } from "react-native"
+import { FieldLabel, inputStyle } from "./controls"
+import { theme } from "./theme"
 
 interface Props {
   title: string
@@ -10,30 +12,36 @@ interface Props {
 
 export function StepForm({ title, description, onTitleChange, onDescriptionChange }: Props) {
   return (
-    <View style={{ padding: 16, gap: 12 }}>
-      <Text style={{ fontWeight: "600" }}>Title</Text>
-      <TextInput
-        value={title}
-        onChangeText={onTitleChange}
-        maxLength={120}
-        placeholder="Short description of the issue"
-        style={{ borderWidth: 1, borderColor: "#ccc", padding: 8, borderRadius: 6 }}
-      />
-      <Text style={{ fontWeight: "600" }}>Details (optional)</Text>
-      <TextInput
-        value={description}
-        onChangeText={onDescriptionChange}
-        maxLength={10000}
-        multiline
-        placeholder="Steps to reproduce, expected vs actual"
-        style={{
-          borderWidth: 1,
-          borderColor: "#ccc",
-          padding: 8,
-          borderRadius: 6,
-          minHeight: 120,
-        }}
-      />
-    </View>
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20 }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+    >
+      <View style={{ gap: 8 }}>
+        <FieldLabel label="Title" />
+        <TextInput
+          value={title}
+          onChangeText={onTitleChange}
+          placeholder="What went wrong?"
+          placeholderTextColor={theme.color.textFaint}
+          maxLength={120}
+          returnKeyType="next"
+          style={inputStyle}
+        />
+      </View>
+      <View style={{ gap: 8 }}>
+        <FieldLabel label="Details" optional />
+        <TextInput
+          value={description}
+          onChangeText={onDescriptionChange}
+          placeholder="Steps to reproduce, expected vs actual…"
+          placeholderTextColor={theme.color.textFaint}
+          multiline
+          maxLength={10000}
+          style={[inputStyle, { minHeight: 140, textAlignVertical: "top" }]}
+        />
+      </View>
+    </ScrollView>
   )
 }
