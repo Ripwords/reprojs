@@ -36,9 +36,20 @@ export const FlattenView = forwardRef<FlattenHandle, Props>(function FlattenView
     <View
       ref={viewRef}
       collapsable={false}
-      style={{ position: "absolute", left: -9999, width, height }}
+      // Match the annotation canvas's backdrop color so letterbox bars on non-
+      // matching-aspect screenshots blend with what the user saw while drawing.
+      style={{
+        position: "absolute",
+        left: -9999,
+        width,
+        height,
+        backgroundColor: "#f3f4f6",
+      }}
     >
-      <Image source={{ uri }} style={{ width, height }} />
+      {/* resizeMode="contain" mirrors what the StepAnnotate preview uses, so
+          shape coordinates drawn on the preview land at the same pixel offsets
+          in the flattened PNG — no more cover-crop that clipped top + bottom. */}
+      <Image source={{ uri }} style={{ width, height }} resizeMode="contain" />
       <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
         {shapes.map((s, i) => renderShape(s, i))}
       </Svg>
