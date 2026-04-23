@@ -1,13 +1,11 @@
 import type { RefObject } from "react"
 import { captureRef } from "react-native-view-shot"
-import * as FileSystem from "expo-file-system"
 import type { View } from "react-native"
 
 export interface CaptureResult {
   uri: string
   width: number
   height: number
-  bytes: number
 }
 
 export async function captureView(ref: RefObject<View | null>): Promise<CaptureResult> {
@@ -18,11 +16,6 @@ export async function captureView(ref: RefObject<View | null>): Promise<CaptureR
     result: "tmpfile",
     snapshotContentContainer: false,
   })
-  const info = await FileSystem.getInfoAsync(uri, { size: true })
-  return {
-    uri,
-    width: 0,
-    height: 0,
-    bytes: "size" in info && typeof info.size === "number" ? info.size : 0,
-  }
+  // width/height are filled by the caller that holds the measured layout size.
+  return { uri, width: 0, height: 0 }
 }

@@ -15,7 +15,7 @@ export interface ReproInternalContext {
     initialDescription?: string
   }) => Promise<void> | void
   closeWizard: () => void
-  captureRoot: () => Promise<{ uri: string; width: number; height: number; bytes: number }>
+  captureRoot: () => Promise<{ uri: string; width: number; height: number }>
   snapshotBreadcrumbs: () => Breadcrumb[]
   queueStatus: () => { pending: number; lastError: string | null }
   flushQueue: () => Promise<void>
