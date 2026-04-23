@@ -9,6 +9,7 @@ export const GithubConfigDTO = z.object({
   defaultLabels: z.array(z.string()),
   defaultAssignees: z.array(z.string()),
   pushOnEdit: z.boolean(),
+  autoCreateOnIntake: z.boolean(),
   lastSyncedAt: z.string().nullable(),
   failedJobs: z.array(
     z.object({
@@ -28,6 +29,7 @@ export const UpdateGithubConfigInput = z.object({
   defaultLabels: z.array(z.string().min(1).max(50)).max(20).optional(),
   defaultAssignees: z.array(z.string().min(1).max(50)).max(20).optional(),
   pushOnEdit: z.boolean().optional(),
+  autoCreateOnIntake: z.boolean().optional(),
 })
 export type UpdateGithubConfigInput = z.infer<typeof UpdateGithubConfigInput>
 
