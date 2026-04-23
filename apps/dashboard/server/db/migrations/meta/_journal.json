@@ -71,6 +71,13 @@
       "when": 1776970200000,
       "tag": "0009_backfill_user_identities_from_account",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776970158739,
+      "tag": "0010_early_inertia",
+      "breakpoints": true
     }
   ]
 }
