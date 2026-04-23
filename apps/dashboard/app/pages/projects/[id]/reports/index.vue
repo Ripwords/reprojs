@@ -244,6 +244,24 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
       h("div", { class: "font-medium text-default truncate max-w-[32rem]" }, row.original.title),
   },
   {
+    id: "source",
+    header: "",
+    cell: ({ row }) => {
+      const r = row.original
+      const label =
+        r.source === "web"
+          ? "Web"
+          : r.devicePlatform === "ios"
+            ? "iOS"
+            : r.devicePlatform === "android"
+              ? "Android"
+              : "Mobile"
+      const color =
+        r.source === "web" ? "neutral" : r.devicePlatform === "ios" ? "primary" : "warning"
+      return h(UBadge, { variant: "subtle", color, size: "xs" }, () => label)
+    },
+  },
+  {
     id: "github",
     header: "",
     cell: ({ row }) => {
