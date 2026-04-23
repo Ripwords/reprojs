@@ -4,7 +4,7 @@ export default defineConfig([
   {
     entry: ["src/index.ts"],
     format: ["esm"],
-    dts: true,
+    dts: { resolve: [/^@reprojs\//], eager: true },
     clean: true,
     sourcemap: true,
     external: [
