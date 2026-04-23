@@ -36,14 +36,16 @@ export const FlattenView = forwardRef<FlattenHandle, Props>(function FlattenView
     <View
       ref={viewRef}
       collapsable={false}
-      // Match the annotation canvas's backdrop color so letterbox bars on non-
-      // matching-aspect screenshots blend with what the user saw while drawing.
+      // Transparent background so the exported PNG's letterbox bars (created by
+      // resizeMode="contain") are alpha-transparent — the dashboard's dark
+      // surface shows through instead of a hardcoded light-gray frame.
+      // `format: "png"` in captureRef preserves the alpha channel.
       style={{
         position: "absolute",
         left: -9999,
         width,
         height,
-        backgroundColor: "#f3f4f6",
+        backgroundColor: "transparent",
       }}
     >
       {/* resizeMode="contain" mirrors what the StepAnnotate preview uses, so
