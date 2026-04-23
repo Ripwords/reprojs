@@ -12,6 +12,7 @@ import type { LogsAttachment, ReportSummaryDTO } from "@reprojs/shared"
 import AppErrorState from "~/components/common/app-error-state.vue"
 import AppLoadingSkeleton from "~/components/common/app-loading-skeleton.vue"
 import ActivityTab from "~/components/report-drawer/activity-tab.vue"
+import CommentsTab from "~/components/report-drawer/comments-tab.vue"
 import ConsoleTab from "~/components/report-drawer/console-tab.vue"
 import CookiesTab from "~/components/report-drawer/cookies-tab.vue"
 import NetworkTab from "~/components/report-drawer/network-tab.vue"
@@ -54,6 +55,7 @@ type TabId =
   | "network"
   | "replay"
   | "activity"
+  | "comments"
   | "cookies"
   | "system"
   | "raw"
@@ -93,6 +95,7 @@ const tabs = computed(() => {
     base.push({ id: "replay", label: "Replay", hasData: report.value?.hasReplay ?? false })
   }
   base.push({ id: "activity", label: "Activity" })
+  base.push({ id: "comments", label: "Comments" })
   if (report.value?.source !== "expo") {
     base.push({ id: "cookies", label: "Cookies", hasData: cookiesHasData.value })
   }
@@ -104,9 +107,11 @@ const tabs = computed(() => {
 // After a triage mutation, re-fetch the report row and refresh the activity
 // feed so the timeline reflects the new event immediately.
 const activityRef = ref<InstanceType<typeof ActivityTab> | null>(null)
+const commentsRef = ref<InstanceType<typeof CommentsTab> | null>(null)
 async function onPatched() {
   await refresh()
   if (activityRef.value) await activityRef.value.refresh()
+  if (commentsRef.value) await commentsRef.value.refresh()
 }
 
 const triageOpen = ref(false)
@@ -224,6 +229,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
           ref="activityRef"
           :project-id="projectId"
           :report="report"
+        />
+        <CommentsTab
+          v-else-if="activeTab === 'comments'"
+          ref="commentsRef"
+          :project-id="projectId"
+          :report-id="report.id"
         />
         <CookiesTab v-else-if="activeTab === 'cookies'" :project-id="projectId" :report="report" />
         <div v-else-if="activeTab === 'system'" class="p-5">
