@@ -9,7 +9,7 @@ export const projectInvitations = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
-    role: text("role", { enum: ["owner", "developer", "viewer"] }).notNull(),
+    role: text("role", { enum: ["owner", "developer", "manager", "viewer"] }).notNull(),
     token: text("token").notNull(),
     status: text("status", {
       enum: ["pending", "accepted", "revoked", "expired"],

@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { ReportEventKind, ReportPriority, ReportStatus } from "./reports"
 
-export const ProjectRole = z.enum(["viewer", "developer", "owner"])
+export const ProjectRole = z.enum(["viewer", "manager", "developer", "owner"])
 export type ProjectRole = z.infer<typeof ProjectRole>
 
 export const ProjectDTO = z.object({

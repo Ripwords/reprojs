@@ -12,12 +12,12 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id")
   const reportId = getRouterParam(event, "reportId")
   if (!id || !reportId) throw createError({ statusCode: 400, statusMessage: "missing params" })
-  const { session } = await requireProjectRole(event, id, "developer")
+  const { session } = await requireProjectRole(event, id, "manager")
   const actorId = session.userId
 
   const body = await readValidatedBody(event, (b: unknown) => TriagePatchInput.parse(b))
 
-  // Guard: assignee must be a developer or owner of this project.
+  // Guard: assignee must be authorized for triage (not a viewer).
   if (body.assigneeId !== undefined && body.assigneeId !== null) {
     const [member] = await db
       .select({ role: projectMembers.role })
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     if (!member || member.role === "viewer") {
       throw createError({
         statusCode: 400,
-        statusMessage: "Assignee must be a developer or owner of this project",
+        statusMessage: "Assignee must be a manager, developer, or owner of this project",
       })
     }
   }

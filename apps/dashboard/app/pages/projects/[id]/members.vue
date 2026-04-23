@@ -37,12 +37,13 @@ const isOwner = computed(() => project.value?.effectiveRole === "owner")
 const roleOptions = [
   { label: "Owner", value: "owner" },
   { label: "Developer", value: "developer" },
+  { label: "Manager", value: "manager" },
   { label: "Viewer", value: "viewer" },
 ] as const
 
 const inviteOpen = ref(false)
 const inviteEmail = ref("")
-const inviteRole = ref<ProjectRole>("developer")
+const inviteRole = ref<ProjectRole>("manager")
 const inviting = ref(false)
 
 async function sendInvite() {
@@ -56,7 +57,7 @@ async function sendInvite() {
     })
     inviteOpen.value = false
     inviteEmail.value = ""
-    inviteRole.value = "developer"
+    inviteRole.value = "manager"
     toast.add({ title: "Invite sent", color: "success", icon: "i-heroicons-check-circle" })
     await Promise.all([refresh(), refreshInvites()])
   } catch (err) {
@@ -163,9 +164,10 @@ async function confirmRemove(member: ProjectMemberDTO) {
   void removeMember(member.userId)
 }
 
-function roleColor(role: string): "primary" | "neutral" | "warning" | "success" {
+function roleColor(role: string): "primary" | "neutral" | "warning" | "success" | "info" {
   if (role === "owner") return "warning"
   if (role === "developer") return "primary"
+  if (role === "manager") return "info"
   if (role === "viewer") return "neutral"
   return "neutral"
 }

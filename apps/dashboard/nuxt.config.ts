@@ -67,6 +67,19 @@ export default defineNuxtConfig({
     // Keep global defaults on; per-route overrides do the real work below.
     // (Shiki on /settings/install runs on its JavaScript engine, not WASM, so
     // we don't need to relax CSP's script-src for WebAssembly.)
+    //
+    // Test env: disable the global per-IP rate limiter. The integration test
+    // suite hammers many endpoints from a single origin in under a minute,
+    // which trips the default bucket (150 req / 5 min) and cascades 429s
+    // through unrelated test files. The app's own rate-limit.ts / rate-limit-pg.ts
+    // library continues to protect endpoints that actually need it (magic-link,
+    // intake). CI + local test runs set DISABLE_NUXT_SECURITY_RATE_LIMIT=1.
+    //
+    // Can't gate on NODE_ENV: `nuxt dev` forcibly sets NODE_ENV to "development"
+    // at startup (before nuxt.config is evaluated), so any inherited
+    // NODE_ENV=test from the parent shell is lost. A custom env var survives
+    // the Nuxt init sequence unchanged.
+    rateLimiter: process.env.DISABLE_NUXT_SECURITY_RATE_LIMIT === "1" ? false : undefined,
   },
   routeRules: {
     // better-auth owns request/response shape for every /api/auth/* call —

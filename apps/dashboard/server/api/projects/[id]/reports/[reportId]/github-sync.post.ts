@@ -12,10 +12,10 @@ export default defineEventHandler(async (event) => {
   if (!projectId || !reportId) {
     throw createError({ statusCode: 400, statusMessage: "missing params" })
   }
-  await requireProjectRole(event, projectId, "developer")
+  await requireProjectRole(event, projectId, "manager")
 
   // Verify the report actually belongs to this project — without this check,
-  // a developer on project A could pass a reportId from project B and
+  // a caller on project A could pass a reportId from project B and
   // enqueueSync would silently no-op.
   const [existing] = await db
     .select({ id: reports.id })

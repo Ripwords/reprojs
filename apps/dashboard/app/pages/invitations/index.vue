@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { ProjectRole } from "@reprojs/shared"
+
 interface PendingInvitation {
   token: string
   projectId: string
   projectName: string
-  role: "owner" | "developer" | "viewer"
+  role: ProjectRole
   inviterName: string | null
   inviterEmail: string | null
   invitedAt: string

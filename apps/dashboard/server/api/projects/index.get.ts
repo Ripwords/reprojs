@@ -1,6 +1,6 @@
 import { defineEventHandler } from "h3"
 import { and, desc, eq, isNull } from "drizzle-orm"
-import type { ProjectDTO } from "@reprojs/shared"
+import type { ProjectDTO, ProjectRole } from "@reprojs/shared"
 import { db } from "../../db"
 import { projectMembers, projects } from "../../db/schema"
 import { requireSession } from "../../lib/permissions"
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event): Promise<ProjectDTO[]> => {
     createdBy: r.createdBy,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
-    effectiveRole: r.role as "viewer" | "developer" | "owner",
+    effectiveRole: r.role as ProjectRole,
     publicKey: r.publicKey,
     allowedOrigins: r.allowedOrigins,
     dailyReportCap: r.dailyReportCap,

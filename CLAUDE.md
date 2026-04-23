@@ -97,7 +97,7 @@ Automatically collected with each report:
 
 ### 3.5 Dashboard — Admin / Developer UI
 
-- **Auth**: better-auth with magic-link + GitHub/Google OAuth. Email+password explicitly removed. Roles: `owner`, `admin`, `developer`, `viewer`.
+- **Auth**: better-auth with magic-link + GitHub/Google OAuth. Email+password explicitly removed. Install roles: `admin`, `member`. Project roles: `owner`, `developer`, `manager`, `viewer` (ranked; see `apps/dashboard/server/lib/permissions.ts`). `manager` is a non-tech triage role — can change status / priority / assignee / tags / bulk-update / link or unlink GitHub issues, but cannot configure integrations, rotate keys, or manage members.
 - **Projects**: multiple projects per workspace. Each project has its own embed key, GitHub repo mapping, and settings.
 - **Ticket inbox**: list, filter, search, assign, tag, change status (open / in-progress / resolved / closed).
 - **Ticket detail**: render annotated screenshot, play back 30s session replay, browse console/network logs, inspect system info and cookies.
