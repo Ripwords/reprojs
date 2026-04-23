@@ -1,0 +1,2 @@
+server/api/projects/[id]/reports/[reportId]/index.get.ts
+server/api/projects/[id]/reports/index.get.ts

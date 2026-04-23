@@ -1,5 +1,12 @@
 import { test, expect } from "bun:test"
-import { ReportContext, ReportSource, DevicePlatform, SystemInfo, ReportIntakeInput } from "./index"
+import {
+  ReportContext,
+  ReportSource,
+  DevicePlatform,
+  SystemInfo,
+  ReportIntakeInput,
+  ReportSummaryDTO,
+} from "./index"
 
 test("ReportSource accepts web and expo", () => {
   expect(ReportSource.parse("web")).toBe("web")
@@ -99,4 +106,42 @@ test("ReportIntakeInput preserves backward compatibility (no source supplied)", 
     },
   })
   expect(parsed.context.source).toBe("web")
+})
+
+test("ReportSummaryDTO requires source and allows nullable devicePlatform", () => {
+  const base = {
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    title: "t",
+    description: null,
+    context: {
+      source: "web" as const,
+      pageUrl: "https://x",
+      userAgent: "u",
+      viewport: { w: 1, h: 1 },
+      timestamp: "2026-04-20T00:00:00Z",
+    },
+    reporterEmail: null,
+    pageUrl: "https://x",
+    thumbnailUrl: null,
+    hasReplay: false,
+    receivedAt: "2026-04-20T00:00:00Z",
+    updatedAt: "2026-04-20T00:00:00Z",
+    status: "open" as const,
+    priority: "normal" as const,
+    tags: [],
+    githubIssueNumber: null,
+    githubIssueUrl: null,
+    assignee: null,
+  }
+
+  const web = ReportSummaryDTO.parse({ ...base, source: "web", devicePlatform: null })
+  expect(web.source).toBe("web")
+  expect(web.devicePlatform).toBeNull()
+
+  const ios = ReportSummaryDTO.parse({ ...base, source: "expo", devicePlatform: "ios" })
+  expect(ios.source).toBe("expo")
+  expect(ios.devicePlatform).toBe("ios")
+
+  const missing = ReportSummaryDTO.safeParse({ ...base })
+  expect(missing.success).toBe(false)
 })

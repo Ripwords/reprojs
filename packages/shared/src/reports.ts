@@ -198,6 +198,8 @@ export const ReportSummaryDTO = z.object({
   title: z.string(),
   description: z.string().nullable(),
   context: ReportContext,
+  source: ReportSource,
+  devicePlatform: DevicePlatform.nullable(),
   reporterEmail: z.string().nullable(),
   pageUrl: z.string(),
   thumbnailUrl: z.string().nullable(),
