@@ -47,6 +47,8 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
       - run: bun run sdk:build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
       # Guardrails against the regression we caught in review:
       # if the IIFE bundle tree-shakes @reprojs/* out, it drops under 50 KB
       # and still contains unresolved "@reprojs" references.

@@ -1,6 +1,6 @@
 # Expo SDK — install + setup
 
-<img src="/ReproJs/expo/hero.svg" alt="Repro Expo SDK — wizard across three steps" style="width:100%;max-width:960px;border-radius:12px" />
+<img src="/expo/hero.svg" alt="Repro Expo SDK — wizard across three steps" style="width:100%;max-width:960px;border-radius:12px" />
 
 `@reprojs/expo` drops a floating bug-report launcher into any Expo app. Reporters tap, annotate a captured screenshot, add context, and submit — the SDK bundles the annotated image plus console logs, fetch requests, breadcrumbs, and device info, and POSTs it to your Repro dashboard.
 

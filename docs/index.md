@@ -24,7 +24,7 @@ features:
   - title: Drop-in widget, any framework
     details: Single script tag or ESM import. Renders inside Shadow DOM so host styles never leak. Works with React, Vue, Svelte, Angular, Nuxt, Next, or plain HTML.
   - title: Expo / React Native SDK
-    details: Floating bug-report launcher, annotated screenshot, console + network + device context. Offline queue with Idempotency-Key retries. One `<ReproProvider>` wraps your app. [Install guide →](/ReproJs/guide/expo)
+    details: Floating bug-report launcher, annotated screenshot, console + network + device context. Offline queue with Idempotency-Key retries. One `<ReproProvider>` wraps your app. [Install guide →](/guide/expo)
   - title: Rich context, zero config
     details: Every report bundles an annotated screenshot, rrweb-compatible replay of the last 30 seconds, console + network logs, cookies, and system info.
   - title: Tester Chrome extension
