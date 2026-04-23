@@ -50,6 +50,13 @@
       "when": 1776968395646,
       "tag": "0006_supreme_winter_soldier",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776968419008,
+      "tag": "0007_young_bishop",
+      "breakpoints": true
     }
   ]
 }
