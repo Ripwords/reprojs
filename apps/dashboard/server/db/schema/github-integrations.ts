@@ -4,11 +4,18 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core"
+
+// Discriminated union carried by each sync-job row. null/undefined = reconcile (backward compat).
+export type SyncJobPayload =
+  | { kind: "reconcile" }
+  | { kind: "comment_upsert"; commentId: string }
+  | { kind: "comment_delete"; commentId: string; githubCommentId: number }
 import { projects } from "./projects"
 import { reports } from "./reports"
 
@@ -62,6 +69,7 @@ export const reportSyncJobs = pgTable(
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
     nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+    payload: jsonb("payload").$type<SyncJobPayload>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

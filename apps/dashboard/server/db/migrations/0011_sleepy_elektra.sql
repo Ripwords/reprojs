@@ -1,0 +1,1 @@
+ALTER TABLE "report_sync_jobs" ADD COLUMN "payload" jsonb;
