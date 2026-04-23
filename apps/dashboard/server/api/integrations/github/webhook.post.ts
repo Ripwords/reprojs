@@ -6,6 +6,7 @@ import { db } from "../../../db"
 import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
 import { getWebhookSecret } from "../../../lib/github"
 import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
+import { githubCache } from "../../../lib/github-cache"
 import { parseGithubLabels } from "../../../lib/github-helpers"
 import {
   checkBodySize,
@@ -34,6 +35,12 @@ interface InstallationReposPayload {
   action: "added" | "removed"
   installation: { id: number }
   repositories_removed?: Array<{ name: string; full_name: string }>
+}
+
+interface RepoEventPayload {
+  action: string
+  repository?: { name: string; owner: { login: string } }
+  installation?: { id: number }
 }
 
 export default defineEventHandler(async (event) => {
@@ -94,6 +101,9 @@ export default defineEventHandler(async (event) => {
   } else if (kind === "installation_repositories") {
     const p = payload as InstallationReposPayload
     invalidateInstallationRepos(p.installation.id)
+    // Invalidate all picker caches for this installation — covers any repo that
+    // was added or removed so labels/assignees/milestones are re-fetched.
+    githubCache.invalidatePrefix(`${p.installation.id}:`)
     if (p.action === "removed" && p.repositories_removed?.length) {
       const removedNames = new Set(p.repositories_removed.map((r) => r.full_name))
       const rows = await db
@@ -109,6 +119,27 @@ export default defineEventHandler(async (event) => {
               .set({ status: "disconnected", updatedAt: new Date() })
               .where(eq(githubIntegrations.projectId, row.projectId)),
           ),
+      )
+    }
+  } else if (kind === "label") {
+    const p = payload as RepoEventPayload
+    if (p.repository && p.installation) {
+      githubCache.invalidate(
+        `${p.installation.id}:${p.repository.owner.login}/${p.repository.name}:labels`,
+      )
+    }
+  } else if (kind === "milestone") {
+    const p = payload as RepoEventPayload
+    if (p.repository && p.installation) {
+      githubCache.invalidatePrefix(
+        `${p.installation.id}:${p.repository.owner.login}/${p.repository.name}:milestones`,
+      )
+    }
+  } else if (kind === "member") {
+    const p = payload as RepoEventPayload
+    if (p.repository && p.installation) {
+      githubCache.invalidate(
+        `${p.installation.id}:${p.repository.owner.login}/${p.repository.name}:assignees`,
       )
     }
   } else if (kind === "issues") {

@@ -1,11 +1,11 @@
 // apps/dashboard/server/api/projects/[id]/integrations/github/milestones.get.ts
 import { createError, defineEventHandler, getQuery, getRouterParam } from "h3"
 import { eq } from "drizzle-orm"
-import { db } from "~/server/db"
-import { githubIntegrations } from "~/server/db/schema/github-integrations"
-import { requireProjectRole } from "~/server/lib/permissions"
-import { getGithubClient } from "~/server/lib/github"
-import { githubCache, cacheKey } from "~/server/lib/github-cache"
+import { db } from "../../../../../db"
+import { githubIntegrations } from "../../../../../db/schema/github-integrations"
+import { requireProjectRole } from "../../../../../lib/permissions"
+import { getGithubClient } from "../../../../../lib/github"
+import { githubCache, cacheKey } from "../../../../../lib/github-cache"
 
 export default defineEventHandler(async (event) => {
   const projectId = getRouterParam(event, "id")
