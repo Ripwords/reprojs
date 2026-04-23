@@ -24,7 +24,9 @@ COPY apps/extension/package.json apps/extension/
 COPY packages/core/package.json packages/core/
 COPY packages/ui/package.json packages/ui/
 COPY packages/shared/package.json packages/shared/
+COPY packages/sdk-utils/package.json packages/sdk-utils/
 COPY packages/recorder/package.json packages/recorder/
+COPY packages/expo/package.json packages/expo/
 COPY packages/integrations/github/package.json packages/integrations/github/
 
 # --ignore-scripts skips the better-sqlite3 native build (a transitive dep of
