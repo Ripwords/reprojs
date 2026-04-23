@@ -29,15 +29,22 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
           <span class="text-default truncate">{{ report.reporterEmail ?? "anonymous" }}</span>
         </div>
         <div class="flex gap-2">
-          <span class="text-muted w-24 flex-shrink-0">Page</span>
-          <a
-            :href="safeHref(report.pageUrl)"
-            target="_blank"
-            rel="noopener"
-            class="text-primary-600 dark:text-primary-400 hover:underline truncate"
-          >
-            {{ report.pageUrl }}
-          </a>
+          <span class="text-muted w-24 flex-shrink-0">{{
+            ctx?.source === "expo" ? "Route" : "Page"
+          }}</span>
+          <template v-if="ctx?.source === 'expo'">
+            <span class="text-default truncate">{{ report.pageUrl }}</span>
+          </template>
+          <template v-else>
+            <a
+              :href="safeHref(report.pageUrl)"
+              target="_blank"
+              rel="noopener"
+              class="text-primary-600 dark:text-primary-400 hover:underline truncate"
+            >
+              {{ report.pageUrl }}
+            </a>
+          </template>
         </div>
         <div class="flex gap-2">
           <span class="text-muted w-24 flex-shrink-0">Received</span>
@@ -52,16 +59,25 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
       </template>
       <dl class="text-sm space-y-3">
         <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">Website</dt>
+          <dt class="text-muted w-24 flex-shrink-0">
+            {{ ctx?.source === "expo" ? "Route" : "Website" }}
+          </dt>
           <dd class="min-w-0 flex-1">
-            <a
-              :href="safeHref(report.pageUrl)"
-              target="_blank"
-              rel="noopener"
-              class="text-primary-600 dark:text-primary-400 hover:underline truncate inline-block max-w-full align-bottom"
-            >
-              {{ report.pageUrl }}
-            </a>
+            <template v-if="ctx?.source === 'expo'">
+              <span class="text-default truncate inline-block max-w-full align-bottom">
+                {{ report.pageUrl }}
+              </span>
+            </template>
+            <template v-else>
+              <a
+                :href="safeHref(report.pageUrl)"
+                target="_blank"
+                rel="noopener"
+                class="text-primary-600 dark:text-primary-400 hover:underline truncate inline-block max-w-full align-bottom"
+              >
+                {{ report.pageUrl }}
+              </a>
+            </template>
           </dd>
         </div>
         <div class="flex items-center gap-3">
@@ -97,6 +113,32 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
             >
               View network logs
             </button>
+          </dd>
+        </div>
+      </dl>
+    </UCard>
+
+    <UCard v-if="ctx?.source === 'expo' && sys">
+      <template #header>
+        <div class="text-sm font-medium text-default">Device</div>
+      </template>
+      <dl class="text-sm space-y-3">
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">Platform</dt>
+          <dd class="min-w-0 flex-1 text-default">{{ sys.devicePlatform ?? "—" }}</dd>
+        </div>
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">OS version</dt>
+          <dd class="min-w-0 flex-1 text-default">{{ sys.osVersion ?? "—" }}</dd>
+        </div>
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">Device</dt>
+          <dd class="min-w-0 flex-1 text-default">{{ sys.deviceModel ?? "—" }}</dd>
+        </div>
+        <div class="flex items-center gap-3">
+          <dt class="text-muted w-24 flex-shrink-0">App</dt>
+          <dd class="min-w-0 flex-1 text-default">
+            {{ sys.appVersion ?? "—" }}<span v-if="sys.appBuild"> ({{ sys.appBuild }})</span>
           </dd>
         </div>
       </dl>

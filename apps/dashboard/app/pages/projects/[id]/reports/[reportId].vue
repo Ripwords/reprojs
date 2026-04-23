@@ -83,16 +83,23 @@ const consoleHasData = computed(
 const networkHasData = computed(() => logs.value !== null && logs.value.network.length > 0)
 const cookiesHasData = computed(() => (report.value?.context?.cookies?.length ?? 0) > 0)
 
-const tabs = computed(() => [
-  { id: "overview", label: "Overview" },
-  { id: "console", label: "Console", hasData: consoleHasData.value },
-  { id: "network", label: "Network", hasData: networkHasData.value },
-  { id: "replay", label: "Replay", hasData: report.value?.hasReplay ?? false },
-  { id: "activity", label: "Activity" },
-  { id: "cookies", label: "Cookies", hasData: cookiesHasData.value },
-  { id: "system", label: "System" },
-  { id: "raw", label: "Raw" },
-])
+const tabs = computed(() => {
+  const base: { id: string; label: string; hasData?: boolean }[] = [
+    { id: "overview", label: "Overview" },
+    { id: "console", label: "Console", hasData: consoleHasData.value },
+    { id: "network", label: "Network", hasData: networkHasData.value },
+  ]
+  if (report.value?.source !== "expo") {
+    base.push({ id: "replay", label: "Replay", hasData: report.value?.hasReplay ?? false })
+  }
+  base.push({ id: "activity", label: "Activity" })
+  if (report.value?.source !== "expo") {
+    base.push({ id: "cookies", label: "Cookies", hasData: cookiesHasData.value })
+  }
+  base.push({ id: "system", label: "System" })
+  base.push({ id: "raw", label: "Raw" })
+  return base
+})
 
 // After a triage mutation, re-fetch the report row and refresh the activity
 // feed so the timeline reflects the new event immediately.
