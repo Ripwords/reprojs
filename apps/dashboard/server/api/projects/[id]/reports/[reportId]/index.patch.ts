@@ -1,6 +1,6 @@
 // apps/dashboard/server/api/projects/[id]/reports/[reportId]/index.patch.ts
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, isNotNull } from "drizzle-orm"
 import { TriagePatchInput } from "@reprojs/shared"
 import { db } from "../../../../../db"
 import { projectMembers, reportAssignees, reportEvents, reports } from "../../../../../db/schema"
@@ -43,7 +43,15 @@ export default defineEventHandler(async (event) => {
 
   return await db.transaction(async (tx) => {
     const [current] = await tx
-      .select()
+      .select({
+        id: reports.id,
+        projectId: reports.projectId,
+        status: reports.status,
+        priority: reports.priority,
+        tags: reports.tags,
+        milestoneNumber: reports.milestoneNumber,
+        milestoneTitle: reports.milestoneTitle,
+      })
       .from(reports)
       .where(and(eq(reports.id, reportId), eq(reports.projectId, id)))
       .limit(1)
@@ -121,6 +129,79 @@ export default defineEventHandler(async (event) => {
           actorId,
           kind: "assignee_added",
           payload: { userId: uid },
+        })
+      }
+    }
+
+    // Milestone diff
+    if ("milestone" in body && body.milestone !== undefined) {
+      const prev = {
+        number: current.milestoneNumber,
+        title: current.milestoneTitle,
+      }
+      const next = body.milestone
+      const changed =
+        (prev.number === null) !== (next === null) ||
+        (prev.number !== null &&
+          next !== null &&
+          (prev.number !== next.number || prev.title !== next.title))
+      if (changed) {
+        patch.milestoneNumber = next?.number ?? null
+        patch.milestoneTitle = next?.title ?? null
+        assigneeEvents.push({
+          reportId,
+          projectId: id,
+          actorId,
+          kind: "milestone_changed",
+          payload: { from: prev, to: next },
+        })
+      }
+    }
+
+    // GitHub-only assignees diff
+    if (body.githubAssigneeLogins !== undefined) {
+      const currentGhRows = await tx
+        .select({ login: reportAssignees.githubLogin })
+        .from(reportAssignees)
+        .where(and(eq(reportAssignees.reportId, reportId), isNotNull(reportAssignees.githubLogin)))
+      const currentLogins = currentGhRows
+        .map((r) => r.login)
+        .filter((x): x is string => x !== null && x !== undefined)
+      const proposedLogins = body.githubAssigneeLogins
+      const toRemove = currentLogins.filter((l) => !proposedLogins.includes(l))
+      const toAdd = proposedLogins.filter((l) => !currentLogins.includes(l))
+
+      if (toRemove.length > 0) {
+        await tx
+          .delete(reportAssignees)
+          .where(
+            and(
+              eq(reportAssignees.reportId, reportId),
+              inArray(reportAssignees.githubLogin, toRemove),
+            ),
+          )
+      }
+      if (toAdd.length > 0) {
+        await tx
+          .insert(reportAssignees)
+          .values(toAdd.map((login) => ({ reportId, githubLogin: login, assignedBy: actorId })))
+      }
+      for (const login of toRemove) {
+        assigneeEvents.push({
+          reportId,
+          projectId: id,
+          actorId,
+          kind: "assignee_removed",
+          payload: { githubLogin: login },
+        })
+      }
+      for (const login of toAdd) {
+        assigneeEvents.push({
+          reportId,
+          projectId: id,
+          actorId,
+          kind: "assignee_added",
+          payload: { githubLogin: login },
         })
       }
     }

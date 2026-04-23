@@ -144,6 +144,8 @@ export default defineEventHandler(async (event) => {
           attachmentId: reportAttachments.id,
           githubIssueNumber: reports.githubIssueNumber,
           githubIssueUrl: reports.githubIssueUrl,
+          milestoneNumber: reports.milestoneNumber,
+          milestoneTitle: reports.milestoneTitle,
         })
         .from(reports)
         .leftJoin(
@@ -265,6 +267,8 @@ export default defineEventHandler(async (event) => {
       devicePlatform: r.devicePlatform ?? null,
       githubIssueNumber: r.githubIssueNumber ?? null,
       githubIssueUrl: r.githubIssueUrl ?? null,
+      milestoneNumber: r.milestoneNumber ?? null,
+      milestoneTitle: r.milestoneTitle ?? null,
       assignees,
     }
   })

@@ -34,6 +34,8 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
       devicePlatform: reports.devicePlatform,
       githubIssueNumber: reports.githubIssueNumber,
       githubIssueUrl: reports.githubIssueUrl,
+      milestoneNumber: reports.milestoneNumber,
+      milestoneTitle: reports.milestoneTitle,
     })
     .from(reports)
     .where(and(eq(reports.id, reportId), eq(reports.projectId, projectId)))
@@ -94,6 +96,8 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
     devicePlatform: row.devicePlatform ?? null,
     githubIssueNumber: row.githubIssueNumber ?? null,
     githubIssueUrl: row.githubIssueUrl ?? null,
+    milestoneNumber: row.milestoneNumber ?? null,
+    milestoneTitle: row.milestoneTitle ?? null,
     assignees: assigneeRows.map((a) => ({
       id: a.userId,
       name: a.name ?? null,
