@@ -18,6 +18,7 @@ const { data, refresh } = useApi<GithubConfigDTO>(
 const selectedRepo = ref({ owner: "", name: "" })
 const labelsText = ref("")
 const assigneesText = ref("")
+const pushOnEdit = ref(false)
 const saving = ref(false)
 const installing = ref(false)
 const unlinkOpen = ref(false)
@@ -29,6 +30,7 @@ watch(
     selectedRepo.value = { owner: v.repoOwner, name: v.repoName }
     labelsText.value = v.defaultLabels.join(", ")
     assigneesText.value = v.defaultAssignees.join(", ")
+    pushOnEdit.value = v.pushOnEdit
   },
   { immediate: true },
 )
@@ -90,6 +92,7 @@ async function saveRepo() {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
+        pushOnEdit: pushOnEdit.value,
       },
     })
     await refresh()
@@ -188,6 +191,16 @@ async function saveRepo() {
         <UFormField label="Default assignees">
           <UInput v-model="assigneesText" placeholder="octocat, hubot" class="w-full" />
         </UFormField>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <USwitch v-model="pushOnEdit" />
+        <div>
+          <p class="text-sm font-medium text-default">Push edits to GitHub</p>
+          <p class="text-xs text-muted">
+            Sync priority, status, and tag changes back to the GitHub issue automatically.
+          </p>
+        </div>
       </div>
 
       <div class="flex gap-2">

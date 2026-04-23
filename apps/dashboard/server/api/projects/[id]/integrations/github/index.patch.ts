@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
       ...(body.repoName !== undefined ? { repoName: body.repoName } : {}),
       ...(body.defaultLabels !== undefined ? { defaultLabels: body.defaultLabels } : {}),
       ...(body.defaultAssignees !== undefined ? { defaultAssignees: body.defaultAssignees } : {}),
+      ...(body.pushOnEdit !== undefined ? { pushOnEdit: body.pushOnEdit } : {}),
       updatedAt: new Date(),
     })
     .where(eq(githubIntegrations.projectId, projectId))
