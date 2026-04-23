@@ -598,7 +598,7 @@ describe("manual sync + unlink + enqueue hooks", () => {
     expect(evs.find((e) => e.kind === "github_unlinked")).toBeDefined()
   })
 
-  test("intake with connected integration enqueues a sync job", async () => {
+  test("intake with connected integration and autoCreateOnIntake=true enqueues a sync job", async () => {
     const ownerId = await createUser("owner@example.com", "admin")
     const pid = await seedProject({
       name: "g",
@@ -606,9 +606,13 @@ describe("manual sync + unlink + enqueue hooks", () => {
       allowedOrigins: [ORIGIN],
       createdBy: ownerId,
     })
-    await db
-      .insert(githubIntegrations)
-      .values({ projectId: pid, installationId: 10, repoOwner: "acme", repoName: "frontend" })
+    await db.insert(githubIntegrations).values({
+      projectId: pid,
+      installationId: 10,
+      repoOwner: "acme",
+      repoName: "frontend",
+      autoCreateOnIntake: true,
+    })
     const fd = new FormData()
     fd.set(
       "report",
