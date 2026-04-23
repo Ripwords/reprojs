@@ -6,7 +6,7 @@ import { db } from "../../server/db"
 import { githubWebhookDeliveries } from "../../server/db/schema/github-webhook-deliveries"
 import { githubApp } from "../../server/db/schema/github-app"
 
-const WEBHOOK_SECRET = "test-webhook-secret-abcdef"
+const WEBHOOK_SECRET = "test-webhook-secret"
 
 function sign(body: string): string {
   const h = createHmac("sha256", WEBHOOK_SECRET)

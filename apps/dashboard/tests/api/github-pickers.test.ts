@@ -38,7 +38,7 @@ async function seedLinkedProject(ownerEmail: string) {
     appId: "1",
     slug: "test",
     privateKey: "x",
-    webhookSecret: "x",
+    webhookSecret: "test-webhook-secret",
     clientId: "x",
     clientSecret: "x",
     htmlUrl: "https://github.com/apps/test",
@@ -198,7 +198,7 @@ describe("github picker endpoints — HTTP", () => {
       repository: { owner: { login: "acme" }, name: "repro" },
       installation: { id: 12345 },
     })
-    const sig = `sha256=${createHmac("sha256", "x").update(body).digest("hex")}`
+    const sig = `sha256=${createHmac("sha256", "test-webhook-secret").update(body).digest("hex")}`
     const webhookRes = await apiFetch("/api/integrations/github/webhook", {
       method: "POST",
       headers: {
@@ -220,7 +220,7 @@ describe("github picker endpoints — HTTP", () => {
       repository: { owner: { login: "acme" }, name: "repro" },
       installation: { id: 12345 },
     })
-    const sig = `sha256=${createHmac("sha256", "x").update(body).digest("hex")}`
+    const sig = `sha256=${createHmac("sha256", "test-webhook-secret").update(body).digest("hex")}`
     const webhookRes = await apiFetch("/api/integrations/github/webhook", {
       method: "POST",
       headers: {
@@ -242,7 +242,7 @@ describe("github picker endpoints — HTTP", () => {
       repository: { owner: { login: "acme" }, name: "repro" },
       installation: { id: 12345 },
     })
-    const sig = `sha256=${createHmac("sha256", "x").update(body).digest("hex")}`
+    const sig = `sha256=${createHmac("sha256", "test-webhook-secret").update(body).digest("hex")}`
     const webhookRes = await apiFetch("/api/integrations/github/webhook", {
       method: "POST",
       headers: {
