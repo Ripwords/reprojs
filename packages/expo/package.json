@@ -28,7 +28,7 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
-    "./app.plugin": "./app.plugin.js"
+    "./app.plugin.js": "./app.plugin.js"
   },
   "publishConfig": {
     "access": "public"
