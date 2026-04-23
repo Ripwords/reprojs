@@ -127,45 +127,58 @@ export function AnnotationToolbar({
       </View>
 
       {/* Row 2: color swatches + stroke widths */}
-      <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 4 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingVertical: 4,
+        }}
+      >
         {/* Color swatches */}
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flexDirection: "row" }}>
           {PALETTE.map((swatch) => {
             const active = swatch === color
             return (
               <Pressable
                 key={swatch}
                 onPress={() => onColorChange(swatch)}
+                hitSlop={4}
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: swatch,
-                  borderWidth: active ? 2 : 0,
-                  borderColor: "#6366f1",
-                  // Ensure hit target is at least 44x44 via padding
-                  margin: (HIT_SIZE - 28) / 2,
+                  width: 36,
+                  height: 36,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-              />
+              >
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    backgroundColor: swatch,
+                    borderWidth: active ? 2 : 0,
+                    borderColor: "#6366f1",
+                  }}
+                />
+              </Pressable>
             )
           })}
         </View>
 
-        {/* Spacer */}
-        <View style={{ flex: 1 }} />
-
         {/* Stroke width dots */}
-        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           {STROKE_WIDTHS.map((w) => {
             const active = w === strokeWidth
-            const dotSize = w * 3
+            const dotSize = Math.min(w * 2 + 4, 16)
             return (
               <Pressable
                 key={w}
                 onPress={() => onStrokeWidthChange(w)}
+                hitSlop={4}
                 style={{
-                  width: HIT_SIZE,
-                  height: HIT_SIZE,
+                  width: 36,
+                  height: 36,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -175,9 +188,7 @@ export function AnnotationToolbar({
                     width: dotSize,
                     height: dotSize,
                     borderRadius: dotSize / 2,
-                    backgroundColor: "#111827",
-                    borderWidth: active ? 2 : 0,
-                    borderColor: "#6366f1",
+                    backgroundColor: active ? "#6366f1" : "#111827",
                   }}
                 />
               </Pressable>

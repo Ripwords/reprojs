@@ -30,7 +30,11 @@ export function AnnotationCanvas({
   const shapes = useAnnotationShapes(store)
   const [draftPoints, setDraftPoints] = useState<PenPoint[]>([])
 
+  // runOnJS(true) forces callbacks to the JS thread. Without it, callbacks run
+  // as worklets on the UI thread when react-native-reanimated is present, and
+  // any React state setter (setDraftPoints) crashes the worklet.
   const pan = Gesture.Pan()
+    .runOnJS(true)
     .minDistance(2)
     .onStart((e) => {
       if (tool === "text") return
@@ -51,10 +55,12 @@ export function AnnotationCanvas({
       setDraftPoints([])
     })
 
-  const tap = Gesture.Tap().onEnd((e) => {
-    if (tool !== "text") return
-    onTextTap?.({ x: e.x, y: e.y })
-  })
+  const tap = Gesture.Tap()
+    .runOnJS(true)
+    .onEnd((e) => {
+      if (tool !== "text") return
+      onTextTap?.({ x: e.x, y: e.y })
+    })
 
   const gesture = Gesture.Race(pan, tap)
 
