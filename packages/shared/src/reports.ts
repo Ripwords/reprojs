@@ -7,9 +7,20 @@ export const ReporterIdentity = z.object({
 })
 export type ReporterIdentity = z.infer<typeof ReporterIdentity>
 
+export const ReportSource = z.enum(["web", "expo"])
+export type ReportSource = z.infer<typeof ReportSource>
+
+export const DevicePlatform = z.enum(["ios", "android"])
+export type DevicePlatform = z.infer<typeof DevicePlatform>
+
 export const SystemInfo = z.object({
   userAgent: z.string(),
   platform: z.string(),
+  devicePlatform: DevicePlatform.optional(),
+  appVersion: z.string().optional(),
+  appBuild: z.string().optional(),
+  deviceModel: z.string().optional(),
+  osVersion: z.string().optional(),
   language: z.string(),
   timezone: z.string(),
   timezoneOffset: z.number(),
@@ -24,7 +35,7 @@ export const SystemInfo = z.object({
       downlink: z.number().optional(),
     })
     .optional(),
-  pageUrl: z.string().url(),
+  pageUrl: z.string().max(2048),
   referrer: z.string().optional(),
   timestamp: z.string(),
 })
@@ -85,7 +96,8 @@ export const LogsAttachment = z.object({
 export type LogsAttachment = z.infer<typeof LogsAttachment>
 
 export const ReportContext = z.object({
-  pageUrl: z.string().url(),
+  source: ReportSource.default("web"),
+  pageUrl: z.string().max(2048),
   userAgent: z.string().max(1000),
   viewport: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }),
   timestamp: z.string(),
