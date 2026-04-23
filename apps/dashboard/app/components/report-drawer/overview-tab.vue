@@ -19,7 +19,15 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
 <template>
   <div class="p-5 space-y-4">
     <UCard v-if="report.thumbnailUrl" :ui="{ body: 'p-0 overflow-hidden' }" class="overflow-hidden">
-      <img :src="report.thumbnailUrl" alt="Report screenshot" class="w-full block" />
+      <!-- Cap the image at 60vh with a dark letterbox so tall portrait screenshots -->
+      <!-- don't dominate the drawer; landscape still fills width naturally. -->
+      <div class="flex items-center justify-center bg-neutral-900 dark:bg-neutral-950 max-h-[60vh]">
+        <img
+          :src="report.thumbnailUrl"
+          alt="Report screenshot"
+          class="max-h-[60vh] max-w-full object-contain block"
+        />
+      </div>
     </UCard>
 
     <UCard>
