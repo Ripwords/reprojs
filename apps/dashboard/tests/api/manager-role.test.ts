@@ -127,7 +127,7 @@ describe("manager role — allowed actions", () => {
     const { status } = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
       method: "PATCH",
       headers: { cookie },
-      body: JSON.stringify({ assigneeId: managerId }),
+      body: JSON.stringify({ assigneeIds: [managerId] }),
     })
     expect(status).toBe(200)
   })

@@ -13,7 +13,7 @@ import {
   truncateReports,
 } from "../helpers"
 import { db } from "../../server/db"
-import { projectMembers, reportEvents, reports } from "../../server/db/schema"
+import { projectMembers, reportAssignees, reportEvents, reports } from "../../server/db/schema"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
@@ -22,7 +22,7 @@ const ORIGIN = "http://localhost:4000"
 
 async function seedReport(
   projectId: string,
-  overrides: Partial<typeof reports.$inferInsert> = {},
+  overrides: Omit<Partial<typeof reports.$inferInsert>, "assigneeId"> = {},
 ): Promise<string> {
   const [row] = await db
     .insert(reports)
@@ -41,7 +41,6 @@ async function seedReport(
       status: overrides.status ?? "open",
       priority: overrides.priority ?? "normal",
       tags: overrides.tags ?? [],
-      assigneeId: overrides.assigneeId ?? null,
     })
     .returning({ id: reports.id })
   return row?.id
@@ -87,15 +86,16 @@ describe("ticket inbox API", () => {
       allowedOrigins: [ORIGIN],
       createdBy: owner,
     })
-    await seedReport(pid, { assigneeId: owner })
-    await seedReport(pid, { assigneeId: null })
+    const r1 = await seedReport(pid)
+    await db.insert(reportAssignees).values({ reportId: r1, userId: owner })
+    await seedReport(pid) // unassigned
     const cookie = await signIn("owner@example.com")
     const { status, body } = await apiFetch<{
-      items: Array<{ assignee: { id: string } | null }>
+      items: Array<{ assignees: Array<{ id: string | null }> }>
     }>(`/api/projects/${pid}/reports?assignee=me`, { headers: { cookie } })
     expect(status).toBe(200)
     expect(body.items.length).toBe(1)
-    expect(body.items[0]?.assignee?.id).toBe(owner)
+    expect(body.items[0]?.assignees[0]?.id).toBe(owner)
   })
 
   test("list filters by tag AND semantics", async () => {
@@ -194,12 +194,12 @@ describe("ticket inbox API", () => {
     await apiFetch(`/api/projects/${pid}/reports/${rid}`, {
       method: "PATCH",
       headers: { cookie },
-      body: { status: "in_progress", priority: "high", assigneeId: dev },
+      body: { status: "in_progress", priority: "high", assigneeIds: [dev] },
     })
     const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, rid))
     expect(evs.length).toBe(3)
     expect(new Set(evs.map((e) => e.kind))).toEqual(
-      new Set(["status_changed", "priority_changed", "assignee_changed"]),
+      new Set(["status_changed", "priority_changed", "assignee_added"]),
     )
   })
 
@@ -283,7 +283,7 @@ describe("ticket inbox API", () => {
     const { status } = await apiFetch(`/api/projects/${pid}/reports/${rid}`, {
       method: "PATCH",
       headers: { cookie },
-      body: { assigneeId: viewer },
+      body: { assigneeIds: [viewer] },
     })
     expect(status).toBe(400)
   })
