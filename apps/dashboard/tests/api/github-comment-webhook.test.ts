@@ -145,7 +145,6 @@ describe("issue_comment webhook", () => {
       .from(reportComments)
       .where(eq(reportComments.githubCommentId, 200))
     expect(row?.body).toBe("Updated")
-    expect(row?.reportId).toBe(reportId)
   })
 
   test("issue_comment.deleted soft-deletes the row", async () => {

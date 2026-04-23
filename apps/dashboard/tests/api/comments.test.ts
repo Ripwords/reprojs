@@ -137,7 +137,7 @@ describe("comments API", () => {
         body: JSON.stringify({ body: "Hello from dashboard" }),
       },
     )
-    expect(status).toBe(200)
+    expect(status).toBe(201)
     expect(body.comment.source).toBe("dashboard")
 
     // Verify the row is in the database
@@ -168,7 +168,7 @@ describe("comments API", () => {
         body: JSON.stringify({ body: "Synced comment" }),
       },
     )
-    expect(status).toBe(200)
+    expect(status).toBe(201)
 
     // Should have a sync job queued
     const [job] = await db

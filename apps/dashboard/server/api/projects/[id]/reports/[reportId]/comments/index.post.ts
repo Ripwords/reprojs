@@ -1,5 +1,11 @@
 // apps/dashboard/server/api/projects/[id]/reports/[reportId]/comments/index.post.ts
-import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
+import {
+  createError,
+  defineEventHandler,
+  getRouterParam,
+  readValidatedBody,
+  setResponseStatus,
+} from "h3"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "../../../../../../db"
@@ -49,5 +55,6 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  setResponseStatus(event, 201)
   return { comment: inserted }
 })

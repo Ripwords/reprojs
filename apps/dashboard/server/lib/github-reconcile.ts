@@ -411,7 +411,13 @@ export async function reconcileCommentUpsertJob(
     throw new ReconcileSkipped("no connected integration for comment upsert")
   }
 
-  const octokit = await getRawOctokit(row.gi.installationId)
+  // Use getGithubClient so that test overrides (__setClientOverride) are respected.
+  const client = await getGithubClient(row.gi.installationId)
+  const extClient = client as unknown as ExtendedClient
+  const octokit =
+    typeof extClient.getRawOctokit === "function"
+      ? await extClient.getRawOctokit()
+      : await getRawOctokit(row.gi.installationId)
   await reconcileCommentUpsert(commentId, octokit, row.gi)
 }
 
@@ -431,7 +437,13 @@ export async function reconcileCommentDeleteJob(
     throw new ReconcileSkipped("no connected integration for comment delete")
   }
 
-  const octokit = await getRawOctokit(row.gi.installationId)
+  // Use getGithubClient so that test overrides (__setClientOverride) are respected.
+  const client = await getGithubClient(row.gi.installationId)
+  const extClient = client as unknown as ExtendedClient
+  const octokit =
+    typeof extClient.getRawOctokit === "function"
+      ? await extClient.getRawOctokit()
+      : await getRawOctokit(row.gi.installationId)
   await reconcileCommentDelete(commentId, githubCommentId, reportId, octokit, row.gi)
 }
 

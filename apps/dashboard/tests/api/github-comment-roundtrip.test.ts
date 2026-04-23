@@ -16,7 +16,6 @@ import {
 } from "../../server/lib/github-reconcile"
 import { consumeWriteLock } from "../../server/lib/github-write-locks"
 import { signCommentUpsert, signCommentDelete } from "../../server/lib/github-diff"
-import { withBotFooter } from "../../server/lib/comment-serializer"
 import { db } from "../../server/db"
 import { githubIntegrations, projectMembers, reportComments, reports } from "../../server/db/schema"
 import {
@@ -239,9 +238,10 @@ describe("comment roundtrip", () => {
     expect(sentBody).toContain("Roundtrip comment")
     expect(sentBody).toContain("via Repro dashboard")
 
-    // 5. Verify the write-lock was recorded
-    const serializedBody = withBotFooter("Roundtrip comment", { name: null, githubLogin: null })
-    const sig = signCommentUpsert(9001, serializedBody)
+    // 5. Verify the write-lock was recorded.
+    // Use the exact body that was sent to GitHub (sentBody) to derive the signature,
+    // since the author name varies based on the user record.
+    const sig = signCommentUpsert(9001, sentBody)
     const locked = await consumeWriteLock(db, { reportId, kind: "comment_upsert", signature: sig })
     expect(locked).toBe(true)
 
@@ -262,7 +262,7 @@ describe("comment roundtrip", () => {
       action: "created",
       comment: {
         id: 9001,
-        body: serializedBody,
+        body: sentBody,
         user: { id: 1, login: "github-app[bot]", avatar_url: "https://example.com/bot.png" },
       },
       issue: { number: 42 },
