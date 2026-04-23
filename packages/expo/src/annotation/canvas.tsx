@@ -1,10 +1,12 @@
 import React, { useState } from "react"
 import { View } from "react-native"
 import { GestureDetector, Gesture } from "react-native-gesture-handler"
-import Svg, { Path } from "react-native-svg"
+import Svg from "react-native-svg"
 import type { AnnotationStore } from "./store"
 import type { Shape, Tool, PenPoint } from "@reprojs/sdk-utils"
 import { newShapeId } from "@reprojs/sdk-utils"
+import { useAnnotationShapes } from "./use-shapes"
+import { renderShape } from "./render-shape"
 
 interface Props {
   width: number
@@ -13,34 +15,57 @@ interface Props {
   color: string
   strokeWidth: number
   store: AnnotationStore
+  onTextTap?: (point: { x: number; y: number }) => void
 }
 
-export function AnnotationCanvas({ width, height, tool, color, strokeWidth, store }: Props) {
-  const [draft, setDraft] = useState<PenPoint[]>([])
+export function AnnotationCanvas({
+  width,
+  height,
+  tool,
+  color,
+  strokeWidth,
+  store,
+  onTextTap,
+}: Props) {
+  const shapes = useAnnotationShapes(store)
+  const [draftPoints, setDraftPoints] = useState<PenPoint[]>([])
 
   const pan = Gesture.Pan()
+    .minDistance(2)
     .onStart((e) => {
-      setDraft([{ x: e.x, y: e.y, p: 1 }])
+      if (tool === "text") return
+      setDraftPoints([{ x: e.x, y: e.y, p: 1 }])
     })
     .onUpdate((e) => {
-      setDraft((d) => [...d, { x: e.x, y: e.y, p: 1 }])
+      if (tool === "text") return
+      setDraftPoints((d) => [...d, { x: e.x, y: e.y, p: 1 }])
     })
     .onEnd(() => {
-      if (draft.length === 0) {
-        setDraft([])
+      if (tool === "text") return
+      if (draftPoints.length === 0) {
+        setDraftPoints([])
         return
       }
-      const shape = buildShape(tool, draft, color, strokeWidth)
+      const shape = buildShape(tool, draftPoints, color, strokeWidth)
       if (shape) store.addShape(shape)
-      setDraft([])
+      setDraftPoints([])
     })
 
+  const tap = Gesture.Tap().onEnd((e) => {
+    if (tool !== "text") return
+    onTextTap?.({ x: e.x, y: e.y })
+  })
+
+  const gesture = Gesture.Race(pan, tap)
+
+  const draftShape = buildDraftShape(tool, draftPoints, color, strokeWidth)
+
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={gesture}>
       <View style={{ width, height }}>
         <Svg width={width} height={height}>
-          {store.snapshot().map((s, i) => renderCommitted(s, i))}
-          {draft.length > 0 && renderDraft(tool, draft, color, strokeWidth)}
+          {shapes.map((s, i) => renderShape(s, i))}
+          {draftShape !== null ? renderShape(draftShape, "draft") : null}
         </Svg>
       </View>
     </GestureDetector>
@@ -81,38 +106,43 @@ function buildShape(
       h: Math.abs(last.y - first.y),
     }
   }
-  if (tool === "text")
-    return {
-      kind: "text",
-      id,
-      color,
-      strokeWidth,
-      x: first.x,
-      y: first.y,
-      w: 120,
-      h: 24,
-      content: "Tap to edit",
-      fontSize: 16,
-    }
   return null
 }
 
-function renderCommitted(s: Shape, key: number): React.ReactNode {
-  if (s.kind === "pen") {
-    const d = s.points.map((pt, i) => `${i === 0 ? "M" : "L"}${pt.x},${pt.y}`).join(" ")
-    return <Path key={key} d={d} stroke={s.color} strokeWidth={s.strokeWidth} fill="none" />
-  }
-  // v1: only pen strokes rendered in-canvas; other shapes appear via the flatten view on submit.
-  return null
-}
-
-function renderDraft(
+function buildDraftShape(
   tool: Tool,
   points: PenPoint[],
   color: string,
   strokeWidth: number,
-): React.ReactNode {
-  if (tool !== "pen") return null
-  const d = points.map((pt, i) => `${i === 0 ? "M" : "L"}${pt.x},${pt.y}`).join(" ")
-  return <Path d={d} stroke={color} strokeWidth={strokeWidth} fill="none" />
+): Shape | null {
+  if (tool === "text") return null
+  const first = points[0]
+  const last = points[points.length - 1]
+  if (!first || !last) return null
+  const id = "__draft__"
+  if (tool === "pen") return { kind: "pen", id, color, strokeWidth, points }
+  if (tool === "arrow")
+    return {
+      kind: "arrow",
+      id,
+      color,
+      strokeWidth,
+      x1: first.x,
+      y1: first.y,
+      x2: last.x,
+      y2: last.y,
+    }
+  if (tool === "rect" || tool === "highlight") {
+    return {
+      kind: tool,
+      id,
+      color,
+      strokeWidth,
+      x: Math.min(first.x, last.x),
+      y: Math.min(first.y, last.y),
+      w: Math.abs(last.x - first.x),
+      h: Math.abs(last.y - first.y),
+    }
+  }
+  return null
 }

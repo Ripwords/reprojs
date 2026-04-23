@@ -40,3 +40,32 @@ test("clear empties and resets stacks", () => {
   s.redo()
   expect(s.snapshot()).toEqual([])
 })
+
+test("canUndo is false on empty store, true after addShape", () => {
+  const s = createAnnotationStore()
+  expect(s.canUndo()).toBe(false)
+  s.addShape(rect())
+  expect(s.canUndo()).toBe(true)
+  s.undo()
+  expect(s.canUndo()).toBe(false)
+})
+
+test("canRedo is false initially, true after undo, false after redo", () => {
+  const s = createAnnotationStore()
+  expect(s.canRedo()).toBe(false)
+  s.addShape(rect())
+  expect(s.canRedo()).toBe(false)
+  s.undo()
+  expect(s.canRedo()).toBe(true)
+  s.redo()
+  expect(s.canRedo()).toBe(false)
+})
+
+test("canRedo is false after addShape clears redo stack", () => {
+  const s = createAnnotationStore()
+  s.addShape(rect("#f00", 0))
+  s.undo()
+  expect(s.canRedo()).toBe(true)
+  s.addShape(rect("#0f0", 1))
+  expect(s.canRedo()).toBe(false)
+})

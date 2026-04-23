@@ -7,6 +7,8 @@ export interface AnnotationStore {
   clear: () => void
   snapshot: () => Shape[]
   subscribe: (fn: () => void) => () => void
+  canUndo: () => boolean
+  canRedo: () => boolean
 }
 
 export function createAnnotationStore(): AnnotationStore {
@@ -48,5 +50,7 @@ export function createAnnotationStore(): AnnotationStore {
         listeners.delete(fn)
       }
     },
+    canUndo: () => shapes.length > 0,
+    canRedo: () => redoStack.length > 0,
   }
 }
