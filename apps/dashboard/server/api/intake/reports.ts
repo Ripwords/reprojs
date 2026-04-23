@@ -28,16 +28,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const rawOrigin = getHeader(event, "origin") ?? ""
-  // M2: reject when there is no browser-set Origin at all. The whole
-  // security model leans on the browser attaching Origin to the request;
-  // a request without one is a non-browser client that we deliberately
-  // don't accept (direct-embed SDK always attaches Origin for POSTs; the
-  // extension SW always attaches `chrome-extension://<id>`). Refuse
-  // before emitting any ACAO so a client cannot coax us into echoing an
-  // empty/arbitrary value.
-  if (!rawOrigin) {
-    throw createError({ statusCode: 403, statusMessage: "Origin header required" })
-  }
   // When an extension service worker posts on behalf of a tester, the
   // browser sets Origin to chrome-extension://<id> — unforgeable from
   // a regular webpage. In that narrow case, fall back to the page origin
@@ -46,16 +36,13 @@ export default defineEventHandler(async (event) => {
   // fallback is only reachable from an installed extension, which is a
   // much higher bar than the standard leaked-project-key threat the
   // Origin allowlist is meant to defend against.
-  const origin = rawOrigin.startsWith("chrome-extension://")
-    ? (getHeader(event, "x-repro-origin") ?? "")
-    : rawOrigin
-  // M3 belt-and-braces: even if allowedOrigins somehow contained "" in
-  // persisted data, the empty X-Repro-Origin fallback must not let a
-  // chrome-extension:// source slip through. isOriginAllowed below also
-  // rejects empty, but guarding here makes the intent unambiguous.
-  if (!origin) {
-    throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
-  }
+  // If rawOrigin is empty (mobile/Expo — no browser-set Origin), leave
+  // origin as "" and defer the allow/reject decision until after parsing,
+  // where we can check parsed.context.source.
+  const origin =
+    rawOrigin.length > 0 && rawOrigin.startsWith("chrome-extension://")
+      ? (getHeader(event, "x-repro-origin") ?? "")
+      : rawOrigin
   // TRUST_XFF is OFF by default — a public deployment must not be trivially
   // rate-limit-bypassed via a spoofed X-Forwarded-For header.
   const ip = getRequestIP(event, { xForwardedFor: env.TRUST_XFF }) ?? "unknown"
@@ -95,10 +82,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "Invalid project key" })
   }
 
+  const idempotencyKey = getHeader(event, "idempotency-key") ?? null
+
   // Origin allowlist MUST be checked before the rate limiter takes, otherwise
   // an attacker with just a leaked project key can burn the legitimate SDK's
   // quota from any origin (including origins not on the allowlist).
-  if (!isOriginAllowed(origin, project.allowedOrigins)) {
+  // For Expo (mobile) callers there is no browser-set Origin — allow empty
+  // origin only when parsed.context.source === "expo".
+  const allowEmptyOrigin = parsed.context.source === "expo"
+  if (!isOriginAllowed(origin, project.allowedOrigins, { allowEmpty: allowEmptyOrigin })) {
     // Deliberately do NOT emit ACAO here — cross-origin scripts cannot read
     // this 403 body, which removes the cross-origin enumeration oracle.
     throw createError({ statusCode: 403, statusMessage: "Origin not allowed" })
@@ -109,9 +101,26 @@ export default defineEventHandler(async (event) => {
   // Use the RAW origin for CORS — the browser checks ACAO against the fetch
   // client's actual origin, which for an extension SW proxy is
   // chrome-extension://<id>, not the page-origin fallback we accepted above.
-  // rawOrigin is guaranteed non-empty by the guard at the top of this
-  // handler; never echo client-supplied X-Repro-Origin as ACAO.
-  applyIntakePostCors(event, rawOrigin)
+  // For Expo (no browser), rawOrigin is empty — skip ACAO entirely.
+  if (rawOrigin) {
+    applyIntakePostCors(event, rawOrigin)
+  }
+
+  // Idempotency short-circuit: if a client replays a request with the same
+  // Idempotency-Key for this project, return the existing report id without
+  // re-inserting. This runs BEFORE honeypot/dwell gates so legitimate mobile
+  // retries always get a stable response even if those gates would reject.
+  if (idempotencyKey) {
+    const [existing] = await db
+      .select({ id: reports.id })
+      .from(reports)
+      .where(and(eq(reports.projectId, project.id), eq(reports.idempotencyKey, idempotencyKey)))
+      .limit(1)
+    if (existing) {
+      event.node.res.statusCode = 200
+      return { id: existing.id }
+    }
+  }
 
   // S1: Honeypot check BEFORE rate-limit takes. Bots that set _hp must not
   // consume quota — tarpit them cheaply without burning the project's budget.
@@ -138,7 +147,7 @@ export default defineEventHandler(async (event) => {
   const keyLimiter = await (isAnon ? getAnonKeyLimiter() : getKeyLimiter())
   const ipLimiter = await getIpLimiter()
   const [keyTake, ipTake] = await Promise.all([
-    keyLimiter.take(`${isAnon ? "anon" : "key"}:${project.id}`),
+    keyLimiter.take(`${isAnon ? "anon" : "key"}:${project.id}:${parsed.context.source}`),
     ipLimiter.take(`ip:${ip}`),
   ])
   if (!keyTake.allowed || !ipTake.allowed) {
@@ -197,6 +206,9 @@ export default defineEventHandler(async (event) => {
         context: { ...parsed.context, ...(parsed.metadata ? { metadata: parsed.metadata } : {}) },
         origin,
         ip,
+        source: parsed.context.source,
+        devicePlatform: parsed.context.systemInfo?.devicePlatform ?? null,
+        idempotencyKey,
       })
       .returning()
     return { overCap: false as const, report: inserted }

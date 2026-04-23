@@ -12,6 +12,7 @@ import { projects, reports, reportAttachments } from "../../server/db/schema"
 await setup({ server: true, port: 3000, host: "localhost" })
 setDefaultTimeout(15000)
 
+const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
 const PK = "rp_pk_ABCDEF1234567890abcdef12"
 const BAD_PK = "rp_pk_ZZZZZZZZZZZZZZZZZZZZZZZZ"
 const ORIGIN = "http://localhost:4000"
@@ -252,5 +253,155 @@ describe("intake API", () => {
       ),
     })
     expect(authed.status).toBe(201)
+  })
+})
+
+describe("intake API — mobile", () => {
+  afterEach(async () => {
+    await truncateReports()
+    await truncateDomain()
+  })
+
+  test("mobile intake with source=expo and no Origin header is accepted", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    await seedProject({
+      name: "Demo Mobile",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+
+    const reportJson = JSON.stringify({
+      projectKey: PK,
+      title: "Crash on settings",
+      context: {
+        source: "expo",
+        pageUrl: "myapp://settings",
+        userAgent: "Expo/53 iOS 17.4",
+        viewport: { w: 390, h: 844 },
+        timestamp: new Date().toISOString(),
+      },
+      _dwellMs: 1500,
+    })
+
+    const res = await fetch(`${BASE_URL}/api/intake/reports`, {
+      method: "POST",
+      // No Origin header
+      body: buildMultipart(reportJson),
+    })
+    expect(res.status).toBe(201)
+  })
+
+  test("web intake with no Origin is still rejected", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+
+    const res = await fetch(`${BASE_URL}/api/intake/reports`, {
+      method: "POST",
+      body: buildMultipart(buildReportJSON(PK)),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  test("Idempotency-Key causes second submit to return same id without insert", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    await seedProject({
+      name: "Demo Idem",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+    const key = "01J9ZZABCDEF1234567890WXYZ"
+
+    const bodyJson = JSON.stringify({
+      projectKey: PK,
+      title: "first",
+      context: {
+        source: "expo",
+        pageUrl: "myapp://x",
+        userAgent: "u",
+        viewport: { w: 1, h: 1 },
+        timestamp: new Date().toISOString(),
+      },
+      _dwellMs: 1500,
+    })
+
+    const first = await fetch(`${BASE_URL}/api/intake/reports`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: buildMultipart(bodyJson),
+    })
+    expect(first.status).toBe(201)
+    const firstId = ((await first.json()) as { id: string }).id
+
+    const second = await fetch(`${BASE_URL}/api/intake/reports`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: buildMultipart(bodyJson),
+    })
+    expect(second.status).toBe(200)
+    expect(((await second.json()) as { id: string }).id).toBe(firstId)
+
+    const [row] = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(reports)
+      .where(sql`project_id = (SELECT id FROM projects WHERE public_key = ${PK})`)
+    expect(row.c).toBe(1)
+  })
+
+  test("row persists devicePlatform and source on mobile intake", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    await seedProject({
+      name: "Demo Persist",
+      publicKey: PK,
+      allowedOrigins: [],
+      createdBy: admin,
+    })
+
+    const reportJson = JSON.stringify({
+      projectKey: PK,
+      title: "x",
+      context: {
+        source: "expo",
+        pageUrl: "myapp://x",
+        userAgent: "u",
+        viewport: { w: 1, h: 1 },
+        timestamp: new Date().toISOString(),
+        systemInfo: {
+          userAgent: "u",
+          platform: "android",
+          devicePlatform: "android",
+          language: "en",
+          timezone: "UTC",
+          timezoneOffset: 0,
+          viewport: { w: 1, h: 1 },
+          screen: { w: 1, h: 1 },
+          dpr: 2,
+          online: true,
+          pageUrl: "myapp://x",
+          timestamp: new Date().toISOString(),
+        },
+      },
+      _dwellMs: 1500,
+    })
+
+    const res = await fetch(`${BASE_URL}/api/intake/reports`, {
+      method: "POST",
+      body: buildMultipart(reportJson),
+    })
+    expect(res.status).toBe(201)
+    const id = ((await res.json()) as { id: string }).id
+
+    const [row] = await db
+      .select({ source: reports.source, devicePlatform: reports.devicePlatform })
+      .from(reports)
+      .where(sql`id = ${id}`)
+    expect(row.source).toBe("expo")
+    expect(row.devicePlatform).toBe("android")
   })
 })
