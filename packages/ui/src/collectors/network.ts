@@ -1,5 +1,5 @@
 // packages/ui/src/collectors/network.ts
-import { RingBuffer } from "./ring-buffer"
+import { RingBuffer } from "@reprojs/sdk-utils"
 import { redactBody, redactHeaders, redactUrl } from "./redact"
 import { DEFAULT_STRING_REDACTORS, scrubString } from "./serialize"
 
