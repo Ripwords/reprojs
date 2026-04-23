@@ -13,6 +13,14 @@ import type {
   UpdateLabelsInput,
 } from "./types"
 import { listRepoLabels, listAssignableUsers, listMilestones } from "./repo-read"
+export {
+  updateIssueTitle,
+  updateIssueMilestone,
+  addAssignees,
+  removeAssignees,
+  updateIssueState,
+} from "./issue-writes"
+export type { IssueStateUpdate } from "./issue-writes"
 
 export function createInstallationClient(
   opts: InstallationClientOptions,
