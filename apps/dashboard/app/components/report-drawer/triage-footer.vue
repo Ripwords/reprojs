@@ -11,8 +11,12 @@ import type {
   ReportStatus,
   ReportSummaryDTO,
 } from "@reprojs/shared"
+import LabelsPicker from "./pickers/labels-picker.vue"
+import AssigneesPicker from "./pickers/assignees-picker.vue"
+import MilestonePicker from "./pickers/milestone-picker.vue"
 import UnlinkDialog from "~/components/integrations/github/unlink-dialog.vue"
 import { safeHref } from "~/composables/use-safe-href"
+import { useGithubIntegration } from "~/composables/use-github-integration"
 
 interface Props {
   projectId: string
@@ -41,6 +45,11 @@ const { data: githubConfig } = useApi<GithubConfigDTO>(
 const githubReady = computed(
   () => Boolean(githubConfig.value?.installed) && githubConfig.value?.status === "connected",
 )
+
+// Per-project integration state — drives the live picker section
+const projectIdRef = toRef(() => props.projectId)
+const { state: integrationState } = useGithubIntegration(projectIdRef)
+const isLinked = computed(() => integrationState.value.isLinked)
 
 const tagDraft = ref("")
 const posting = ref(false)
@@ -209,14 +218,35 @@ const open = reactive({
         </div>
         <div class="flex items-center gap-3">
           <label class="w-20 shrink-0 text-xs font-medium text-muted">Assignee</label>
-          <USelectMenu
-            v-model="primaryAssignee"
-            :items="assigneeItems"
-            value-key="value"
-            size="sm"
-            class="flex-1 min-w-0"
-            :disabled="!canEdit || posting"
-          />
+          <template v-if="isLinked">
+            <AssigneesPicker
+              :project-id="projectId"
+              :model-value="{
+                dashboardUserIds: report.assignees.filter((a) => a.id).map((a) => a.id as string),
+                githubLogins: report.assignees
+                  .filter((a) => !a.id && a.githubLogin)
+                  .map((a) => a.githubLogin as string),
+              }"
+              :disabled="!canEdit || posting"
+              class="flex-1 min-w-0"
+              @update:model-value="
+                patch({
+                  assigneeIds: $event.dashboardUserIds,
+                  githubAssigneeLogins: $event.githubLogins,
+                })
+              "
+            />
+          </template>
+          <template v-else>
+            <USelectMenu
+              v-model="primaryAssignee"
+              :items="assigneeItems"
+              value-key="value"
+              size="sm"
+              class="flex-1 min-w-0"
+              :disabled="!canEdit || posting"
+            />
+          </template>
         </div>
         <div class="flex items-center gap-3">
           <label class="w-20 shrink-0 text-xs font-medium text-muted">Priority</label>
@@ -229,13 +259,32 @@ const open = reactive({
             :disabled="!canEdit || posting"
           />
         </div>
+        <template v-if="isLinked">
+          <div class="flex items-center gap-3">
+            <label class="w-20 shrink-0 text-xs font-medium text-muted">Milestone</label>
+            <MilestonePicker
+              :project-id="projectId"
+              :model-value="
+                report.milestoneNumber !== null && report.milestoneTitle !== null
+                  ? {
+                      number: report.milestoneNumber as number,
+                      title: report.milestoneTitle as string,
+                    }
+                  : null
+              "
+              :disabled="!canEdit || posting"
+              class="flex-1 min-w-0"
+              @update:model-value="patch({ milestone: $event })"
+            />
+          </div>
+        </template>
       </div>
     </section>
 
     <div class="border-t border-default/60" />
 
-    <!-- Tags — proper chips with hashtag + dismiss, input lives in the
-         same row so the editor feels contiguous with the tag pile. -->
+    <!-- Tags / Labels — when repo-linked, shows the live label picker;
+         otherwise the manual tag-chip editor. -->
     <section>
       <button
         type="button"
@@ -243,41 +292,53 @@ const open = reactive({
         :aria-expanded="open.tags"
         @click="open.tags = !open.tags"
       >
-        <span>Tags</span>
+        <span>{{ isLinked ? "Labels" : "Tags" }}</span>
         <UIcon
           name="i-heroicons-chevron-down"
           class="size-4 transition-transform"
           :class="open.tags ? '' : '-rotate-90'"
         />
       </button>
-      <div v-show="open.tags" class="flex flex-wrap gap-1.5 items-center">
-        <span
-          v-for="t in report.tags"
-          :key="t"
-          :class="[
-            'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
-            'bg-primary/10 text-primary ring-1 ring-primary/20',
-            canEdit ? 'cursor-pointer hover:bg-primary/15 transition-colors' : '',
-          ]"
-          @click="canEdit ? removeTag(t) : null"
-        >
-          <UIcon name="i-heroicons-hashtag" class="size-3" />
-          <span>{{ t }}</span>
-          <UIcon v-if="canEdit" name="i-heroicons-x-mark" class="size-3 opacity-60" />
-        </span>
-        <UInput
-          v-if="canEdit"
-          v-model="tagDraft"
-          placeholder="Add tag…"
-          size="sm"
-          variant="soft"
-          icon="i-heroicons-plus"
-          class="w-28"
-          @keydown.enter.prevent="addTag"
-        />
-        <span v-if="!canEdit && report.tags.length === 0" class="text-xs text-muted italic">
-          None
-        </span>
+      <div v-show="open.tags">
+        <template v-if="isLinked">
+          <LabelsPicker
+            :project-id="projectId"
+            :model-value="report.tags"
+            :disabled="!canEdit || posting"
+            @update:model-value="patch({ tags: $event })"
+          />
+        </template>
+        <template v-else>
+          <div class="flex flex-wrap gap-1.5 items-center">
+            <span
+              v-for="t in report.tags"
+              :key="t"
+              :class="[
+                'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
+                'bg-primary/10 text-primary ring-1 ring-primary/20',
+                canEdit ? 'cursor-pointer hover:bg-primary/15 transition-colors' : '',
+              ]"
+              @click="canEdit ? removeTag(t) : null"
+            >
+              <UIcon name="i-heroicons-hashtag" class="size-3" />
+              <span>{{ t }}</span>
+              <UIcon v-if="canEdit" name="i-heroicons-x-mark" class="size-3 opacity-60" />
+            </span>
+            <UInput
+              v-if="canEdit"
+              v-model="tagDraft"
+              placeholder="Add tag…"
+              size="sm"
+              variant="soft"
+              icon="i-heroicons-plus"
+              class="w-28"
+              @keydown.enter.prevent="addTag"
+            />
+            <span v-if="!canEdit && report.tags.length === 0" class="text-xs text-muted italic">
+              None
+            </span>
+          </div>
+        </template>
       </div>
     </section>
 
