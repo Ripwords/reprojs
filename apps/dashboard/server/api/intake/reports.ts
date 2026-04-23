@@ -69,8 +69,20 @@ export default defineEventHandler(async (event) => {
   let parsed: ReturnType<typeof ReportIntakeInput.parse>
   try {
     parsed = ReportIntakeInput.parse(JSON.parse(reportPart.data.toString("utf8")))
-  } catch {
-    throw createError({ statusCode: 400, statusMessage: "Invalid report payload" })
+  } catch (err) {
+    // Log the zod issues server-side so SDK authors can see exactly which field failed.
+    // Safe to log at warn level — payloads that reach here have already passed origin +
+    // project-key checks, so they're from legit callers submitting malformed shapes.
+    const issues =
+      err && typeof err === "object" && "issues" in err
+        ? (err as { issues: unknown }).issues
+        : String(err)
+    console.warn("[intake] invalid report payload", JSON.stringify(issues, null, 2))
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Invalid report payload",
+      data: { issues },
+    })
   }
 
   const [project] = await db
