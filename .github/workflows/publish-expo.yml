@@ -85,7 +85,11 @@ jobs:
             echo "Tag $TAG expects version $TAG_VERSION but packages/expo is at $PKG_VERSION"
             exit 1
           fi
+      # Gated on push event so workflow_dispatch acts as a smoke test:
+      # exercises the OIDC handshake + verify chain without trying to
+      # republish the same version (which npm rejects with EPUBLISHCONFLICT).
       - name: Publish to npm
+        if: github.event_name == 'push'
         working-directory: packages/expo
         run: npm publish --provenance --access public
       - name: Create GitHub Release
