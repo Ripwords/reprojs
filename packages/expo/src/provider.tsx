@@ -28,6 +28,7 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
     config.metadata,
   )
   const [wizardOpen, setWizardOpen] = useState(false)
+  const wizardOpenedAtRef = useRef<number | null>(null)
   const [wizardInit, setWizardInit] = useState<{
     initialTitle?: string
     initialDescription?: string
@@ -88,6 +89,7 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
 
   async function openWizard(opts?: { initialTitle?: string; initialDescription?: string }) {
     setWizardInit(opts ?? {})
+    wizardOpenedAtRef.current = Date.now()
     if (!rootRef.current) {
       console.warn("[repro] rootRef not mounted — opening wizard without screenshot")
       setScreenshot(null)
@@ -114,6 +116,10 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
       ? await collectSystemInfo({ pageUrl: "app://current" })
       : undefined
     const now = new Date().toISOString()
+    // Anti-abuse gate on intake requires a dwell > INTAKE_MIN_DWELL_MS (1000 by default).
+    // Measure from wizard open → submit. Clamp so clock skew / null resets don't send 0.
+    const dwellStart = wizardOpenedAtRef.current
+    const dwellMs = dwellStart !== null ? Math.max(1000, Date.now() - dwellStart) : 1000
     const input: ReportIntakeInput = {
       projectKey: config.projectKey,
       title: res.title,
@@ -129,6 +135,7 @@ export function ReproProvider({ config: rawConfig, children }: Props) {
         systemInfo,
       },
       metadata,
+      _dwellMs: dwellMs,
     }
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
     await queueRef.current.enqueue({
