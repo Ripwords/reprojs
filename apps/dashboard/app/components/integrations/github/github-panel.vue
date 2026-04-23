@@ -19,6 +19,7 @@ const selectedRepo = ref({ owner: "", name: "" })
 const labelsText = ref("")
 const assigneesText = ref("")
 const pushOnEdit = ref(false)
+const autoCreateOnIntake = ref(false)
 const saving = ref(false)
 const installing = ref(false)
 const unlinkOpen = ref(false)
@@ -31,6 +32,7 @@ watch(
     labelsText.value = v.defaultLabels.join(", ")
     assigneesText.value = v.defaultAssignees.join(", ")
     pushOnEdit.value = v.pushOnEdit
+    autoCreateOnIntake.value = v.autoCreateOnIntake
   },
   { immediate: true },
 )
@@ -93,6 +95,7 @@ async function saveRepo() {
           .map((s) => s.trim())
           .filter(Boolean),
         pushOnEdit: pushOnEdit.value,
+        autoCreateOnIntake: autoCreateOnIntake.value,
       },
     })
     await refresh()
@@ -199,6 +202,25 @@ async function saveRepo() {
           <p class="text-sm font-medium text-default">Push edits to GitHub</p>
           <p class="text-xs text-muted">
             Sync priority, status, and tag changes back to the GitHub issue automatically.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <USwitch
+          v-model="autoCreateOnIntake"
+          :disabled="!selectedRepo.owner || !selectedRepo.name"
+        />
+        <div>
+          <p
+            class="text-sm font-medium"
+            :class="!selectedRepo.owner || !selectedRepo.name ? 'text-muted' : 'text-default'"
+          >
+            Automatically create a GitHub issue for every new report
+          </p>
+          <p class="text-xs text-muted">
+            When on, every report submitted via the SDK immediately becomes a linked GitHub issue.
+            Leave off for manual &ldquo;Create issue&rdquo; per report.
           </p>
         </div>
       </div>
