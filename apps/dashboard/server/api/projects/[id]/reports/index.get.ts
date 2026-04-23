@@ -1,27 +1,14 @@
 // apps/dashboard/server/api/projects/[id]/reports/index.get.ts
 import { defineEventHandler, getQuery, getRouterParam } from "h3"
-import {
-  type SQL,
-  and,
-  arrayContains,
-  count,
-  desc,
-  eq,
-  ilike,
-  inArray,
-  isNull,
-  or,
-  sql,
-} from "drizzle-orm"
+import { type SQL, and, arrayContains, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm"
 import {
   ReportPriority,
   ReportStatus,
-  type ReportAssigneeDTO,
-  type ReportContext,
   type ReportSummaryDTO,
+  type ReportContext,
 } from "@reprojs/shared"
 import { db } from "../../../../db"
-import { reportAttachments, reports } from "../../../../db/schema"
+import { reportAssignees, reportAttachments, reports } from "../../../../db/schema"
 import { user as userTable } from "../../../../db/schema/auth-schema"
 import { buildSortClause, resolveAssigneeFilter } from "../../../../lib/inbox-query"
 import { requireProjectRole } from "../../../../lib/permissions"
@@ -68,8 +55,23 @@ export default defineEventHandler(async (event) => {
     const userIds = assigneeFilters.filter((f) => f.type === "user").map((f) => f.userId)
     const wantUnassigned = assigneeFilters.some((f) => f.type === "null")
     const parts: ReturnType<typeof eq>[] = []
-    if (userIds.length) parts.push(inArray(reports.assigneeId, userIds))
-    if (wantUnassigned) parts.push(isNull(reports.assigneeId))
+    if (userIds.length) {
+      parts.push(
+        sql`exists (
+          select 1 from report_assignees
+          where report_assignees.report_id = ${reports.id}
+            and report_assignees.user_id = any(${userIds})
+        )`,
+      )
+    }
+    if (wantUnassigned) {
+      parts.push(
+        sql`not exists (
+          select 1 from report_assignees
+          where report_assignees.report_id = ${reports.id}
+        )`,
+      )
+    }
     if (parts.length === 1 && parts[0]) whereParts.push(parts[0])
     else if (parts.length > 1) {
       const combined = or(...parts)
@@ -102,7 +104,7 @@ export default defineEventHandler(async (event) => {
   const whereClause = and(...whereParts)
 
   // Count, main fetch, and facets all use the same whereClause — run concurrently.
-  const [countResult, rows, statusRows, priorityRows, assigneeRows, tagRows, sourceFacetRows] =
+  const [countResult, rows, statusRows, priorityRows, assigneeFacetRows, tagRows, sourceFacetRows] =
     await Promise.all([
       db.select({ total: count() }).from(reports).where(whereClause),
       db
@@ -118,15 +120,11 @@ export default defineEventHandler(async (event) => {
           tags: reports.tags,
           source: reports.source,
           devicePlatform: reports.devicePlatform,
-          assigneeId: reports.assigneeId,
-          assigneeName: userTable.name,
-          assigneeEmail: userTable.email,
           attachmentId: reportAttachments.id,
           githubIssueNumber: reports.githubIssueNumber,
           githubIssueUrl: reports.githubIssueUrl,
         })
         .from(reports)
-        .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
         .leftJoin(
           reportAttachments,
           and(eq(reportAttachments.reportId, reports.id), eq(reportAttachments.kind, "screenshot")),
@@ -145,17 +143,19 @@ export default defineEventHandler(async (event) => {
         .from(reports)
         .where(whereClause)
         .groupBy(reports.priority),
+      // Assignee facet: distinct reports per assignee user within project scope
       db
         .select({
-          id: reports.assigneeId,
+          userId: reportAssignees.userId,
           name: userTable.name,
           email: userTable.email,
-          c: count(),
+          c: sql<number>`count(distinct ${reportAssignees.reportId})`,
         })
-        .from(reports)
-        .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
-        .where(whereClause)
-        .groupBy(reports.assigneeId, userTable.name, userTable.email),
+        .from(reportAssignees)
+        .innerJoin(reports, eq(reports.id, reportAssignees.reportId))
+        .leftJoin(userTable, eq(userTable.id, reportAssignees.userId))
+        .where(eq(reports.projectId, id))
+        .groupBy(reportAssignees.userId, userTable.name, userTable.email),
       db
         .select({ name: sql<string>`unnest(${reports.tags})`.as("name"), c: count() })
         .from(reports)
@@ -180,6 +180,31 @@ export default defineEventHandler(async (event) => {
   // Determine which of the returned reports have a replay attachment.
   const reportIds = rows.map((r) => r.id)
   const replaySet = new Set<string>()
+
+  // Load assignees for all returned reports
+  const assigneeRowsForItems =
+    reportIds.length > 0
+      ? await db
+          .select({
+            reportId: reportAssignees.reportId,
+            userId: reportAssignees.userId,
+            githubLogin: reportAssignees.githubLogin,
+            githubAvatarUrl: reportAssignees.githubAvatarUrl,
+            name: userTable.name,
+            email: userTable.email,
+          })
+          .from(reportAssignees)
+          .leftJoin(userTable, eq(userTable.id, reportAssignees.userId))
+          .where(inArray(reportAssignees.reportId, reportIds))
+      : []
+
+  const assigneesByReport = new Map<string, typeof assigneeRowsForItems>()
+  for (const a of assigneeRowsForItems) {
+    const arr = assigneesByReport.get(a.reportId) ?? []
+    arr.push(a)
+    assigneesByReport.set(a.reportId, arr)
+  }
+
   if (reportIds.length > 0) {
     const replayRows = await db
       .select({ reportId: reportAttachments.reportId })
@@ -192,10 +217,13 @@ export default defineEventHandler(async (event) => {
 
   const items: ReportSummaryDTO[] = rows.map((r) => {
     const ctx = r.context as ReportContext
-    const assignee: ReportAssigneeDTO | null =
-      r.assigneeId && r.assigneeEmail
-        ? { id: r.assigneeId, name: r.assigneeName ?? null, email: r.assigneeEmail }
-        : null
+    const assignees = (assigneesByReport.get(r.id) ?? []).map((a) => ({
+      id: a.userId,
+      name: a.name ?? null,
+      email: a.email ?? null,
+      githubLogin: a.githubLogin,
+      githubAvatarUrl: a.githubAvatarUrl,
+    }))
     return {
       id: r.id,
       title: r.title,
@@ -216,7 +244,7 @@ export default defineEventHandler(async (event) => {
       devicePlatform: r.devicePlatform ?? null,
       githubIssueNumber: r.githubIssueNumber ?? null,
       githubIssueUrl: r.githubIssueUrl ?? null,
-      assignee,
+      assignees,
     }
   })
 
@@ -241,8 +269,8 @@ export default defineEventHandler(async (event) => {
     facets: {
       status: statusFacet,
       priority: priorityFacet,
-      assignees: assigneeRows.map((r) => ({
-        id: r.id,
+      assignees: assigneeFacetRows.map((r) => ({
+        id: r.userId,
         name: r.name ?? null,
         email: r.email ?? null,
         count: r.c,
