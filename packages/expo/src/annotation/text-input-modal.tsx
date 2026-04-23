@@ -25,7 +25,7 @@ export function TextInputModal({ visible, onSubmit, onCancel }: Props) {
   return (
     <Modal transparent visible={visible} onRequestClose={onCancel} animationType="fade">
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.5)",
