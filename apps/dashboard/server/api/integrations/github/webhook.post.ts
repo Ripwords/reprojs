@@ -3,7 +3,7 @@ import { createError, defineEventHandler, getHeader, readRawBody, setResponseSta
 import { and, eq } from "drizzle-orm"
 import { verifyWebhookSignature } from "@reprojs/integrations-github"
 import { db } from "../../../db"
-import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
+import { githubIntegrations, reportAssignees, reportEvents, reports } from "../../../db/schema"
 import { getWebhookSecret } from "../../../lib/github"
 import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
 import { githubCache } from "../../../lib/github-cache"
@@ -14,16 +14,51 @@ import {
   recordDelivery,
   isKnownInstallation,
 } from "../../../lib/github-webhook-auth"
+import {
+  signLabels,
+  signState,
+  signAssignees,
+  signMilestone,
+  signTitle,
+} from "../../../lib/github-diff"
+import { consumeWriteLock } from "../../../lib/github-write-locks"
+
+interface IssueAssignee {
+  login: string
+  id: number
+  avatar_url: string
+}
 
 interface IssuesPayload {
-  action: "opened" | "closed" | "reopened" | "edited" | "labeled" | "unlabeled" | "deleted" | string
+  action:
+    | "opened"
+    | "closed"
+    | "reopened"
+    | "edited"
+    | "labeled"
+    | "unlabeled"
+    | "assigned"
+    | "unassigned"
+    | "milestoned"
+    | "demilestoned"
+    | "deleted"
+    | string
   issue: {
     number: number
+    title: string
     state: "open" | "closed"
     state_reason?: "completed" | "not_planned" | null
     labels: Array<{ name: string }>
+    assignees?: IssueAssignee[]
+    milestone?: { number: number; title: string } | null
   }
+  changes?: {
+    title?: { from: string }
+    body?: { from: string }
+  }
+  assignee?: IssueAssignee | null
   repository: { name: string; owner: { login: string } }
+  installation?: { id: number }
 }
 
 interface InstallationPayload {
@@ -41,6 +76,57 @@ interface RepoEventPayload {
   action: string
   repository?: { name: string; owner: { login: string } }
   installation?: { id: number }
+}
+
+/** Find a report linked to an issue in a repo. */
+async function findLinkedReport(issueNumber: number, repoOwner: string, repoName: string) {
+  const [linked] = await db
+    .select({ r: reports, gi: githubIntegrations })
+    .from(reports)
+    .innerJoin(githubIntegrations, eq(githubIntegrations.projectId, reports.projectId))
+    .where(
+      and(
+        eq(reports.githubIssueNumber, issueNumber),
+        eq(githubIntegrations.repoOwner, repoOwner),
+        eq(githubIntegrations.repoName, repoName),
+      ),
+    )
+    .limit(1)
+  return linked ?? null
+}
+
+/** Apply inbound GitHub assignees to report_assignees (full replace). */
+async function applyInboundAssignees(
+  reportId: string,
+  projectId: string,
+  assignees: IssueAssignee[],
+): Promise<void> {
+  // Delete all existing assignees for this report
+  await db.delete(reportAssignees).where(eq(reportAssignees.reportId, reportId))
+
+  if (assignees.length === 0) return
+
+  // Insert the inbound set
+  await db.insert(reportAssignees).values(
+    assignees.map((a) => ({
+      reportId,
+      githubLogin: a.login,
+      githubUserId: String(a.id),
+      githubAvatarUrl: a.avatar_url,
+    })),
+  )
+
+  // Emit events for each new assignee
+  const events = assignees.map((a) => ({
+    reportId,
+    projectId,
+    actorId: null as string | null,
+    kind: "assignee_added" as const,
+    payload: { githubLogin: a.login, source: "github" } as Record<string, unknown>,
+  }))
+  if (events.length > 0) {
+    await db.insert(reportEvents).values(events)
+  }
 }
 
 export default defineEventHandler(async (event) => {
@@ -144,6 +230,7 @@ export default defineEventHandler(async (event) => {
     }
   } else if (kind === "issues") {
     const p = payload as IssuesPayload
+
     if (p.action === "closed" || p.action === "reopened") {
       const desired =
         p.action === "reopened"
@@ -151,19 +238,37 @@ export default defineEventHandler(async (event) => {
           : p.issue.state_reason === "not_planned"
             ? "closed"
             : "resolved"
-      const [linked] = await db
-        .select({ r: reports, gi: githubIntegrations })
-        .from(reports)
-        .innerJoin(githubIntegrations, eq(githubIntegrations.projectId, reports.projectId))
-        .where(
-          and(
-            eq(reports.githubIssueNumber, p.issue.number),
-            eq(githubIntegrations.repoOwner, p.repository.owner.login),
-            eq(githubIntegrations.repoName, p.repository.name),
-          ),
-        )
-        .limit(1)
-      if (linked && linked.r.status !== desired) {
+      const desiredGhState: "open" | "closed" = p.action === "reopened" ? "open" : "closed"
+      const stateReason =
+        p.action === "reopened"
+          ? "reopened"
+          : p.issue.state_reason === "not_planned"
+            ? "not_planned"
+            : "completed"
+
+      const linked = await findLinkedReport(
+        p.issue.number,
+        p.repository.owner.login,
+        p.repository.name,
+      )
+      if (!linked) {
+        setResponseStatus(event, 202)
+        return { ok: true }
+      }
+
+      // Write-lock echo check
+      const sig2 = signState(desiredGhState, stateReason)
+      const isEcho = await consumeWriteLock(db, {
+        reportId: linked.r.id,
+        kind: "state",
+        signature: sig2,
+      })
+      if (isEcho) {
+        setResponseStatus(event, 202)
+        return { ok: true, echo: true }
+      }
+
+      if (linked.r.status !== desired) {
         await db.transaction(async (tx) => {
           await tx
             .update(reports)
@@ -180,77 +285,188 @@ export default defineEventHandler(async (event) => {
       }
     } else if (p.action === "labeled" || p.action === "unlabeled") {
       const issueLabels = p.issue.labels?.map((l) => l.name) ?? []
-      const [linked] = await db
-        .select({ r: reports, gi: githubIntegrations })
-        .from(reports)
-        .innerJoin(githubIntegrations, eq(githubIntegrations.projectId, reports.projectId))
-        .where(
-          and(
-            eq(reports.githubIssueNumber, p.issue.number),
-            eq(githubIntegrations.repoOwner, p.repository.owner.login),
-            eq(githubIntegrations.repoName, p.repository.name),
-          ),
-        )
-        .limit(1)
+      const linked = await findLinkedReport(
+        p.issue.number,
+        p.repository.owner.login,
+        p.repository.name,
+      )
 
-      if (linked) {
-        const { priority, tags } = parseGithubLabels(issueLabels, linked.gi.defaultLabels)
+      if (!linked) {
+        setResponseStatus(event, 202)
+        return { ok: true }
+      }
 
-        const priorityChanged = priority !== null && priority !== linked.r.priority
-        const currentTagSet = new Set(linked.r.tags)
-        const desiredTagSet = new Set(tags)
-        const addedTags = tags.filter((t) => !currentTagSet.has(t))
-        const removedTags = linked.r.tags.filter((t) => !desiredTagSet.has(t))
-        const tagsChanged = addedTags.length > 0 || removedTags.length > 0
+      // Write-lock echo check — signature is over the full post-event label set
+      const labelSig = signLabels(issueLabels)
+      const isEcho = await consumeWriteLock(db, {
+        reportId: linked.r.id,
+        kind: "labels",
+        signature: labelSig,
+      })
+      if (isEcho) {
+        setResponseStatus(event, 202)
+        return { ok: true, echo: true }
+      }
 
-        if (priorityChanged || tagsChanged) {
-          // priority is non-null here: priorityChanged = (priority !== null && …)
-          const nextPriority = priority ?? linked.r.priority
-          await db.transaction(async (tx) => {
-            await tx
-              .update(reports)
-              .set({
-                ...(priorityChanged ? { priority: nextPriority } : {}),
-                ...(tagsChanged ? { tags } : {}),
-                updatedAt: new Date(),
-              })
-              .where(eq(reports.id, linked.r.id))
+      const { priority, tags } = parseGithubLabels(issueLabels, linked.gi.defaultLabels)
 
-            const eventsToInsert: (typeof reportEvents.$inferInsert)[] = []
+      const priorityChanged = priority !== null && priority !== linked.r.priority
+      const currentTagSet = new Set(linked.r.tags)
+      const desiredTagSet = new Set(tags)
+      const addedTags = tags.filter((t) => !currentTagSet.has(t))
+      const removedTags = linked.r.tags.filter((t) => !desiredTagSet.has(t))
+      const tagsChanged = addedTags.length > 0 || removedTags.length > 0
 
-            if (priorityChanged) {
-              eventsToInsert.push({
-                reportId: linked.r.id,
-                projectId: linked.r.projectId,
-                actorId: null,
-                kind: "priority_changed",
-                payload: { from: linked.r.priority, to: priority, source: "github" },
-              })
-            }
-            for (const tag of addedTags) {
-              eventsToInsert.push({
-                reportId: linked.r.id,
-                projectId: linked.r.projectId,
-                actorId: null,
-                kind: "tag_added",
-                payload: { tag, source: "github" },
-              })
-            }
-            for (const tag of removedTags) {
-              eventsToInsert.push({
-                reportId: linked.r.id,
-                projectId: linked.r.projectId,
-                actorId: null,
-                kind: "tag_removed",
-                payload: { tag, source: "github" },
-              })
-            }
+      if (priorityChanged || tagsChanged) {
+        const nextPriority = priority ?? linked.r.priority
+        await db.transaction(async (tx) => {
+          await tx
+            .update(reports)
+            .set({
+              ...(priorityChanged ? { priority: nextPriority } : {}),
+              ...(tagsChanged ? { tags } : {}),
+              updatedAt: new Date(),
+            })
+            .where(eq(reports.id, linked.r.id))
 
-            if (eventsToInsert.length > 0) {
-              await tx.insert(reportEvents).values(eventsToInsert)
-            }
+          const eventsToInsert: (typeof reportEvents.$inferInsert)[] = []
+
+          if (priorityChanged) {
+            eventsToInsert.push({
+              reportId: linked.r.id,
+              projectId: linked.r.projectId,
+              actorId: null,
+              kind: "priority_changed",
+              payload: { from: linked.r.priority, to: priority, source: "github" },
+            })
+          }
+          for (const tag of addedTags) {
+            eventsToInsert.push({
+              reportId: linked.r.id,
+              projectId: linked.r.projectId,
+              actorId: null,
+              kind: "tag_added",
+              payload: { tag, source: "github" },
+            })
+          }
+          for (const tag of removedTags) {
+            eventsToInsert.push({
+              reportId: linked.r.id,
+              projectId: linked.r.projectId,
+              actorId: null,
+              kind: "tag_removed",
+              payload: { tag, source: "github" },
+            })
+          }
+
+          if (eventsToInsert.length > 0) {
+            await tx.insert(reportEvents).values(eventsToInsert)
+          }
+        })
+      }
+    } else if (p.action === "assigned" || p.action === "unassigned") {
+      const linked = await findLinkedReport(
+        p.issue.number,
+        p.repository.owner.login,
+        p.repository.name,
+      )
+      if (!linked) {
+        setResponseStatus(event, 202)
+        return { ok: true }
+      }
+
+      // Write-lock echo check — signature over the full post-event assignee set
+      const currentAssigneeLogins = (p.issue.assignees ?? []).map((a) => a.login)
+      const assigneeSig = signAssignees(currentAssigneeLogins)
+      const isEcho = await consumeWriteLock(db, {
+        reportId: linked.r.id,
+        kind: "assignees",
+        signature: assigneeSig,
+      })
+      if (isEcho) {
+        setResponseStatus(event, 202)
+        return { ok: true, echo: true }
+      }
+
+      await applyInboundAssignees(linked.r.id, linked.r.projectId, p.issue.assignees ?? [])
+    } else if (p.action === "milestoned" || p.action === "demilestoned") {
+      const linked = await findLinkedReport(
+        p.issue.number,
+        p.repository.owner.login,
+        p.repository.name,
+      )
+      if (!linked) {
+        setResponseStatus(event, 202)
+        return { ok: true }
+      }
+
+      const milestoneNumber = p.issue.milestone?.number ?? null
+      const milestoneTitle = p.issue.milestone?.title ?? null
+
+      // Write-lock echo check
+      const milestoneSig = signMilestone(milestoneNumber)
+      const isEcho = await consumeWriteLock(db, {
+        reportId: linked.r.id,
+        kind: "milestone",
+        signature: milestoneSig,
+      })
+      if (isEcho) {
+        setResponseStatus(event, 202)
+        return { ok: true, echo: true }
+      }
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(reports)
+          .set({
+            milestoneNumber,
+            milestoneTitle,
+            updatedAt: new Date(),
           })
-        }
+          .where(eq(reports.id, linked.r.id))
+        await tx.insert(reportEvents).values({
+          reportId: linked.r.id,
+          projectId: linked.r.projectId,
+          actorId: null,
+          kind: "milestone_changed",
+          payload: {
+            from: { number: linked.r.milestoneNumber, title: linked.r.milestoneTitle },
+            to:
+              milestoneNumber !== null ? { number: milestoneNumber, title: milestoneTitle } : null,
+            source: "github",
+          },
+        })
+      })
+    } else if (p.action === "edited" && p.changes?.title) {
+      const linked = await findLinkedReport(
+        p.issue.number,
+        p.repository.owner.login,
+        p.repository.name,
+      )
+      if (!linked) {
+        setResponseStatus(event, 202)
+        return { ok: true }
+      }
+
+      const newTitle = p.issue.title
+
+      // Write-lock echo check
+      const titleSig = signTitle(newTitle)
+      const isEcho = await consumeWriteLock(db, {
+        reportId: linked.r.id,
+        kind: "title",
+        signature: titleSig,
+      })
+      if (isEcho) {
+        setResponseStatus(event, 202)
+        return { ok: true, echo: true }
+      }
+
+      if (linked.r.title !== newTitle) {
+        await db
+          .update(reports)
+          .set({ title: newTitle, updatedAt: new Date() })
+          .where(eq(reports.id, linked.r.id))
       }
     }
   }
