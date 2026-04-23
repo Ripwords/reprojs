@@ -25,6 +25,38 @@ export function labelsFor(report: LabelsForReport, integration: LabelsForIntegra
   return [...seen].toSorted()
 }
 
+export interface ParsedLabelSync {
+  /** null = no priority:* label present; caller should leave priority unchanged */
+  priority: LabelsForReport["priority"] | null
+  tags: string[]
+}
+
+/**
+ * Converts the full GitHub label set on an issue back to dashboard-native fields.
+ * defaultLabels are skipped (they are project-level metadata, not report tags).
+ * priority:* labels are extracted into the priority field.
+ */
+export function parseGithubLabels(
+  issueLabels: string[],
+  defaultLabels: readonly string[],
+): ParsedLabelSync {
+  const defaultSet = new Set(defaultLabels)
+  let priority: LabelsForReport["priority"] | null = null
+  const tags: string[] = []
+
+  for (const label of issueLabels) {
+    if (defaultSet.has(label)) continue
+    const m = label.match(/^priority:(low|normal|high|urgent)$/)
+    if (m) {
+      priority = m[1] as LabelsForReport["priority"]
+      continue
+    }
+    tags.push(label)
+  }
+
+  return { priority, tags }
+}
+
 export interface SystemInfoShape {
   userAgent: string
   platform: string

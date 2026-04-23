@@ -7,13 +7,15 @@ import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
 import { env } from "../../../lib/env"
 import { getWebhookSecret } from "../../../lib/github"
 import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
+import { parseGithubLabels } from "../../../lib/github-helpers"
 
 interface IssuesPayload {
-  action: "opened" | "closed" | "reopened" | "edited" | "deleted" | string
+  action: "opened" | "closed" | "reopened" | "edited" | "labeled" | "unlabeled" | "deleted" | string
   issue: {
     number: number
     state: "open" | "closed"
     state_reason?: "completed" | "not_planned" | null
+    labels: Array<{ name: string }>
   }
   repository: { name: string; owner: { login: string } }
 }
@@ -121,6 +123,78 @@ export default defineEventHandler(async (event) => {
             payload: { from: linked.r.status, to: desired, source: "github" },
           })
         })
+      }
+    } else if (p.action === "labeled" || p.action === "unlabeled") {
+      const issueLabels = p.issue.labels?.map((l) => l.name) ?? []
+      const [linked] = await db
+        .select({ r: reports, gi: githubIntegrations })
+        .from(reports)
+        .innerJoin(githubIntegrations, eq(githubIntegrations.projectId, reports.projectId))
+        .where(
+          and(
+            eq(reports.githubIssueNumber, p.issue.number),
+            eq(githubIntegrations.repoOwner, p.repository.owner.login),
+            eq(githubIntegrations.repoName, p.repository.name),
+          ),
+        )
+        .limit(1)
+
+      if (linked) {
+        const { priority, tags } = parseGithubLabels(issueLabels, linked.gi.defaultLabels)
+
+        const priorityChanged = priority !== null && priority !== linked.r.priority
+        const currentTagSet = new Set(linked.r.tags)
+        const desiredTagSet = new Set(tags)
+        const addedTags = tags.filter((t) => !currentTagSet.has(t))
+        const removedTags = linked.r.tags.filter((t) => !desiredTagSet.has(t))
+        const tagsChanged = addedTags.length > 0 || removedTags.length > 0
+
+        if (priorityChanged || tagsChanged) {
+          await db.transaction(async (tx) => {
+            await tx
+              .update(reports)
+              .set({
+                ...(priorityChanged ? { priority: priority! } : {}),
+                ...(tagsChanged ? { tags } : {}),
+                updatedAt: new Date(),
+              })
+              .where(eq(reports.id, linked.r.id))
+
+            const eventsToInsert: (typeof reportEvents.$inferInsert)[] = []
+
+            if (priorityChanged) {
+              eventsToInsert.push({
+                reportId: linked.r.id,
+                projectId: linked.r.projectId,
+                actorId: null,
+                kind: "priority_changed",
+                payload: { from: linked.r.priority, to: priority, source: "github" },
+              })
+            }
+            for (const tag of addedTags) {
+              eventsToInsert.push({
+                reportId: linked.r.id,
+                projectId: linked.r.projectId,
+                actorId: null,
+                kind: "tag_added",
+                payload: { tag, source: "github" },
+              })
+            }
+            for (const tag of removedTags) {
+              eventsToInsert.push({
+                reportId: linked.r.id,
+                projectId: linked.r.projectId,
+                actorId: null,
+                kind: "tag_removed",
+                payload: { tag, source: "github" },
+              })
+            }
+
+            if (eventsToInsert.length > 0) {
+              await tx.insert(reportEvents).values(eventsToInsert)
+            }
+          })
+        }
       }
     }
   }
