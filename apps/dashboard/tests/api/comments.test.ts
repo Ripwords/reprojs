@@ -1,0 +1,404 @@
+// apps/dashboard/tests/api/comments.test.ts
+import { setup } from "@nuxt/test-utils/e2e"
+import { afterEach, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test"
+import { eq } from "drizzle-orm"
+import { db } from "../../server/db"
+import {
+  githubIntegrations,
+  projectMembers,
+  reportComments,
+  reportSyncJobs,
+  reports,
+} from "../../server/db/schema"
+import {
+  apiFetch,
+  createUser,
+  seedProject,
+  signIn,
+  truncateDomain,
+  truncateReports,
+} from "../helpers"
+
+await setup({ server: true, port: 3000, host: "localhost" })
+
+setDefaultTimeout(60000)
+
+const PK = "rp_pk_COMMENTS0000000000000000"
+const ORIGIN = "http://localhost:4000"
+
+async function seedReport(projectId: string): Promise<string> {
+  const [row] = await db
+    .insert(reports)
+    .values({
+      projectId,
+      title: "Test report",
+      description: "d",
+      context: {
+        pageUrl: "http://localhost:4000",
+        userAgent: "UA",
+        viewport: { w: 1000, h: 800 },
+        timestamp: new Date().toISOString(),
+      },
+    })
+    .returning({ id: reports.id })
+  if (!row) throw new Error("seedReport failed")
+  return row.id
+}
+
+async function seedLinkedReport(projectId: string): Promise<string> {
+  const [row] = await db
+    .insert(reports)
+    .values({
+      projectId,
+      title: "Linked report",
+      description: "d",
+      context: {
+        pageUrl: "http://localhost:4000",
+        userAgent: "UA",
+        viewport: { w: 1000, h: 800 },
+        timestamp: new Date().toISOString(),
+      },
+      githubIssueNumber: 99,
+      githubIssueUrl: "https://github.com/acme/repo/issues/99",
+    })
+    .returning({ id: reports.id })
+  if (!row) throw new Error("seedLinkedReport failed")
+  return row.id
+}
+
+async function seedMember(
+  email: string,
+  projectId: string,
+  role: "viewer" | "manager" | "developer" | "owner",
+): Promise<{ userId: string; cookie: string }> {
+  const userId = await createUser(email, "member")
+  await db.insert(projectMembers).values({ projectId, userId, role })
+  const cookie = await signIn(email)
+  return { userId, cookie }
+}
+
+async function seedGithubIntegration(projectId: string): Promise<void> {
+  await db.insert(githubIntegrations).values({
+    projectId,
+    installationId: 777,
+    repoOwner: "acme",
+    repoName: "repo",
+    status: "connected",
+  })
+}
+
+describe("comments API", () => {
+  beforeAll(async () => {
+    await truncateReports()
+    await truncateDomain()
+  })
+  afterEach(async () => {
+    // Clean up in correct order (FKs)
+    await db.execute(`TRUNCATE report_sync_jobs, github_integrations RESTART IDENTITY CASCADE`)
+    await truncateReports()
+    await truncateDomain()
+  })
+
+  test("GET returns empty list for a report with no comments", async () => {
+    const adminId = await createUser("admin-get@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    const reportId = await seedReport(projectId)
+    const cookie = await signIn("admin-get@example.com")
+
+    const { status, body } = await apiFetch<{ items: unknown[] }>(
+      `/api/projects/${projectId}/reports/${reportId}/comments`,
+      { headers: { cookie } },
+    )
+    expect(status).toBe(200)
+    expect(body.items).toHaveLength(0)
+  })
+
+  test("POST creates a dashboard comment", async () => {
+    const adminId = await createUser("admin-post@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    const reportId = await seedReport(projectId)
+    const cookie = await signIn("admin-post@example.com")
+
+    const { status, body } = await apiFetch<{ comment: { id: string; source: string } }>(
+      `/api/projects/${projectId}/reports/${reportId}/comments`,
+      {
+        method: "POST",
+        headers: { cookie },
+        body: JSON.stringify({ body: "Hello from dashboard" }),
+      },
+    )
+    expect(status).toBe(200)
+    expect(body.comment.source).toBe("dashboard")
+
+    // Verify the row is in the database
+    const [row] = await db
+      .select()
+      .from(reportComments)
+      .where(eq(reportComments.id, body.comment.id))
+    expect(row?.body).toBe("Hello from dashboard")
+  })
+
+  test("POST on a linked report with connected integration enqueues a comment_upsert job", async () => {
+    const adminId = await createUser("admin-enq@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    await seedGithubIntegration(projectId)
+    const reportId = await seedLinkedReport(projectId)
+    const cookie = await signIn("admin-enq@example.com")
+
+    const { status, body } = await apiFetch<{ comment: { id: string } }>(
+      `/api/projects/${projectId}/reports/${reportId}/comments`,
+      {
+        method: "POST",
+        headers: { cookie },
+        body: JSON.stringify({ body: "Synced comment" }),
+      },
+    )
+    expect(status).toBe(200)
+
+    // Should have a sync job queued
+    const [job] = await db
+      .select()
+      .from(reportSyncJobs)
+      .where(eq(reportSyncJobs.reportId, reportId))
+    expect(job).toBeDefined()
+    expect(job?.payload?.kind).toBe("comment_upsert")
+    expect(job?.payload?.commentId).toBe(body.comment.id)
+  })
+
+  test("POST on an unlinked report does NOT enqueue a sync job", async () => {
+    const adminId = await createUser("admin-nolink@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    await seedGithubIntegration(projectId)
+    const reportId = await seedReport(projectId) // no github issue number
+    const cookie = await signIn("admin-nolink@example.com")
+
+    await apiFetch(`/api/projects/${projectId}/reports/${reportId}/comments`, {
+      method: "POST",
+      headers: { cookie },
+      body: JSON.stringify({ body: "No sync needed" }),
+    })
+
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, reportId))
+    expect(jobs).toHaveLength(0)
+  })
+
+  test("PATCH own comment succeeds for manager", async () => {
+    const adminId = await createUser("admin-patch@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    const reportId = await seedReport(projectId)
+    const { userId, cookie } = await seedMember("manager@example.com", projectId, "manager")
+
+    // Insert a comment owned by this user
+    const [comment] = await db
+      .insert(reportComments)
+      .values({
+        reportId,
+        userId,
+        body: "Original",
+        source: "dashboard",
+      })
+      .returning()
+
+    const { status, body } = await apiFetch<{ comment: { body: string } }>(
+      `/api/projects/${projectId}/reports/${reportId}/comments/${comment.id}`,
+      {
+        method: "PATCH",
+        headers: { cookie },
+        body: JSON.stringify({ body: "Updated" }),
+      },
+    )
+    expect(status).toBe(200)
+    expect(body.comment.body).toBe("Updated")
+  })
+
+  test("PATCH someone else's comment is forbidden for manager, allowed for owner", async () => {
+    const adminId = await createUser("admin-perm@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    const reportId = await seedReport(projectId)
+    const { userId: authorId } = await seedMember("author@example.com", projectId, "manager")
+    const { cookie: managerCookie } = await seedMember(
+      "other-manager@example.com",
+      projectId,
+      "manager",
+    )
+    const { cookie: ownerCookie } = await seedMember("owner-user@example.com", projectId, "owner")
+
+    // Insert a comment owned by authorId (not the manager who will try to edit)
+    const [comment] = await db
+      .insert(reportComments)
+      .values({
+        reportId,
+        userId: authorId,
+        body: "Original body",
+        source: "dashboard",
+      })
+      .returning()
+
+    // Manager trying to edit someone else's comment → 403
+    const { status: managerStatus } = await apiFetch(
+      `/api/projects/${projectId}/reports/${reportId}/comments/${comment.id}`,
+      {
+        method: "PATCH",
+        headers: { cookie: managerCookie },
+        body: JSON.stringify({ body: "Changed" }),
+      },
+    )
+    expect(managerStatus).toBe(403)
+
+    // Owner can edit any comment → 200
+    const { status: ownerStatus } = await apiFetch(
+      `/api/projects/${projectId}/reports/${reportId}/comments/${comment.id}`,
+      {
+        method: "PATCH",
+        headers: { cookie: ownerCookie },
+        body: JSON.stringify({ body: "Owner changed" }),
+      },
+    )
+    expect(ownerStatus).toBe(200)
+  })
+
+  test("DELETE soft-deletes and enqueues comment_delete for linked comments", async () => {
+    const adminId = await createUser("admin-del@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    await seedGithubIntegration(projectId)
+    const reportId = await seedLinkedReport(projectId)
+    const cookie = await signIn("admin-del@example.com")
+
+    // Insert a comment that's already synced to GitHub
+    const [comment] = await db
+      .insert(reportComments)
+      .values({
+        reportId,
+        userId: adminId,
+        body: "To be deleted",
+        source: "dashboard",
+        githubCommentId: 500,
+      })
+      .returning()
+
+    const { status } = await apiFetch(
+      `/api/projects/${projectId}/reports/${reportId}/comments/${comment.id}`,
+      { method: "DELETE", headers: { cookie } },
+    )
+    expect(status).toBe(204)
+
+    // Verify soft delete
+    const [row] = await db.select().from(reportComments).where(eq(reportComments.id, comment.id))
+    expect(row?.deletedAt).toBeDefined()
+
+    // Should have a delete job
+    const [job] = await db
+      .select()
+      .from(reportSyncJobs)
+      .where(eq(reportSyncJobs.reportId, reportId))
+    expect(job?.payload?.kind).toBe("comment_delete")
+  })
+
+  test("DELETE on unsynced comment with pending upsert job deletes the job instead", async () => {
+    const adminId = await createUser("admin-del2@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    await seedGithubIntegration(projectId)
+    const reportId = await seedLinkedReport(projectId)
+    const cookie = await signIn("admin-del2@example.com")
+
+    // Insert a comment NOT yet synced (no githubCommentId)
+    const [comment] = await db
+      .insert(reportComments)
+      .values({
+        reportId,
+        userId: adminId,
+        body: "Never synced",
+        source: "dashboard",
+      })
+      .returning()
+
+    // Insert a pending upsert job for this comment
+    await db.insert(reportSyncJobs).values({
+      reportId,
+      state: "pending",
+      nextAttemptAt: new Date(),
+      payload: { kind: "comment_upsert", commentId: comment.id },
+    })
+
+    const { status } = await apiFetch(
+      `/api/projects/${projectId}/reports/${reportId}/comments/${comment.id}`,
+      { method: "DELETE", headers: { cookie } },
+    )
+    expect(status).toBe(204)
+
+    // The job should be deleted (not replaced with a delete job)
+    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, reportId))
+    expect(jobs).toHaveLength(0)
+  })
+
+  test("GET returns comments after creation", async () => {
+    const adminId = await createUser("admin-list@example.com", "admin")
+    const projectId = await seedProject({
+      name: "p",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: adminId,
+    })
+    const reportId = await seedReport(projectId)
+    const cookie = await signIn("admin-list@example.com")
+
+    await apiFetch(`/api/projects/${projectId}/reports/${reportId}/comments`, {
+      method: "POST",
+      headers: { cookie },
+      body: JSON.stringify({ body: "First" }),
+    })
+    await apiFetch(`/api/projects/${projectId}/reports/${reportId}/comments`, {
+      method: "POST",
+      headers: { cookie },
+      body: JSON.stringify({ body: "Second" }),
+    })
+
+    const { body } = await apiFetch<{ items: Array<{ body: string }> }>(
+      `/api/projects/${projectId}/reports/${reportId}/comments`,
+      { headers: { cookie } },
+    )
+    expect(body.items).toHaveLength(2)
+    expect(body.items[0].body).toBe("First")
+    expect(body.items[1].body).toBe("Second")
+  })
+})
