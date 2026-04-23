@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test"
 import { createCanvas, type Canvas } from "@napi-rs/canvas"
 import { render } from "./render"
-import { IDENTITY_TRANSFORM, type Shape } from "./types"
+import { IDENTITY_TRANSFORM, type Shape } from "@reprojs/sdk-utils"
 
 // Create the white background canvas once
 const bg: Canvas = createCanvas(100, 100)

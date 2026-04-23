@@ -1,4 +1,4 @@
-import { newShapeId } from "../store"
+import { newShapeId } from "../id"
 import type { HighlightShape, Shape } from "../types"
 import type { ToolContext, ToolHandler } from "./index"
 

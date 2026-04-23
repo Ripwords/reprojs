@@ -1,4 +1,4 @@
-import { MAX_SCALE, MIN_SCALE, type Transform } from "./types"
+import { MAX_SCALE, MIN_SCALE, type Transform } from "@reprojs/sdk-utils"
 
 export function screenToWorld(
   screenX: number,

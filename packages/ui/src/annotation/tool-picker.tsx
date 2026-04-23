@@ -1,7 +1,7 @@
 // packages/ui/src/annotation/tool-picker.tsx
 import { h } from "preact"
 import { canRedo, canUndo, clear, color, redo, strokeW, tool, undo } from "./store"
-import { PALETTE, STROKE_WIDTHS, type Tool } from "./types"
+import { PALETTE, STROKE_WIDTHS, type Tool } from "@reprojs/sdk-utils"
 
 const TOOLS: Array<{ id: Tool; label: string; icon: string }> = [
   { id: "arrow", label: "Arrow (A)", icon: "↗" },

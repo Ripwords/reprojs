@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test"
 import { canRedo, canUndo, clear, commit, reset, shapes, undo, undone, redo } from "./store"
-import type { ArrowShape } from "./types"
+import type { ArrowShape } from "@reprojs/sdk-utils"
 
 const makeArrow = (id: string): ArrowShape => ({
   kind: "arrow",

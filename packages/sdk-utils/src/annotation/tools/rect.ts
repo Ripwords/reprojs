@@ -1,14 +1,13 @@
-import { newShapeId } from "../store"
-import type { Shape, TextShape } from "../types"
+import { newShapeId } from "../id"
+import type { RectShape, Shape } from "../types"
 import type { ToolContext, ToolHandler } from "./index"
 
-const MIN_SIDE = 12
-const DEFAULT_FONT_SIZE = 14
+const MIN_SIDE = 4
 
-export const textTool: ToolHandler = {
+export const rectTool: ToolHandler = {
   onPointerDown(ctx: ToolContext): Shape {
-    const s: TextShape = {
-      kind: "text",
+    const s: RectShape = {
+      kind: "rect",
       id: newShapeId(),
       color: ctx.color,
       strokeWidth: ctx.strokeWidth,
@@ -16,17 +15,15 @@ export const textTool: ToolHandler = {
       y: ctx.worldY,
       w: 0,
       h: 0,
-      content: "",
-      fontSize: DEFAULT_FONT_SIZE,
     }
     return s
   },
   onPointerMove(ctx: ToolContext): Shape {
-    const s = ctx.shape as TextShape
+    const s = ctx.shape as RectShape
     return { ...s, w: ctx.worldX - s.x, h: ctx.worldY - s.y }
   },
   onPointerUp(ctx: ToolContext): Shape | null {
-    const s = ctx.shape as TextShape
+    const s = ctx.shape as RectShape
     const x = Math.min(s.x, ctx.worldX)
     const y = Math.min(s.y, ctx.worldY)
     const w = Math.abs(ctx.worldX - s.x)
