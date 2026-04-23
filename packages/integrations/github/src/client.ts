@@ -1,6 +1,4 @@
 // packages/integrations/github/src/client.ts
-export { listRepoLabels, listAssignableUsers, listMilestones } from "./repo-read"
-export type { RepoLabel, AssignableUser, RepoMilestone } from "./repo-read"
 import { createAppAuth } from "@octokit/auth-app"
 import { Octokit } from "@octokit/rest"
 import type {
@@ -14,6 +12,7 @@ import type {
   IssueStateInput,
   UpdateLabelsInput,
 } from "./types"
+import { listRepoLabels, listAssignableUsers, listMilestones } from "./repo-read"
 
 export function createInstallationClient(
   opts: InstallationClientOptions,
@@ -137,5 +136,10 @@ export function createInstallationClient(
         return null
       }
     },
+
+    listRepoLabels: (owner: string, repo: string) => listRepoLabels(octokit, owner, repo),
+    listAssignableUsers: (owner: string, repo: string) => listAssignableUsers(octokit, owner, repo),
+    listMilestones: (owner: string, repo: string, state?: "open" | "all") =>
+      listMilestones(octokit, owner, repo, state),
   }
 }
