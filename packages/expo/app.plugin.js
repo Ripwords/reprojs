@@ -1,1 +1,1 @@
-module.exports = require("./dist/plugin/with-repro.js").default
+module.exports = require("./dist/plugin/with-repro.cjs")
