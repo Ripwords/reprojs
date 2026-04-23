@@ -153,16 +153,31 @@ describe("GET /api/admin/overview", () => {
 
   test("recentReports caps at 10", async () => {
     const adminId = await createUser("admin@example.com", "admin")
-    const p = await seedProject({
+    const projectId = await seedProject({
       name: "Big",
       publicKey: "rp_pk_BIGGGG000000000000000000",
       allowedOrigins: ["http://localhost:4000"],
       createdBy: adminId,
     })
-    for (let i = 0; i < 12; i++) {
-      await submitReport("rp_pk_BIGGGG000000000000000000", `r${i}`, "http://localhost:4000")
-    }
-    void p
+    // Seed 12 reports directly via Drizzle to bypass the intake rate-limiter.
+    // The admin overview endpoint just reads from the reports table; going
+    // through the intake is orthogonal for this cap-check.
+    const now = Date.now()
+    await db.insert(reports).values(
+      Array.from({ length: 12 }, (_, i) => ({
+        projectId,
+        title: `r${i}`,
+        description: null,
+        context: {
+          pageUrl: "http://localhost:4000/p",
+          userAgent: "UA",
+          viewport: { w: 1000, h: 800 },
+          timestamp: new Date(now + i).toISOString(),
+        },
+        // Space createdAt by 1ms per row so ordering is deterministic.
+        createdAt: new Date(now + i),
+      })),
+    )
     const cookie = await signIn("admin@example.com")
     const { body } = await apiFetch<AdminOverviewDTO>("/api/admin/overview", {
       headers: { cookie },
@@ -173,5 +188,4 @@ describe("GET /api/admin/overview", () => {
 
   // Appease unused-import linter without removing the helper for future tests.
   void eq
-  void reports
 })
