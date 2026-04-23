@@ -54,8 +54,12 @@ export function applyIntakePostCors(event: H3Event, allowedOrigin: string) {
  *     set `allowedOrigins` on each project before it can receive
  *     reports.
  */
-export function isOriginAllowed(origin: string | null | undefined, allowed: string[]): boolean {
-  if (!origin) return false
+export function isOriginAllowed(
+  origin: string | null | undefined,
+  allowed: string[],
+  opts?: { allowEmpty?: boolean },
+): boolean {
+  if (!origin) return opts?.allowEmpty === true
   if (allowed.length > 0) return allowed.includes(origin)
   if (env.NODE_ENV !== "development") return false
   try {

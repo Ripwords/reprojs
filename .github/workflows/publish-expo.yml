@@ -1,0 +1,111 @@
+name: Publish @reprojs/expo
+
+# Publishes @reprojs/expo to npm.
+#
+# Triggers:
+#   - Push of an Expo semver tag (expo-v*.*.*) → publishes that version
+#   - Manual dispatch → republishes whatever is in packages/expo/package.json
+#
+# Auth uses npm Trusted Publishing (OIDC). Configure the package's Trusted
+# Publisher on npmjs.com to match repository Ripwords/ReproJs + workflow
+# publish-expo.yml. No NPM_TOKEN secret needed.
+
+on:
+  push:
+    tags:
+      - "expo-v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: 1.3.12
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run fmt:check
+      - run: bun run lint
+      - run: bun --filter @reprojs/expo test
+      - run: bun run expo:build
+      - name: Verify bundle is self-contained
+        run: |
+          BUNDLE=packages/expo/dist/index.mjs
+          test -f "$BUNDLE" || { echo "Bundle missing at $BUNDLE"; exit 1; }
+          SIZE=$(wc -c < "$BUNDLE")
+          echo "Bundle size: $SIZE bytes"
+          if [ "$SIZE" -lt 20000 ]; then
+            echo "ERROR: bundle smaller than 20 KB"
+            exit 1
+          fi
+          if grep -qE '^import .* from "@reprojs/' "$BUNDLE"; then
+            echo "ERROR: bundle contains unresolved @reprojs imports"
+            exit 1
+          fi
+      - name: Verify app.plugin.js resolves to a function
+        working-directory: packages/expo
+        run: |
+          node -e "const p = require('./app.plugin'); if (typeof p !== 'function') { console.error('app.plugin.js did not resolve to a function, got:', typeof p); process.exit(1); } console.log('app.plugin.js OK');"
+
+  publish:
+    name: Publish @reprojs/expo
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install -g npm@latest
+      - run: bun install --frozen-lockfile
+      - run: bun run expo:build
+      - name: Check tag matches package version
+        if: github.event_name == 'push'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          TAG_VERSION="${TAG#expo-v}"
+          PKG_VERSION=$(node -p "require('./packages/expo/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag $TAG expects version $TAG_VERSION but packages/expo is at $PKG_VERSION"
+            exit 1
+          fi
+      - name: Publish to npm
+        working-directory: packages/expo
+        run: npm publish --provenance --access public
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          awk '/^## / { if (++n > 1) exit; next } n == 1 { print }' \
+            packages/expo/CHANGELOG.md > /tmp/release-notes.body
+          if [ ! -s /tmp/release-notes.body ]; then
+            echo "error: could not extract release notes from packages/expo/CHANGELOG.md" >&2
+            exit 1
+          fi
+          VERSION="${TAG#expo-v}"
+          {
+            printf '> 📱 Repro Expo SDK — @reprojs/expo@%s on https://www.npmjs.com/package/@reprojs/expo/v/%s\n\n' "$VERSION" "$VERSION"
+            cat /tmp/release-notes.body
+          } > /tmp/release-notes.md
+          gh release create "$TAG" \
+            --title "📱 Expo v${VERSION} (@reprojs/expo)" \
+            --notes-file /tmp/release-notes.md \
+            --latest=false

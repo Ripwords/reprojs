@@ -1,0 +1,249 @@
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  Text,
+  View,
+} from "react-native"
+import { FlattenView, type FlattenHandle } from "../capture/flatten"
+import { StepForm } from "./step-form"
+import { StepAnnotate } from "./step-annotate"
+import { StepSubmit, type SummaryLine } from "./step-submit"
+import { createAnnotationStore } from "../annotation/store"
+import { useAnnotationShapes } from "../annotation/use-shapes"
+import { CloseIcon } from "../annotation/icons"
+import { PrimaryButton, SecondaryButton, StepIndicator } from "./controls"
+import { theme } from "./theme"
+
+export interface WizardArgs {
+  initialTitle?: string
+  initialDescription?: string
+  screenshot: { uri: string; width: number; height: number } | null
+  onSubmit: (result: {
+    title: string
+    description: string
+    annotatedUri: string | null
+    rawUri: string | null
+  }) => Promise<void>
+  onClose: () => void
+}
+
+const STEPS = ["Details", "Annotate", "Review"] as const
+type Step = "form" | "annotate" | "submit"
+const STEP_INDEX: Record<Step, number> = { form: 0, annotate: 1, submit: 2 }
+
+export function WizardSheet({
+  initialTitle,
+  initialDescription,
+  screenshot,
+  onSubmit,
+  onClose,
+}: WizardArgs) {
+  const [step, setStep] = useState<Step>("form")
+  const [title, setTitle] = useState(initialTitle ?? "")
+  const [description, setDescription] = useState(initialDescription ?? "")
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [annotateSize, setAnnotateSize] = useState({ w: 0, h: 0 })
+  const store = useRef(createAnnotationStore()).current
+  const flattenRef = useRef<FlattenHandle | null>(null)
+
+  // Subscribe so the offscreen FlattenView re-renders whenever shapes change.
+  const shapes = useAnnotationShapes(store)
+
+  useEffect(() => {
+    setStep("form")
+  }, [screenshot])
+
+  async function handleSubmit() {
+    setSubmitting(true)
+    setError(null)
+    try {
+      let annotated: string | null = null
+      if (
+        screenshot &&
+        shapes.length > 0 &&
+        flattenRef.current &&
+        annotateSize.w > 0 &&
+        annotateSize.h > 0
+      ) {
+        try {
+          const flat = await flattenRef.current.flatten()
+          annotated = flat.uri
+        } catch {
+          annotated = null
+        }
+      }
+      await onSubmit({
+        title,
+        description,
+        annotatedUri: annotated,
+        rawUri: screenshot?.uri ?? null,
+      })
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const currentIndex = STEP_INDEX[step]
+  const titleEmpty = title.trim().length === 0
+
+  const primaryLabel = useMemo(() => {
+    if (step === "submit") return submitting ? "Sending…" : "Send report"
+    return "Continue"
+  }, [step, submitting])
+
+  const primaryDisabled = (step === "form" && titleEmpty) || (step === "submit" && submitting)
+
+  function handlePrimary() {
+    if (step === "form") setStep("annotate")
+    else if (step === "annotate") setStep("submit")
+    else handleSubmit()
+  }
+
+  function handleBack() {
+    if (step === "submit") setStep("annotate")
+    else if (step === "annotate") setStep("form")
+  }
+
+  const summary: SummaryLine[] = useMemo(() => {
+    const lines: SummaryLine[] = []
+    if (title.trim()) lines.push({ label: "Title & description" })
+    if (screenshot) {
+      lines.push({
+        label: shapes.length > 0 ? "Annotated screenshot" : "Screenshot",
+        hint: shapes.length > 0 ? String(shapes.length) : undefined,
+      })
+    }
+    lines.push({ label: "Console, network & breadcrumbs" })
+    lines.push({ label: "Device & environment info" })
+    return lines
+  }, [title, screenshot, shapes.length])
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.bg }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          {/* Header */}
+          <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <View style={{ gap: 2 }}>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "700",
+                    letterSpacing: 1.4,
+                    color: theme.color.primary,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Repro
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontWeight: "700",
+                    color: theme.color.text,
+                    letterSpacing: -0.3,
+                  }}
+                >
+                  Report a bug
+                </Text>
+              </View>
+              <Pressable
+                onPress={onClose}
+                hitSlop={12}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: theme.color.surface,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+              >
+                <CloseIcon size={14} color={theme.color.textMuted} />
+              </Pressable>
+            </View>
+            <StepIndicator steps={STEPS} current={currentIndex} />
+          </View>
+          <View style={{ height: 1, backgroundColor: theme.color.border }} />
+
+          {/* Body */}
+          {step === "form" && (
+            <StepForm
+              title={title}
+              description={description}
+              onTitleChange={setTitle}
+              onDescriptionChange={setDescription}
+            />
+          )}
+          {step === "annotate" && (
+            <StepAnnotate
+              imageUri={screenshot?.uri ?? null}
+              store={store}
+              onSizeChange={setAnnotateSize}
+            />
+          )}
+          {step === "submit" && <StepSubmit error={error} summary={summary} />}
+
+          {/* Offscreen flatten — always mounted when we have a screenshot and
+              measurement so flatten() can run from any step. */}
+          {screenshot && annotateSize.w > 0 && annotateSize.h > 0 && (
+            <FlattenView
+              ref={flattenRef}
+              uri={screenshot.uri}
+              width={annotateSize.w}
+              height={annotateSize.h}
+              shapes={shapes}
+            />
+          )}
+
+          {/* Footer */}
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 14,
+              paddingBottom: Platform.OS === "ios" ? 14 : 18,
+              borderTopWidth: 1,
+              borderTopColor: theme.color.border,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              backgroundColor: theme.color.bg,
+            }}
+          >
+            {step !== "form" ? (
+              <SecondaryButton label="Back" onPress={handleBack} disabled={submitting} />
+            ) : null}
+            <View style={{ flex: 1 }}>
+              <PrimaryButton
+                label={primaryLabel}
+                onPress={handlePrimary}
+                disabled={primaryDisabled}
+                loading={submitting}
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </Modal>
+  )
+}

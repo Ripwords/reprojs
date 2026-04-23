@@ -1,5 +1,5 @@
 import { wrapText } from "./text-wrap"
-import type { Shape, Transform } from "./types"
+import type { Shape, Transform } from "@reprojs/sdk-utils"
 
 export function render(
   ctx: CanvasRenderingContext2D,

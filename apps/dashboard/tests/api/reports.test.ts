@@ -1,6 +1,8 @@
 import { setup } from "@nuxt/test-utils/e2e"
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test"
 import type { ReportSummaryDTO } from "@reprojs/shared"
+import { db } from "../../server/db"
+import { reports } from "../../server/db/schema"
 import {
   apiFetch,
   createUser,
@@ -96,6 +98,194 @@ describe("reports list API", () => {
     const cookie = await signIn("stranger@example.com")
     const { status } = await apiFetch(`/api/projects/${projectId}/reports`, { headers: { cookie } })
     expect(status).toBe(404)
+  })
+})
+
+describe("source filter and facets", () => {
+  afterEach(async () => {
+    await truncateReports()
+    await truncateDomain()
+  })
+
+  test("list endpoint filters by ?source=expo", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+    await db.insert(reports).values({
+      projectId,
+      title: "Web report",
+      context: {
+        source: "web",
+        pageUrl: "http://localhost:4000/p",
+        userAgent: "UA",
+        viewport: { w: 1000, h: 800 },
+        timestamp: new Date().toISOString(),
+      },
+      origin: ORIGIN,
+      ip: "127.0.0.1",
+      source: "web",
+    })
+    await db.insert(reports).values({
+      projectId,
+      title: "Expo iOS crash",
+      context: {
+        source: "expo",
+        pageUrl: "myapp://x",
+        userAgent: "u",
+        viewport: { w: 1, h: 1 },
+        timestamp: new Date().toISOString(),
+      },
+      origin: "",
+      ip: "127.0.0.1",
+      source: "expo",
+      devicePlatform: "ios",
+    })
+
+    const cookie = await signIn("admin@example.com")
+    const { status, body } = await apiFetch<{ items: ReportSummaryDTO[]; total: number }>(
+      `/api/projects/${projectId}/reports?source=expo`,
+      { headers: { cookie } },
+    )
+    expect(status).toBe(200)
+    expect(body.total).toBe(1)
+    expect(body.items.every((i) => i.source === "expo")).toBe(true)
+  })
+
+  test("list endpoint returns source facets with counts", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+    await db.insert(reports).values({
+      projectId,
+      title: "Web report",
+      context: {
+        source: "web",
+        pageUrl: "http://localhost:4000/p",
+        userAgent: "UA",
+        viewport: { w: 1000, h: 800 },
+        timestamp: new Date().toISOString(),
+      },
+      origin: ORIGIN,
+      ip: "127.0.0.1",
+      source: "web",
+    })
+    await db.insert(reports).values([
+      {
+        projectId,
+        title: "Expo iOS crash",
+        context: {
+          source: "expo",
+          pageUrl: "myapp://x",
+          userAgent: "u",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+        origin: "",
+        ip: "127.0.0.1",
+        source: "expo",
+        devicePlatform: "ios",
+      },
+      {
+        projectId,
+        title: "Expo Android crash",
+        context: {
+          source: "expo",
+          pageUrl: "myapp://y",
+          userAgent: "u",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+        origin: "",
+        ip: "127.0.0.1",
+        source: "expo",
+        devicePlatform: "android",
+      },
+    ])
+
+    const cookie = await signIn("admin@example.com")
+    const { status, body } = await apiFetch<{
+      items: ReportSummaryDTO[]
+      total: number
+      facets: { source: { web: number; expo: number; ios: number; android: number } }
+    }>(`/api/projects/${projectId}/reports`, { headers: { cookie } })
+    expect(status).toBe(200)
+    expect(body.facets.source.web).toBe(1)
+    expect(body.facets.source.expo).toBe(2)
+    expect(body.facets.source.ios).toBe(1)
+    expect(body.facets.source.android).toBe(1)
+  })
+
+  test("list endpoint filters by ?source=ios", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+    await db.insert(reports).values([
+      {
+        projectId,
+        title: "Web report",
+        context: {
+          source: "web",
+          pageUrl: "http://localhost:4000/p",
+          userAgent: "UA",
+          viewport: { w: 1000, h: 800 },
+          timestamp: new Date().toISOString(),
+        },
+        origin: ORIGIN,
+        ip: "127.0.0.1",
+        source: "web",
+      },
+      {
+        projectId,
+        title: "Expo iOS crash",
+        context: {
+          source: "expo",
+          pageUrl: "myapp://x",
+          userAgent: "u",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+        origin: "",
+        ip: "127.0.0.1",
+        source: "expo",
+        devicePlatform: "ios",
+      },
+      {
+        projectId,
+        title: "Expo Android crash",
+        context: {
+          source: "expo",
+          pageUrl: "myapp://y",
+          userAgent: "u",
+          viewport: { w: 1, h: 1 },
+          timestamp: new Date().toISOString(),
+        },
+        origin: "",
+        ip: "127.0.0.1",
+        source: "expo",
+        devicePlatform: "android",
+      },
+    ])
+
+    const cookie = await signIn("admin@example.com")
+    const { status, body } = await apiFetch<{ items: ReportSummaryDTO[]; total: number }>(
+      `/api/projects/${projectId}/reports?source=ios`,
+      { headers: { cookie } },
+    )
+    expect(status).toBe(200)
+    expect(body.total).toBe(1)
+    expect(body.items.every((i) => i.source === "expo" && i.devicePlatform === "ios")).toBe(true)
   })
 })
 

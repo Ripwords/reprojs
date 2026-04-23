@@ -6,6 +6,7 @@ export interface InboxQuery {
   priority: string[]
   tag: string[]
   assignee: string[]
+  source: string[]
   q: string
   sort: "newest" | "oldest" | "priority" | "updated"
   limit: number
@@ -32,6 +33,7 @@ export function useInboxQuery() {
       priority: parseCsv(q.priority),
       tag: parseCsv(q.tag),
       assignee: parseCsv(q.assignee),
+      source: parseCsv(q.source),
       q: typeof q.q === "string" ? q.q : "",
       sort: (["newest", "oldest", "priority", "updated"] as const).includes(sort) ? sort : "newest",
       limit: Number(q.limit ?? 50),
@@ -46,6 +48,7 @@ export function useInboxQuery() {
     if (merged.priority.length) next.priority = merged.priority.join(",")
     if (merged.tag.length) next.tag = merged.tag.join(",")
     if (merged.assignee.length) next.assignee = merged.assignee.join(",")
+    if (merged.source.length) next.source = merged.source.join(",")
     if (merged.q) next.q = merged.q
     if (merged.sort !== "newest") next.sort = merged.sort
     if (merged.offset > 0) next.offset = String(merged.offset)
@@ -60,6 +63,7 @@ export function useInboxQuery() {
       parts.push(`tag=${query.value.tag.map(encodeURIComponent).join(",")}`)
     if (query.value.assignee.length)
       parts.push(`assignee=${query.value.assignee.map(encodeURIComponent).join(",")}`)
+    if (query.value.source.length) parts.push(`source=${query.value.source.join(",")}`)
     if (query.value.q) parts.push(`q=${encodeURIComponent(query.value.q)}`)
     parts.push(`sort=${query.value.sort}`)
     parts.push(`limit=${query.value.limit}`)

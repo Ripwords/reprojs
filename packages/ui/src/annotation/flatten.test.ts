@@ -5,7 +5,7 @@
 import { describe, expect, test, beforeAll } from "bun:test"
 import { createCanvas } from "@napi-rs/canvas"
 import { flatten } from "./flatten"
-import type { Shape } from "./types"
+import type { Shape } from "@reprojs/sdk-utils"
 
 let bg: ReturnType<typeof createCanvas>
 

@@ -22,7 +22,6 @@ End users (users of whatever host app embeds the SDK) can report bugs directly f
 - Not a full product analytics or heatmap tool.
 - Not a customer support chat widget.
 - Not a replacement for APM (Datadog, Sentry).
-- No native mobile SDKs in v1 (web only).
 - No multi-tenant SaaS billing layer in v1 — single-workspace self-host first.
 
 ### 1.3 Reference product
@@ -33,11 +32,12 @@ End users (users of whatever host app embeds the SDK) can report bugs directly f
 
 ## 2. System Overview
 
-Three first-class deliverables in one repo:
+Four first-class deliverables in one repo:
 
 | Component | What it is | Who uses it | Built with |
 | --- | --- | --- | --- |
-| **SDK** | Embeddable JS widget + SDK | End users of host apps | TypeScript lib, Preact + Shadow DOM (tentative), tsdown |
+| **SDK (web)** | Embeddable JS widget + SDK | End users of host web apps | TypeScript lib, Preact + Shadow DOM (tentative), tsdown |
+| **SDK (mobile)** | Expo SDK for React Native apps | End users of host Expo apps | TypeScript, React Native, tsdown |
 | **Dashboard** | Admin/developer web app + API | Developers, team admins | Nuxt 4 fullstack (Vue + Nitro) |
 | **Tester extension** | Chrome MV3 extension that injects the SDK into pages the team doesn't control | Internal QA / testers | Preact + Vite + `@crxjs/vite-plugin`; bundles `@reprojs/core` at build time |
 
@@ -161,12 +161,14 @@ repro/
 │       └── vite.config.ts
 │
 ├── packages/
-│   ├── core/                   # framework-agnostic SDK entry (init, public API)
-│   ├── ui/                     # widget UI (Preact + Shadow DOM)
+│   ├── core/                   # framework-agnostic web SDK entry (init, public API)
+│   ├── ui/                     # web widget UI (Preact + Shadow DOM)
 │   │   └── src/
 │   │       ├── annotation/     # annotation canvas (pen, arrow, text, etc.) — was packages/annotator
 │   │       └── collectors/     # console, network, cookies, system-info — was packages/collectors
 │   ├── recorder/               # 30s rolling DOM replay buffer (v0.7.x)
+│   ├── expo/                   # Expo / React Native SDK (screenshots, logs, device info, offline queue)
+│   ├── sdk-utils/              # pure helpers shared by web + mobile SDKs (ring-buffer, redact, breadcrumbs, annotation geometry)
 │   ├── integrations/
 │   │   └── github/             # GitHub Issues adapter (runs server-side)
 │   └── shared/                 # shared types: Report, Attachment, API contracts

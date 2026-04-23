@@ -42,6 +42,7 @@ const { data, pending, refresh } = useApi<{
       count: number
     }>
     tags: Array<{ name: string; count: number }>
+    source: { web: number; expo: number; ios: number; android: number }
   }
 }>(listUrl, { watch: [listUrl] })
 
@@ -145,11 +146,12 @@ const hasActiveFilters = computed(
     query.value.status.length > 0 ||
     query.value.priority.length > 0 ||
     query.value.assignee.length > 0 ||
-    query.value.tag.length > 0,
+    query.value.tag.length > 0 ||
+    query.value.source.length > 0,
 )
 
 function clearFilters() {
-  update({ q: "", status: [], priority: [], assignee: [], tag: [] })
+  update({ q: "", status: [], priority: [], assignee: [], tag: [], source: [] })
 }
 
 // ---- Keyboard navigation ----
@@ -242,6 +244,24 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
       h("div", { class: "font-medium text-default truncate max-w-[32rem]" }, row.original.title),
   },
   {
+    id: "source",
+    header: "",
+    cell: ({ row }) => {
+      const r = row.original
+      const label =
+        r.source === "web"
+          ? "Web"
+          : r.devicePlatform === "ios"
+            ? "iOS"
+            : r.devicePlatform === "android"
+              ? "Android"
+              : "Mobile"
+      const color =
+        r.source === "web" ? "neutral" : r.devicePlatform === "ios" ? "primary" : "warning"
+      return h(UBadge, { variant: "subtle", color, size: "xs" }, () => label)
+    },
+  },
+  {
     id: "github",
     header: "",
     cell: ({ row }) => {
@@ -324,13 +344,16 @@ function onRowSelect(_e: Event, row: TableRowLike) {
       :priority-counts="data?.facets.priority ?? ({} as Record<ReportPriority, number>)"
       :assignees="data?.facets.assignees ?? []"
       :tags="data?.facets.tags ?? []"
+      :source-counts="data?.facets.source ?? { web: 0, expo: 0, ios: 0, android: 0 }"
       :selected-priority="query.priority as ReportPriority[]"
       :selected-assignee="query.assignee"
       :selected-tags="query.tag"
+      :selected-source="query.source"
       :session-user-id="sessionUserId"
       @priority="update({ priority: $event })"
       @assignee="update({ assignee: $event })"
       @tag="update({ tag: $event })"
+      @source="update({ source: $event, offset: 0 })"
     />
 
     <div class="flex-1 min-w-0 flex flex-col">

@@ -1,5 +1,16 @@
-// packages/ui/src/collectors/redact.ts
-import { truncate } from "./serialize"
+export function truncate(s: string, maxBytes: number): string {
+  const encoder = new TextEncoder()
+  const buf = encoder.encode(s)
+  if (buf.length <= maxBytes) return s
+  let cut = maxBytes
+  while (cut > 0) {
+    const byte = buf[cut]
+    if (byte === undefined || (byte & 0xc0) !== 0x80) break
+    cut -= 1
+  }
+  const truncated = new TextDecoder().decode(buf.slice(0, cut))
+  return `${truncated}… [truncated ${buf.length - cut}b]`
+}
 
 export const DEFAULT_SENSITIVE_COOKIE_NAMES = [
   "session",

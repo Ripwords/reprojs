@@ -37,8 +37,15 @@ export default defineConfig({
           ],
         },
         {
-          text: "SDK",
+          text: "Web SDK",
           items: [{ text: "Embed + API", link: "/guide/sdk" }],
+        },
+        {
+          text: "Mobile SDK (Expo)",
+          items: [
+            { text: "Install + setup", link: "/guide/expo" },
+            { text: "API reference", link: "/guide/expo-api" },
+          ],
         },
         {
           text: "Tester extension",

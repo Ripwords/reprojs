@@ -1,6 +1,7 @@
 // packages/ui/src/collectors/serialize.test.ts
 import { beforeAll, describe, expect, test } from "bun:test"
-import { serializeArg, truncate, scrubString, DEFAULT_STRING_REDACTORS } from "./serialize"
+import { truncate } from "@reprojs/sdk-utils"
+import { serializeArg, scrubString, DEFAULT_STRING_REDACTORS } from "./serialize"
 
 beforeAll(async () => {
   const { Window } = await import("happy-dom")

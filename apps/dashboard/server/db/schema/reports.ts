@@ -30,6 +30,11 @@ export const reports = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    source: text("source", { enum: ["web", "expo"] })
+      .notNull()
+      .default("web"),
+    devicePlatform: text("device_platform", { enum: ["ios", "android"] }),
+    idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     githubIssueNumber: integer("github_issue_number"),
@@ -56,6 +61,14 @@ export const reports = pgTable(
       table.projectId,
       sql`${table.updatedAt} DESC`,
     ),
+    projectSourceCreatedIdx: index("reports_project_source_created_idx").on(
+      table.projectId,
+      table.source,
+      sql`${table.createdAt} DESC`,
+    ),
+    projectIdempotencyKeyIdx: index("reports_project_idempotency_key_idx")
+      .on(table.projectId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} IS NOT NULL`),
   }),
 )
 

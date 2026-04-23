@@ -1,5 +1,12 @@
 import { computed, signal } from "@preact/signals"
-import { IDENTITY_TRANSFORM, PALETTE, type Shape, type Tool, type Transform } from "./types"
+import {
+  IDENTITY_TRANSFORM,
+  PALETTE,
+  type Shape,
+  type Tool,
+  type Transform,
+} from "@reprojs/sdk-utils"
+export { newShapeId } from "@reprojs/sdk-utils"
 
 export const shapes = signal<Shape[]>([])
 export const undone = signal<Shape[]>([])
@@ -46,8 +53,4 @@ export function reset(): void {
   color.value = PALETTE[0]
   strokeW.value = 4
   viewport.value = IDENTITY_TRANSFORM
-}
-
-export function newShapeId(): string {
-  return crypto.randomUUID()
 }

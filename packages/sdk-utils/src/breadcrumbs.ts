@@ -1,4 +1,4 @@
-import { RingBuffer } from "./ring-buffer"
+import { RingBuffer } from "@reprojs/sdk-utils"
 
 export type BreadcrumbLevel = "debug" | "info" | "warn" | "error"
 

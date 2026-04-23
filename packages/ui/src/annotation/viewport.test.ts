@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { clampPan, fitTransform, isInsideImage, screenToWorld, zoomAt } from "./viewport"
-import type { Transform } from "./types"
+import type { Transform } from "@reprojs/sdk-utils"
 
 const rect = { left: 0, top: 0, width: 1000, height: 700 } as DOMRect
 const identity: Transform = { scale: 1, panX: 0, panY: 0 }

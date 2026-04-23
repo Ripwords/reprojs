@@ -1,4 +1,4 @@
-import { RingBuffer } from "./ring-buffer"
+import { RingBuffer } from "@reprojs/sdk-utils"
 import { serializeArg } from "./serialize"
 
 export type ConsoleLevel = "log" | "info" | "warn" | "error" | "debug"

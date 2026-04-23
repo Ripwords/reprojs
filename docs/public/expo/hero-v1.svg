@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520" role="img" aria-labelledby="t">
+  <title id="t">Repro Expo SDK — bug-report wizard across three steps: details, annotate, review</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff9b51"/>
+      <stop offset="1" stop-color="#f27a1f"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="phone-clip">
+      <rect x="0" y="0" width="240" height="440" rx="26" ry="26"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="520" fill="url(#bg)"/>
+
+  <!-- Grid texture -->
+  <g stroke="#1f2937" stroke-width="1" opacity="0.35">
+    <line x1="0" y1="80" x2="960" y2="80"/>
+    <line x1="0" y1="440" x2="960" y2="440"/>
+  </g>
+
+  <!-- Brand eyebrow -->
+  <g transform="translate(40,40)" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" letter-spacing="3" fill="url(#flame)" font-weight="700">
+    <text>REPRO · EXPO SDK</text>
+  </g>
+  <g transform="translate(40,60)" font-family="ui-serif,Georgia,Cambria,Times,serif" font-size="26" fill="#f9fafb">
+    <text font-weight="600">Mobile bug reports, from tap to triage.</text>
+  </g>
+  <g transform="translate(40,86)" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="13" fill="#9ca3af">
+    <text>Annotated screenshot · Console &amp; network · Offline queue · 0 runtime deps</text>
+  </g>
+
+  <!-- Phone 1: Form -->
+  <g transform="translate(90,120)" filter="url(#shadow)">
+    <rect x="-8" y="-8" width="256" height="456" rx="32" ry="32" fill="#0b0b0b"/>
+    <g clip-path="url(#phone-clip)">
+      <rect width="240" height="440" fill="#ffffff"/>
+      <!-- notch -->
+      <rect x="92" y="0" width="56" height="16" rx="8" fill="#0b0b0b"/>
+      <!-- header eyebrow -->
+      <text x="20" y="46" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="2.5" fill="url(#flame)" font-weight="700">REPRO</text>
+      <text x="20" y="68" font-family="ui-sans-serif,system-ui" font-size="16" fill="#25343f" font-weight="700">Report a bug</text>
+      <!-- close -->
+      <circle cx="214" cy="56" r="13" fill="#edf0f1"/>
+      <path d="M 209 51 L 219 61 M 219 51 L 209 61" stroke="#6c7a87" stroke-width="2" stroke-linecap="round"/>
+      <!-- stepper -->
+      <g transform="translate(20,92)">
+        <circle cx="10" cy="10" r="10" fill="url(#flame)"/>
+        <text x="10" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#fff" font-weight="700">1</text>
+        <rect x="26" y="9" width="48" height="2" rx="1" fill="#dde2e5"/>
+        <circle cx="84" cy="10" r="10" fill="#edf0f1"/>
+        <text x="84" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#9aa4ae" font-weight="700">2</text>
+        <rect x="100" y="9" width="48" height="2" rx="1" fill="#dde2e5"/>
+        <circle cx="158" cy="10" r="10" fill="#edf0f1"/>
+        <text x="158" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#9aa4ae" font-weight="700">3</text>
+      </g>
+      <g transform="translate(20,130)" font-family="ui-sans-serif,system-ui" font-size="8" fill="#9aa4ae" letter-spacing="1">
+        <text>DETAILS</text>
+        <text x="74">ANNOTATE</text>
+        <text x="148">REVIEW</text>
+      </g>
+      <!-- divider -->
+      <line x1="0" y1="150" x2="240" y2="150" stroke="#edf0f1"/>
+      <!-- title field -->
+      <text x="20" y="178" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#25343f" font-weight="700">TITLE</text>
+      <rect x="20" y="188" width="200" height="42" rx="10" fill="#f5f7f8" stroke="#dde2e5"/>
+      <text x="32" y="214" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">What went wrong?</text>
+      <!-- details field -->
+      <text x="20" y="254" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#25343f" font-weight="700">DETAILS</text>
+      <text x="72" y="254" font-family="ui-sans-serif,system-ui" font-size="9" fill="#9aa4ae" font-style="italic">optional</text>
+      <rect x="20" y="264" width="200" height="88" rx="10" fill="#f5f7f8" stroke="#dde2e5"/>
+      <text x="32" y="288" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">Steps to reproduce,</text>
+      <text x="32" y="306" font-family="ui-sans-serif,system-ui" font-size="13" fill="#9aa4ae">expected vs actual…</text>
+      <!-- footer primary -->
+      <rect x="20" y="382" width="200" height="42" rx="12" fill="url(#flame)"/>
+      <text x="120" y="408" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Continue</text>
+    </g>
+  </g>
+
+  <!-- Phone 2: Annotate -->
+  <g transform="translate(360,120)" filter="url(#shadow)">
+    <rect x="-8" y="-8" width="256" height="456" rx="32" ry="32" fill="#0b0b0b"/>
+    <g clip-path="url(#phone-clip)">
+      <rect width="240" height="440" fill="#ffffff"/>
+      <rect x="92" y="0" width="56" height="16" rx="8" fill="#0b0b0b"/>
+      <text x="20" y="46" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="2.5" fill="url(#flame)" font-weight="700">REPRO</text>
+      <text x="20" y="68" font-family="ui-sans-serif,system-ui" font-size="16" fill="#25343f" font-weight="700">Report a bug</text>
+      <circle cx="214" cy="56" r="13" fill="#edf0f1"/>
+      <path d="M 209 51 L 219 61 M 219 51 L 209 61" stroke="#6c7a87" stroke-width="2" stroke-linecap="round"/>
+      <g transform="translate(20,92)">
+        <circle cx="10" cy="10" r="10" fill="url(#flame)"/>
+        <text x="10" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#fff" font-weight="700">1</text>
+        <rect x="26" y="9" width="48" height="2" rx="1" fill="url(#flame)"/>
+        <circle cx="84" cy="10" r="10" fill="url(#flame)"/>
+        <text x="84" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#fff" font-weight="700">2</text>
+        <rect x="100" y="9" width="48" height="2" rx="1" fill="#dde2e5"/>
+        <circle cx="158" cy="10" r="10" fill="#edf0f1"/>
+        <text x="158" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#9aa4ae" font-weight="700">3</text>
+      </g>
+      <line x1="0" y1="150" x2="240" y2="150" stroke="#edf0f1"/>
+      <!-- toolbar row 1 -->
+      <g transform="translate(12,162)">
+        <rect x="0" y="0" width="32" height="32" rx="7" fill="url(#flame)"/>
+        <path d="M 10 22 L 20 12 L 24 16 L 14 26 Z" fill="#fff"/>
+        <rect x="38" y="0" width="32" height="32" rx="7" fill="#f5f7f8"/>
+        <path d="M 46 16 L 62 16 M 56 10 L 62 16 L 56 22" stroke="#25343f" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="76" y="0" width="32" height="32" rx="7" fill="#f5f7f8"/>
+        <rect x="82" y="6" width="20" height="20" rx="2" stroke="#25343f" stroke-width="1.6" fill="none"/>
+        <rect x="114" y="0" width="32" height="32" rx="7" fill="#f5f7f8"/>
+        <rect x="118" y="12" width="24" height="8" rx="2" fill="#25343f" opacity="0.55"/>
+        <rect x="152" y="0" width="32" height="32" rx="7" fill="#f5f7f8"/>
+        <path d="M 160 10 L 176 10 M 168 10 L 168 24" stroke="#25343f" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <!-- toolbar row 2 colors + strokes -->
+      <g transform="translate(18,202)">
+        <circle cx="8" cy="8" r="8" fill="#e53935"/>
+        <circle cx="8" cy="8" r="10" stroke="url(#flame)" stroke-width="1.5" fill="none"/>
+        <circle cx="28" cy="8" r="8" fill="#fb8c00"/>
+        <circle cx="48" cy="8" r="8" fill="#fdd835"/>
+        <circle cx="68" cy="8" r="8" fill="#43a047"/>
+        <circle cx="88" cy="8" r="8" fill="#1e88e5"/>
+        <circle cx="140" cy="8" r="2" fill="#25343f"/>
+        <circle cx="156" cy="8" r="3" fill="url(#flame)"/>
+        <circle cx="174" cy="8" r="4" fill="#25343f"/>
+        <circle cx="194" cy="8" r="5" fill="#25343f"/>
+      </g>
+      <!-- canvas with fake content -->
+      <rect x="12" y="234" width="216" height="140" fill="#f5f7f8"/>
+      <g transform="translate(20,248)" opacity="0.35">
+        <rect width="200" height="10" rx="2" fill="#25343f"/>
+        <rect y="22" width="150" height="8" rx="2" fill="#25343f"/>
+        <rect y="42" width="200" height="28" rx="4" fill="#25343f"/>
+        <rect y="80" width="200" height="28" rx="4" fill="#25343f"/>
+      </g>
+      <!-- annotation: red circle around a field + arrow -->
+      <g stroke="#e53935" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.9">
+        <rect x="28" y="296" width="170" height="32" rx="3"/>
+        <path d="M 54 348 Q 78 336 96 324"/>
+        <path d="M 88 328 L 96 324 L 94 332"/>
+      </g>
+      <rect x="20" y="382" width="60" height="42" rx="12" fill="#edf0f1"/>
+      <text x="50" y="408" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#6c7a87" font-weight="500">Back</text>
+      <rect x="88" y="382" width="132" height="42" rx="12" fill="url(#flame)"/>
+      <text x="154" y="408" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Continue</text>
+    </g>
+  </g>
+
+  <!-- Phone 3: Review -->
+  <g transform="translate(630,120)" filter="url(#shadow)">
+    <rect x="-8" y="-8" width="256" height="456" rx="32" ry="32" fill="#0b0b0b"/>
+    <g clip-path="url(#phone-clip)">
+      <rect width="240" height="440" fill="#ffffff"/>
+      <rect x="92" y="0" width="56" height="16" rx="8" fill="#0b0b0b"/>
+      <text x="20" y="46" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="2.5" fill="url(#flame)" font-weight="700">REPRO</text>
+      <text x="20" y="68" font-family="ui-sans-serif,system-ui" font-size="16" fill="#25343f" font-weight="700">Report a bug</text>
+      <circle cx="214" cy="56" r="13" fill="#edf0f1"/>
+      <path d="M 209 51 L 219 61 M 219 51 L 209 61" stroke="#6c7a87" stroke-width="2" stroke-linecap="round"/>
+      <g transform="translate(20,92)">
+        <circle cx="10" cy="10" r="10" fill="url(#flame)"/>
+        <rect x="26" y="9" width="48" height="2" rx="1" fill="url(#flame)"/>
+        <circle cx="84" cy="10" r="10" fill="url(#flame)"/>
+        <rect x="100" y="9" width="48" height="2" rx="1" fill="url(#flame)"/>
+        <circle cx="158" cy="10" r="10" fill="url(#flame)"/>
+        <text x="158" y="14" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="10" fill="#fff" font-weight="700">3</text>
+      </g>
+      <line x1="0" y1="150" x2="240" y2="150" stroke="#edf0f1"/>
+      <rect x="20" y="170" width="200" height="170" rx="14" fill="#f5f7f8" stroke="#dde2e5"/>
+      <text x="32" y="192" font-family="ui-sans-serif,system-ui" font-size="9" letter-spacing="1.3" fill="#6c7a87" font-weight="700">INCLUDED IN THIS REPORT</text>
+      <g font-family="ui-sans-serif,system-ui" font-size="12" fill="#25343f">
+        <circle cx="32" cy="216" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="220">Title &amp; description</text>
+        <circle cx="32" cy="242" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="246">Annotated screenshot</text>
+        <text x="200" y="246" text-anchor="end" font-family="ui-monospace,monospace" font-size="11" fill="#6c7a87">3</text>
+        <circle cx="32" cy="268" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="272">Console, network &amp; breadcrumbs</text>
+        <circle cx="32" cy="294" r="2.5" fill="url(#flame)"/>
+        <text x="42" y="298">Device &amp; environment info</text>
+      </g>
+      <rect x="20" y="382" width="60" height="42" rx="12" fill="#edf0f1"/>
+      <text x="50" y="408" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#6c7a87" font-weight="500">Back</text>
+      <rect x="88" y="382" width="132" height="42" rx="12" fill="url(#flame)"/>
+      <text x="154" y="408" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#fff" font-weight="600">Send report</text>
+    </g>
+  </g>
+
+  <!-- floating launcher -->
+  <g transform="translate(855,470)" filter="url(#glow)">
+    <circle r="22" fill="url(#flame)"/>
+    <text y="6" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="18">🐞</text>
+  </g>
+</svg>

@@ -6,7 +6,7 @@ import { flatten } from "../annotation/flatten"
 import { DEFAULT_SHORTCUTS, registerShortcuts, type Action } from "../annotation/shortcuts"
 import { clear, redo, shapes, tool, undo, viewport } from "../annotation/store"
 import { ToolPicker } from "../annotation/tool-picker"
-import type { Tool } from "../annotation/types"
+import type { Tool } from "@reprojs/sdk-utils"
 import { fitTransform } from "../annotation/viewport"
 
 interface Props {

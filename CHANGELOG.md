@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `@reprojs/expo` — Expo SDK for Repro. Submit annotated screenshots, logs, and device context from Expo apps. No session replay in v1.
+- `@reprojs/sdk-utils` — shared pure helpers (ring-buffer, redact, breadcrumbs, annotation geometry) between web and mobile SDKs.
+- Dashboard: web vs Expo mobile reports are now distinguished with a platform pill, a Source filter in the inbox sidebar, and a mobile device card in the detail drawer.
+- Intake contract: additive `ReportContext.source`, optional `SystemInfo.devicePlatform` / `appVersion` / `appBuild` / `deviceModel` / `osVersion`. `Idempotency-Key` header enables mobile offline-queue retries.
+
 ## v0.1.18
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.17...v0.1.18)
