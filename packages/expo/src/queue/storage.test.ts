@@ -35,6 +35,7 @@ test("enqueue evicts the oldest when over maxReports", async () => {
   memory.clear()
   const q = createQueueStorage({ maxReports: 2, maxBytes: 1024 * 1024 })
   for (const id of ["a", "b", "c"]) {
+    // eslint-disable-next-line no-await-in-loop -- sequential awaits asserted: eviction FIFO order depends on insertion order
     await q.enqueue({
       id,
       createdAt: new Date().toISOString(),
