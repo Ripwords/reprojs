@@ -423,6 +423,7 @@ describe("webhook", () => {
       headers: {
         "content-type": "application/json",
         "x-github-event": "issues",
+        "x-github-delivery": crypto.randomUUID(),
         "x-hub-signature-256": sign(
           process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret",
           body,
@@ -459,6 +460,7 @@ describe("webhook", () => {
       headers: {
         "content-type": "application/json",
         "x-github-event": "installation",
+        "x-github-delivery": crypto.randomUUID(),
         "x-hub-signature-256": sign(
           process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret",
           body,

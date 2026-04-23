@@ -4,10 +4,15 @@ import { and, eq } from "drizzle-orm"
 import { verifyWebhookSignature } from "@reprojs/integrations-github"
 import { db } from "../../../db"
 import { githubIntegrations, reportEvents, reports } from "../../../db/schema"
-import { env } from "../../../lib/env"
 import { getWebhookSecret } from "../../../lib/github"
 import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
 import { parseGithubLabels } from "../../../lib/github-helpers"
+import {
+  checkBodySize,
+  MAX_WEBHOOK_BODY_BYTES,
+  recordDelivery,
+  isKnownInstallation,
+} from "../../../lib/github-webhook-auth"
 
 interface IssuesPayload {
   action: "opened" | "closed" | "reopened" | "edited" | "labeled" | "unlabeled" | "deleted" | string
@@ -32,17 +37,17 @@ interface InstallationReposPayload {
 }
 
 export default defineEventHandler(async (event) => {
-  const contentLength = Number(getHeader(event, "content-length") ?? 0)
-  if (contentLength > env.GITHUB_WEBHOOK_MAX_BYTES) {
-    throw createError({ statusCode: 413, statusMessage: "Payload too large" })
+  const contentLength = Number(getHeader(event, "content-length") ?? NaN)
+  if (!checkBodySize(Number.isNaN(contentLength) ? undefined : contentLength)) {
+    throw createError({ statusCode: 413, statusMessage: "Payload Too Large" })
   }
   const raw = await readRawBody(event)
   if (!raw || typeof raw !== "string") {
     throw createError({ statusCode: 400, statusMessage: "invalid body" })
   }
   // Fallback guard when Content-Length is missing or understated (chunked).
-  if (Buffer.byteLength(raw, "utf8") > env.GITHUB_WEBHOOK_MAX_BYTES) {
-    throw createError({ statusCode: 413, statusMessage: "Payload too large" })
+  if (Buffer.byteLength(raw, "utf8") > MAX_WEBHOOK_BODY_BYTES) {
+    throw createError({ statusCode: 413, statusMessage: "Payload Too Large" })
   }
   const sig = getHeader(event, "x-hub-signature-256")
   if (
@@ -56,8 +61,26 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "invalid signature" })
   }
 
+  const deliveryId = getHeader(event, "x-github-delivery")
+  if (!deliveryId) {
+    throw createError({ statusCode: 400, statusMessage: "Missing X-GitHub-Delivery" })
+  }
+  if ((await recordDelivery(deliveryId)) === "replay") {
+    setResponseStatus(event, 202)
+    return { status: "replay" }
+  }
+
   const kind = getHeader(event, "x-github-event")
   const payload: unknown = JSON.parse(raw)
+
+  const installationId = (payload as { installation?: { id?: unknown } })?.installation?.id
+  if (typeof installationId === "number" && !(await isKnownInstallation(installationId))) {
+    console.warn(
+      `[github-webhook] unknown installation id: ${installationId}, delivery=${deliveryId}`,
+    )
+    setResponseStatus(event, 202)
+    return { status: "unknown-installation" }
+  }
 
   if (kind === "installation") {
     const p = payload as InstallationPayload
