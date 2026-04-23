@@ -108,6 +108,7 @@ export function ReproLauncher({
   const gesture = draggable ? Gesture.Race(pan, tap) : tap
 
   if (hideWhen?.()) return null
+  if (repro.disabled) return null
 
   const posStyles = {
     position: "absolute" as const,

@@ -4,7 +4,12 @@ import type { Breadcrumb } from "@reprojs/sdk-utils"
 import type { ReporterIdentity } from "@reprojs/shared"
 
 export interface ReproInternalContext {
-  config: ReproConfig
+  /**
+   * `null` indicates the silent-disable state — the provider rendered but
+   * neither `projectKey` nor `intakeUrl` were supplied. All callback methods
+   * on this context are no-ops; `useRepro().disabled` reflects this flag.
+   */
+  config: ReproConfig | null
   getReporter: () => ReporterIdentity | null
   setReporter: (r: ReporterIdentity | null) => void
   getMetadata: () => Record<string, string | number | boolean>

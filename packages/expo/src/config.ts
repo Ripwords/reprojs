@@ -50,11 +50,23 @@ export interface ReproConfig {
   metadata: Record<string, string | number | boolean>
 }
 
-export function normalizeConfig(input: ReproConfigInput): ReproConfig {
+/**
+ * Normalize a ReproConfigInput to a fully-defaulted ReproConfig.
+ *
+ * Returns `null` when `projectKey` or `intakeUrl` are empty — this is the
+ * silent-disable path that lets hosts turn the SDK off by simply leaving
+ * their env vars unset (e.g. `projectKey: process.env.EXPO_PUBLIC_KEY ?? ""`).
+ *
+ * Throws only when a non-empty value is malformed (typo protection).
+ */
+export function normalizeConfig(input: ReproConfigInput): ReproConfig | null {
+  if (!input.projectKey || !input.intakeUrl) {
+    return null
+  }
   if (!PROJECT_KEY_PATTERN.test(input.projectKey)) {
     throw new Error(`Repro: invalid projectKey shape`)
   }
-  if (!input.intakeUrl || !/^https?:\/\//.test(input.intakeUrl)) {
+  if (!/^https?:\/\//.test(input.intakeUrl)) {
     throw new Error(`Repro: invalid intakeUrl — must be http(s)`)
   }
   return {

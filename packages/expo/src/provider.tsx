@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { AppState, View } from "react-native"
 import { ReproContext, type ReproInternalContext } from "./context"
-import { normalizeConfig, type ReproConfigInput } from "./config"
+import { normalizeConfig, type ReproConfig, type ReproConfigInput } from "./config"
 import { createConsoleCollector } from "./collectors/console"
 import { createNetworkCollector } from "./collectors/network"
 import { createBreadcrumbsCollector } from "@reprojs/sdk-utils"
@@ -20,8 +20,44 @@ interface Props {
   children: React.ReactNode
 }
 
+/**
+ * When `projectKey` or `intakeUrl` are empty, the SDK silently disables itself
+ * and renders children untouched — no collectors, no launcher, no network. Let
+ * hosts opt out with `projectKey: process.env.X ?? ""` rather than a separate
+ * `enabled: false` flag.
+ */
+const DISABLED_CONTEXT: ReproInternalContext = {
+  config: null,
+  getReporter: () => null,
+  setReporter: () => undefined,
+  getMetadata: () => ({}),
+  setMetadata: () => undefined,
+  logBreadcrumb: () => undefined,
+  openWizard: () => undefined,
+  closeWizard: () => undefined,
+  captureRoot: async () => ({ uri: "", width: 0, height: 0 }),
+  snapshotBreadcrumbs: () => [],
+  queueStatus: () => ({ pending: 0, lastError: null }),
+  flushQueue: async () => undefined,
+}
+
+function DisabledProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    setSingletonHandle(DISABLED_CONTEXT)
+    return () => clearSingletonHandle()
+  }, [])
+  return <ReproContext.Provider value={DISABLED_CONTEXT}>{children}</ReproContext.Provider>
+}
+
 export function ReproProvider({ config: rawConfig, children }: Props) {
   const config = useMemo(() => normalizeConfig(rawConfig), [rawConfig])
+  if (config === null) {
+    return <DisabledProvider>{children}</DisabledProvider>
+  }
+  return <ActiveProvider config={config}>{children}</ActiveProvider>
+}
+
+function ActiveProvider({ config, children }: { config: ReproConfig; children: React.ReactNode }) {
   const rootRef = useRef<View | null>(null)
   const [reporter, setReporter] = useState<ReporterIdentity | null>(config.reporter)
   const [metadata, setMetadata] = useState<Record<string, string | number | boolean>>(
