@@ -1,6 +1,19 @@
 // apps/dashboard/server/api/projects/[id]/reports/index.get.ts
 import { defineEventHandler, getQuery, getRouterParam } from "h3"
-import { type SQL, and, arrayContains, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm"
+import {
+  type SQL,
+  and,
+  arrayContains,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  or,
+  sql,
+  exists,
+  notExists,
+} from "drizzle-orm"
 import {
   ReportPriority,
   ReportStatus,
@@ -57,19 +70,27 @@ export default defineEventHandler(async (event) => {
     const parts: ReturnType<typeof eq>[] = []
     if (userIds.length) {
       parts.push(
-        sql`exists (
-          select 1 from report_assignees
-          where report_assignees.report_id = ${reports.id}
-            and report_assignees.user_id = any(${userIds})
-        )`,
+        exists(
+          db
+            .select({ one: sql<number>`1` })
+            .from(reportAssignees)
+            .where(
+              and(
+                eq(reportAssignees.reportId, reports.id),
+                inArray(reportAssignees.userId, userIds),
+              ),
+            ),
+        ),
       )
     }
     if (wantUnassigned) {
       parts.push(
-        sql`not exists (
-          select 1 from report_assignees
-          where report_assignees.report_id = ${reports.id}
-        )`,
+        notExists(
+          db
+            .select({ one: sql<number>`1` })
+            .from(reportAssignees)
+            .where(eq(reportAssignees.reportId, reports.id)),
+        ),
       )
     }
     if (parts.length === 1 && parts[0]) whereParts.push(parts[0])
