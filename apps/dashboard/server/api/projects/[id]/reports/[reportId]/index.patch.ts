@@ -12,6 +12,7 @@ import {
 } from "../../../../../db/schema"
 import { buildReportEvents } from "../../../../../lib/report-events"
 import { enqueueSync } from "../../../../../lib/enqueue-sync"
+import { publishReportStream } from "../../../../../lib/report-events-bus"
 import { compareRole, requireProjectRole } from "../../../../../lib/permissions"
 import type { ProjectRoleName } from "../../../../../lib/permissions"
 
@@ -251,6 +252,11 @@ export default defineEventHandler(async (event) => {
       if (gi?.status === "connected" && gi.pushOnEdit) {
         await enqueueSync(reportId, id)
       }
+    }
+
+    // Push the change to any open report-stream subscribers (SSE).
+    if (hasEvents) {
+      publishReportStream(reportId, { kind: "triage" })
     }
 
     return { ok: true, updated: true }

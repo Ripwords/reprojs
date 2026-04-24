@@ -5,6 +5,7 @@ import { db } from "../../../../../../db"
 import { reportComments } from "../../../../../../db/schema/report-comments"
 import { reportSyncJobs } from "../../../../../../db/schema/github-integrations"
 import { requireProjectRole } from "../../../../../../lib/permissions"
+import { publishReportStream } from "../../../../../../lib/report-events-bus"
 import { enqueueCommentDelete } from "../../../../../../lib/enqueue-sync"
 
 export default defineEventHandler(async (event) => {
@@ -63,6 +64,11 @@ export default defineEventHandler(async (event) => {
       }
     }
   }
+
+  publishReportStream(reportId, {
+    kind: "comment_deleted",
+    payload: { commentId },
+  })
 
   setResponseStatus(event, 204)
   return null

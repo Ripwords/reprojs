@@ -13,6 +13,7 @@ import { reportComments } from "../../../../../../db/schema/report-comments"
 import { reports } from "../../../../../../db/schema/reports"
 import { githubIntegrations } from "../../../../../../db/schema/github-integrations"
 import { requireProjectRole } from "../../../../../../lib/permissions"
+import { publishReportStream } from "../../../../../../lib/report-events-bus"
 import { enqueueCommentUpsert } from "../../../../../../lib/enqueue-sync"
 
 const CreateCommentBody = z.object({
@@ -54,6 +55,11 @@ export default defineEventHandler(async (event) => {
       await enqueueCommentUpsert(reportId, inserted.id)
     }
   }
+
+  publishReportStream(reportId, {
+    kind: "comment_added",
+    payload: { commentId: inserted.id },
+  })
 
   setResponseStatus(event, 201)
   return { comment: inserted }

@@ -6,6 +6,7 @@ import { db } from "../../../../../../db"
 import { reportComments } from "../../../../../../db/schema/report-comments"
 import { reports } from "../../../../../../db/schema/reports"
 import { requireProjectRole } from "../../../../../../lib/permissions"
+import { publishReportStream } from "../../../../../../lib/report-events-bus"
 import { enqueueCommentUpsert } from "../../../../../../lib/enqueue-sync"
 
 const UpdateCommentBody = z.object({
@@ -61,6 +62,11 @@ export default defineEventHandler(async (event) => {
       await enqueueCommentUpsert(reportId, commentId)
     }
   }
+
+  publishReportStream(reportId, {
+    kind: "comment_edited",
+    payload: { commentId },
+  })
 
   return { comment: updated }
 })

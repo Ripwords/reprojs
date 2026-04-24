@@ -114,6 +114,25 @@ async function onPatched() {
   if (commentsRef.value) await commentsRef.value.refresh()
 }
 
+// Live-update subscription: the SSE endpoint pushes an event every time this
+// report is touched (locally or via a GitHub webhook). Each event triggers the
+// same refetch used by the PATCH round-trip — the activity tab, triage
+// footer, and comments tab repaint from their new data.
+useReportStream(
+  () => projectId.value,
+  () => reportId.value,
+  async (e) => {
+    if (e.kind === "comment_added" || e.kind === "comment_edited" || e.kind === "comment_deleted") {
+      if (commentsRef.value) await commentsRef.value.refresh()
+      if (activityRef.value) await activityRef.value.refresh()
+      return
+    }
+    // triage / github_synced / github_unlinked all warrant a full refetch so
+    // the drawer's every tab reflects the new row state.
+    await onPatched()
+  },
+)
+
 const triageOpen = ref(false)
 
 // Keyboard shortcuts: 1-8 jump to each tab; Esc navigates back to the inbox.

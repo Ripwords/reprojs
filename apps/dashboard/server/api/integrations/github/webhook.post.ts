@@ -12,6 +12,7 @@ import {
 } from "../../../db/schema"
 import { getWebhookSecret } from "../../../lib/github"
 import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
+import { publishReportStream } from "../../../lib/report-events-bus"
 import { githubCache } from "../../../lib/github-cache"
 import { parseGithubLabels } from "../../../lib/github-helpers"
 import {
@@ -491,6 +492,11 @@ export default defineEventHandler(async (event) => {
           .where(eq(reports.id, linked.r.id))
       }
     }
+
+    // Regardless of which issues-sub-action landed (closed/reopened/labeled/
+    // unlabeled/assigned/unassigned/milestoned/demilestoned/edited), the
+    // dashboard row was touched — nudge any open SSE subscribers to refetch.
+    publishReportStream(linked.r.id, { kind: "triage", payload: { source: "github" } })
   } else if (kind === "issue_comment") {
     const p = payload as IssueCommentPayload
     const action = p.action
@@ -543,6 +549,10 @@ export default defineEventHandler(async (event) => {
           kind: "comment_added",
           payload: { githubCommentId: comment.id, source: "github" },
         })
+        publishReportStream(linked.r.id, {
+          kind: "comment_added",
+          payload: { source: "github", githubCommentId: comment.id },
+        })
       } else {
         // edited
         await db
@@ -555,6 +565,10 @@ export default defineEventHandler(async (event) => {
           actorId: null,
           kind: "comment_edited",
           payload: { githubCommentId: comment.id, source: "github" },
+        })
+        publishReportStream(linked.r.id, {
+          kind: "comment_edited",
+          payload: { source: "github", githubCommentId: comment.id },
         })
       }
     } else if (action === "deleted") {
@@ -579,6 +593,10 @@ export default defineEventHandler(async (event) => {
         actorId: null,
         kind: "comment_deleted",
         payload: { githubCommentId: comment.id, source: "github" },
+      })
+      publishReportStream(linked.r.id, {
+        kind: "comment_deleted",
+        payload: { source: "github", githubCommentId: comment.id },
       })
     }
   }
