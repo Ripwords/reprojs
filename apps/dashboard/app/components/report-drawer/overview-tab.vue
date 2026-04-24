@@ -208,7 +208,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
       <template #header>
         <div class="text-sm font-medium text-default">Raw context</div>
       </template>
-      <pre class="text-xs font-mono whitespace-pre-wrap break-all text-default">{{
+      <pre class="text-sm font-mono whitespace-pre-wrap break-all text-default">{{
         JSON.stringify(ctx, null, 2)
       }}</pre>
     </UCard>

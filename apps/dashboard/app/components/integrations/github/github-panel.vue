@@ -18,6 +18,8 @@ const { data, refresh } = useApi<GithubConfigDTO>(
 const selectedRepo = ref({ owner: "", name: "" })
 const labelsText = ref("")
 const assigneesText = ref("")
+const pushOnEdit = ref(false)
+const autoCreateOnIntake = ref(false)
 const saving = ref(false)
 const installing = ref(false)
 const unlinkOpen = ref(false)
@@ -29,6 +31,8 @@ watch(
     selectedRepo.value = { owner: v.repoOwner, name: v.repoName }
     labelsText.value = v.defaultLabels.join(", ")
     assigneesText.value = v.defaultAssignees.join(", ")
+    pushOnEdit.value = v.pushOnEdit
+    autoCreateOnIntake.value = v.autoCreateOnIntake
   },
   { immediate: true },
 )
@@ -90,6 +94,8 @@ async function saveRepo() {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
+        pushOnEdit: pushOnEdit.value,
+        autoCreateOnIntake: autoCreateOnIntake.value,
       },
     })
     await refresh()
@@ -175,7 +181,7 @@ async function saveRepo() {
     <!-- Installed + connected -->
     <div v-else class="space-y-5">
       <div>
-        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted mb-2">
+        <div class="text-sm font-semibold uppercase tracking-[0.14em] text-muted mb-2">
           Repository
         </div>
         <RepoPicker v-model="selectedRepo" :project-id="projectId" @update:model-value="saveRepo" />
@@ -190,6 +196,35 @@ async function saveRepo() {
         </UFormField>
       </div>
 
+      <div class="flex items-center gap-3">
+        <USwitch v-model="pushOnEdit" />
+        <div>
+          <p class="text-sm font-medium text-default">Push edits to GitHub</p>
+          <p class="text-sm text-muted">
+            Sync priority, status, and tag changes back to the GitHub issue automatically.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <USwitch
+          v-model="autoCreateOnIntake"
+          :disabled="!selectedRepo.owner || !selectedRepo.name"
+        />
+        <div>
+          <p
+            class="text-sm font-medium"
+            :class="!selectedRepo.owner || !selectedRepo.name ? 'text-muted' : 'text-default'"
+          >
+            Automatically create a GitHub issue for every new report
+          </p>
+          <p class="text-sm text-muted">
+            When on, every report submitted via the SDK immediately becomes a linked GitHub issue.
+            Leave off for manual &ldquo;Create issue&rdquo; per report.
+          </p>
+        </div>
+      </div>
+
       <div class="flex gap-2">
         <UButton
           label="Save defaults"
@@ -202,7 +237,7 @@ async function saveRepo() {
       </div>
 
       <div>
-        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted mb-2">
+        <div class="text-sm font-semibold uppercase tracking-[0.14em] text-muted mb-2">
           Sync status
         </div>
         <SyncStatus :project-id="projectId" @retried="refresh" />

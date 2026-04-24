@@ -1,4 +1,4 @@
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { afterEach, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test"
 import { eq } from "drizzle-orm"
 import { db } from "../../server/db"
@@ -127,7 +127,7 @@ describe("manager role — allowed actions", () => {
     const { status } = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
       method: "PATCH",
       headers: { cookie },
-      body: JSON.stringify({ assigneeId: managerId }),
+      body: JSON.stringify({ assigneeIds: [managerId] }),
     })
     expect(status).toBe(200)
   })

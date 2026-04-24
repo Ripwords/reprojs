@@ -105,6 +105,22 @@ Once the app is set up (either path), open the dashboard → Project settings �
 
 **Attachments don't render in issue bodies** — the dashboard generates time-limited signed URLs that GitHub's image renderer fetches. If your `BETTER_AUTH_URL` is `http://localhost:3000`, GitHub's servers can't reach it. Use a real hostname + proxy.
 
+### Rotating the webhook secret
+
+Rotate the webhook secret from the GitHub App's settings page. After GitHub issues the new secret:
+
+1. **If you set it via env (`GITHUB_APP_WEBHOOK_SECRET`):** update the env var and restart the dashboard. Any webhooks that land during the restart fail signature verification; GitHub retries with exponential backoff — they succeed once the new secret is live. Write-locks' 30s TTL tolerates the gap cleanly.
+
+2. **If you set it via the manifest wizard:** re-run the wizard from **Settings → Integrations → GitHub → Reconfigure**. The new secret is written to the encrypted `github_app` row atomically; no downtime window.
+
+The webhook endpoint requires HTTPS — GitHub will refuse to deliver over plain HTTP. We intentionally do **not** enforce IP allowlisting: self-hosters behind reverse proxies / CDNs routinely see rewritten source IPs, and the enforcement breaks more deployments than it defends.
+
+Defence in depth: every webhook request passes four checks in order — body size cap (5 MB), HMAC-SHA256 signature, `X-GitHub-Delivery` replay dedupe, and installation-id allowlist. Random traffic hitting `/api/integrations/github/webhook` gets 401 at step 2; replays get 202-noop at step 3; stolen-secret attacks against unknown installations get 202-noop at step 4.
+
+### Reserved columns (not yet user-visible)
+
+The `github_integrations` table now carries `push_on_edit` and `auto_create_on_intake` boolean columns. These control features that ship in subsequent phases — dashboard changes auto-push to the linked issue, and new reports auto-create a GitHub issue on intake, respectively. Until those phases land, the columns exist but have no UI toggles; defaults are `false` for every project.
+
 ## OAuth sign-in
 
 GitHub and Google OAuth via `better-auth`. Leave the secrets blank to hide the buttons.

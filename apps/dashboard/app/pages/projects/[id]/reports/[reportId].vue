@@ -12,6 +12,7 @@ import type { LogsAttachment, ReportSummaryDTO } from "@reprojs/shared"
 import AppErrorState from "~/components/common/app-error-state.vue"
 import AppLoadingSkeleton from "~/components/common/app-loading-skeleton.vue"
 import ActivityTab from "~/components/report-drawer/activity-tab.vue"
+import CommentsTab from "~/components/report-drawer/comments-tab.vue"
 import ConsoleTab from "~/components/report-drawer/console-tab.vue"
 import CookiesTab from "~/components/report-drawer/cookies-tab.vue"
 import NetworkTab from "~/components/report-drawer/network-tab.vue"
@@ -54,6 +55,7 @@ type TabId =
   | "network"
   | "replay"
   | "activity"
+  | "comments"
   | "cookies"
   | "system"
   | "raw"
@@ -93,6 +95,7 @@ const tabs = computed(() => {
     base.push({ id: "replay", label: "Replay", hasData: report.value?.hasReplay ?? false })
   }
   base.push({ id: "activity", label: "Activity" })
+  base.push({ id: "comments", label: "Comments" })
   if (report.value?.source !== "expo") {
     base.push({ id: "cookies", label: "Cookies", hasData: cookiesHasData.value })
   }
@@ -104,10 +107,31 @@ const tabs = computed(() => {
 // After a triage mutation, re-fetch the report row and refresh the activity
 // feed so the timeline reflects the new event immediately.
 const activityRef = ref<InstanceType<typeof ActivityTab> | null>(null)
+const commentsRef = ref<InstanceType<typeof CommentsTab> | null>(null)
 async function onPatched() {
   await refresh()
   if (activityRef.value) await activityRef.value.refresh()
+  if (commentsRef.value) await commentsRef.value.refresh()
 }
+
+// Live-update subscription: the SSE endpoint pushes an event every time this
+// report is touched (locally or via a GitHub webhook). Each event triggers the
+// same refetch used by the PATCH round-trip — the activity tab, triage
+// footer, and comments tab repaint from their new data.
+useReportStream(
+  () => projectId.value,
+  () => reportId.value,
+  async (e) => {
+    if (e.kind === "comment_added" || e.kind === "comment_edited" || e.kind === "comment_deleted") {
+      if (commentsRef.value) await commentsRef.value.refresh()
+      if (activityRef.value) await activityRef.value.refresh()
+      return
+    }
+    // triage / github_synced / github_unlinked all warrant a full refetch so
+    // the drawer's every tab reflects the new row state.
+    await onPatched()
+  },
+)
 
 const triageOpen = ref(false)
 
@@ -158,7 +182,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
     <div class="flex-1 min-w-0 flex flex-col">
       <!-- Breadcrumb + header -->
       <header class="px-6 pt-5 pb-5 border-b border-default">
-        <nav class="flex items-center gap-1.5 text-xs text-muted mb-3 font-medium">
+        <nav class="flex items-center gap-1.5 text-sm text-muted mb-3 font-medium">
           <NuxtLink
             :to="`/projects/${projectId}/reports`"
             class="hover:text-default transition-colors"
@@ -175,11 +199,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
             </h1>
             <div class="mt-1.5 flex items-center gap-2 text-sm text-muted">
               <UIcon name="i-heroicons-globe-alt" class="size-3.5 shrink-0" />
-              <span class="truncate font-mono text-xs">
+              <span class="truncate font-mono text-sm">
                 {{ report.context?.pageUrl ?? report.pageUrl }}
               </span>
               <span class="text-muted/60">·</span>
-              <span class="whitespace-nowrap tabular-nums text-xs">
+              <span class="whitespace-nowrap tabular-nums text-sm">
                 {{ relativeTime(report.receivedAt) }}
               </span>
             </div>
@@ -225,17 +249,23 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
           :project-id="projectId"
           :report="report"
         />
+        <CommentsTab
+          v-else-if="activeTab === 'comments'"
+          ref="commentsRef"
+          :project-id="projectId"
+          :report-id="report.id"
+        />
         <CookiesTab v-else-if="activeTab === 'cookies'" :project-id="projectId" :report="report" />
         <div v-else-if="activeTab === 'system'" class="p-5">
           <UCard :ui="{ body: 'p-4' }">
-            <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{
+            <pre class="text-sm font-mono whitespace-pre-wrap break-all">{{
               JSON.stringify(report.context?.systemInfo ?? {}, null, 2)
             }}</pre>
           </UCard>
         </div>
         <div v-else-if="activeTab === 'raw'" class="p-5">
           <UCard :ui="{ body: 'p-4' }">
-            <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{
+            <pre class="text-sm font-mono whitespace-pre-wrap break-all">{{
               JSON.stringify(report, null, 2)
             }}</pre>
           </UCard>
@@ -258,7 +288,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
         <div class="flex items-center justify-between gap-2 mb-5">
           <div class="flex items-center gap-2">
             <UIcon name="i-heroicons-adjustments-horizontal" class="size-4 text-muted" />
-            <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
+            <h2 class="text-sm font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
           </div>
           <UButton
             size="xs"
@@ -285,7 +315,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
       >
         <UIcon name="i-heroicons-chevron-double-left" class="size-4" />
         <UIcon name="i-heroicons-adjustments-horizontal" class="size-4" />
-        <span class="text-xs font-semibold uppercase tracking-[0.14em] [writing-mode:vertical-rl]">
+        <span class="text-sm font-semibold uppercase tracking-[0.14em] [writing-mode:vertical-rl]">
           Triage
         </span>
       </button>

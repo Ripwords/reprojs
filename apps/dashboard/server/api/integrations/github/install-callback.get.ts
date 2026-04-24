@@ -104,6 +104,8 @@ export default defineEventHandler(async (event) => {
       repoName: "",
       connectedBy: claims.userId,
       status: "connected",
+      pushOnEdit: true,
+      autoCreateOnIntake: true,
     })
   }
 

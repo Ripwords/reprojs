@@ -201,11 +201,11 @@ async function disconnect() {
             Organization (optional)
           </label>
           <UInput id="org" v-model="orgInput" placeholder="my-org" class="max-w-sm" />
-          <p class="text-xs text-muted mt-1">
+          <p class="text-sm text-muted mt-1">
             Leave empty to create the app on your personal GitHub account.
           </p>
         </div>
-        <p class="text-xs text-muted">
+        <p class="text-sm text-muted">
           <strong class="text-default">Note:</strong> The app is created with webhooks
           <strong>disabled</strong>. You'll need to enable them manually after setup to receive
           two-way sync events. See the instructions shown after the app is created.
@@ -244,7 +244,7 @@ async function disconnect() {
         </div>
       </dl>
       <template v-if="status.source === 'env'" #footer>
-        <p class="text-xs text-muted">
+        <p class="text-sm text-muted">
           This instance reads GitHub App credentials from environment variables. To migrate to the
           in-app setup flow, unset the <code>GITHUB_APP_*</code> vars and reload this page.
         </p>
@@ -257,7 +257,7 @@ async function disconnect() {
               v-if="githubAppAdvancedUrl"
               :to="githubAppAdvancedUrl"
               target="_blank"
-              class="text-xs text-muted hover:text-default"
+              class="text-sm text-muted hover:text-default"
             >
               Delete on GitHub &rarr;
             </ULink>
@@ -302,7 +302,7 @@ async function disconnect() {
           </li>
           <li>Check <strong>Active</strong> and click <strong>Save changes</strong>.</li>
         </ol>
-        <p class="text-xs text-muted">
+        <p class="text-sm text-muted">
           The webhook secret was already generated and stored during setup — no need to change it.
         </p>
       </div>
@@ -326,7 +326,7 @@ async function disconnect() {
 
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-medium text-muted mb-1">Client ID</label>
+            <label class="block text-sm font-medium text-muted mb-1">Client ID</label>
             <div class="flex gap-2">
               <UInput :model-value="clientIdDisplay" readonly class="font-mono flex-1" />
               <UButton
@@ -343,7 +343,7 @@ async function disconnect() {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-muted mb-1">Client Secret</label>
+            <label class="block text-sm font-medium text-muted mb-1">Client Secret</label>
             <div class="flex gap-2">
               <UInput
                 :model-value="revealed ? revealed.clientSecret : '••••••••••••••••'"
@@ -382,16 +382,16 @@ async function disconnect() {
                 </UButton>
               </template>
             </div>
-            <p v-if="copyFailed" class="text-xs text-warning mt-1">
+            <p v-if="copyFailed" class="text-sm text-warning mt-1">
               Copy failed — select and copy the value manually.
             </p>
-            <p v-if="revealError" class="text-xs text-error mt-1">
+            <p v-if="revealError" class="text-sm text-error mt-1">
               {{ revealError }}
             </p>
           </div>
         </div>
 
-        <div class="bg-muted/50 rounded p-3 text-xs text-muted space-y-1">
+        <div class="bg-muted/50 rounded p-3 text-sm text-muted space-y-1">
           <p class="font-medium text-default">Add to your .env and restart:</p>
           <pre class="font-mono whitespace-pre-wrap">
 GITHUB_CLIENT_ID=&lt;your client id&gt;

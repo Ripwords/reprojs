@@ -24,6 +24,13 @@ export const reportEvents = pgTable(
         "tag_added",
         "tag_removed",
         "github_unlinked",
+        "assignee_added",
+        "assignee_removed",
+        "milestone_changed",
+        "comment_added",
+        "comment_edited",
+        "comment_deleted",
+        "github_labels_updated",
       ],
     }).notNull(),
     payload: jsonb("payload")

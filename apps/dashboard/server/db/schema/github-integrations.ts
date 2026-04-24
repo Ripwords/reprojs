@@ -1,5 +1,22 @@
 import { sql } from "drizzle-orm"
-import { bigint, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core"
+
+// Discriminated union carried by each sync-job row. null/undefined = reconcile (backward compat).
+export type SyncJobPayload =
+  | { kind: "reconcile" }
+  | { kind: "comment_upsert"; commentId: string }
+  | { kind: "comment_delete"; commentId: string; githubCommentId: number }
 import { projects } from "./projects"
 import { reports } from "./reports"
 
@@ -27,28 +44,48 @@ export const githubIntegrations = pgTable(
     connectedBy: text("connected_by"),
     connectedAt: timestamp("connected_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    autoCreateOnIntake: boolean("auto_create_on_intake").default(false).notNull(),
+    pushOnEdit: boolean("push_on_edit").default(false).notNull(),
+    labelsLastSyncedAt: timestamp("labels_last_synced_at", { withTimezone: true, mode: "date" }),
+    milestonesLastSyncedAt: timestamp("milestones_last_synced_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    membersLastSyncedAt: timestamp("members_last_synced_at", { withTimezone: true, mode: "date" }),
   },
   (table) => ({
     installationIdIdx: index("github_integrations_installation_id_idx").on(table.installationId),
   }),
 )
 
+// Composite PK `(reportId, signature)` — without the signature column,
+// every enqueue call for the same report collides on the same row, so a
+// pending `comment_upsert` would clobber a pending `reconcile` (and vice
+// versa). Signature differentiates the unit of work:
+//   - `reconcile`                   — whole-report snapshot reconcile
+//   - `comment_upsert:<commentId>`  — per-comment create/edit
+//   - `comment_delete:<commentId>`  — per-comment delete
+// Default of `'reconcile'` keeps older test fixtures that insert `{ reportId }`
+// working; production enqueue paths always pass an explicit signature.
 export const reportSyncJobs = pgTable(
   "report_sync_jobs",
   {
     reportId: uuid("report_id")
-      .primaryKey()
+      .notNull()
       .references(() => reports.id, { onDelete: "cascade" }),
+    signature: text("signature").notNull().default("reconcile"),
     state: text("state", { enum: ["pending", "syncing", "failed"] })
       .notNull()
       .default("pending"),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
     nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+    payload: jsonb("payload").$type<SyncJobPayload>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
+    pk: primaryKey({ columns: [table.reportId, table.signature] }),
     pendingIdx: index("report_sync_jobs_pending_idx")
       .on(table.nextAttemptAt)
       .where(sql`${table.state} = 'pending'`),

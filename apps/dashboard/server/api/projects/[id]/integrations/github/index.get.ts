@@ -25,6 +25,8 @@ export default defineEventHandler(async (event): Promise<GithubConfigDTO> => {
       repoName: "",
       defaultLabels: [],
       defaultAssignees: [],
+      pushOnEdit: false,
+      autoCreateOnIntake: false,
       lastSyncedAt: null,
       failedJobs: [],
     }
@@ -51,6 +53,8 @@ export default defineEventHandler(async (event): Promise<GithubConfigDTO> => {
     repoName: gi.repoName,
     defaultLabels: gi.defaultLabels,
     defaultAssignees: gi.defaultAssignees,
+    pushOnEdit: gi.pushOnEdit,
+    autoCreateOnIntake: gi.autoCreateOnIntake,
     lastSyncedAt: gi.updatedAt.toISOString(),
     failedJobs: failedJobs.map((j) => ({
       reportId: j.reportId,

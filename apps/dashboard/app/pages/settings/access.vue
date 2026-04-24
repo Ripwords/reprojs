@@ -153,7 +153,7 @@ function reset() {
 
         <template #footer>
           <div class="flex items-center justify-between gap-3">
-            <span class="text-xs text-muted">
+            <span class="text-sm text-muted">
               Last updated {{ new Date(settings.updatedAt).toLocaleString() }}
             </span>
             <div class="flex gap-2">

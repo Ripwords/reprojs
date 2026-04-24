@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { desc, eq, sql } from "drizzle-orm"
 import { db } from "../server/db"
-import { projects, user, verification } from "../server/db/schema"
+import { githubApp, projects, user, verification } from "../server/db/schema"
 
 const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
 
@@ -156,6 +156,52 @@ export async function truncateGithub() {
 
 export async function truncateGithubApp() {
   await db.execute(sql`TRUNCATE github_app RESTART IDENTITY CASCADE`)
+}
+
+/**
+ * Seed the singleton `github_app` row with credentials that both the test
+ * process and the running dev server can read. The tests used to rely on
+ * `beforeAll` mutating `process.env.GITHUB_APP_*` — that works inside the
+ * test process but the dev server (a separate process) captured an empty
+ * env snapshot at startup, so integration endpoints kept returning
+ * 401/500 "GitHub App is not configured". Writing to the DB is the one
+ * channel both processes agree on.
+ *
+ * `encryptedText` columns lazy-read `ENCRYPTION_KEY` from `process.env`,
+ * so this insert works as long as the key is present at call time
+ * (which it is — both processes load the same root `.env`).
+ */
+export async function seedGithubApp(
+  overrides: Partial<typeof githubApp.$inferInsert> = {},
+): Promise<void> {
+  const defaults = {
+    id: 1,
+    appId: "123",
+    slug: "repro-test",
+    privateKey: "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
+    webhookSecret: "test-webhook-secret",
+    clientId: "Iv1.test",
+    clientSecret: "test-client-secret",
+    htmlUrl: "https://github.com/apps/repro-test",
+    createdBy: "test-bootstrap",
+  }
+  const values = { ...defaults, ...overrides }
+  await db
+    .insert(githubApp)
+    .values(values)
+    .onConflictDoUpdate({
+      target: githubApp.id,
+      set: {
+        appId: values.appId,
+        slug: values.slug,
+        privateKey: values.privateKey,
+        webhookSecret: values.webhookSecret,
+        clientId: values.clientId,
+        clientSecret: values.clientSecret,
+        htmlUrl: values.htmlUrl,
+        updatedAt: new Date(),
+      },
+    })
 }
 
 // Re-exported so magic-link tests can reach back into the user table without

@@ -35,6 +35,7 @@ describe("safeHref", () => {
   })
 
   test("resolves relative URLs against window origin", () => {
-    expect(safeHref("/some/path")).toContain("localhost:3000/some/path")
+    const result = safeHref("/some/path")
+    expect(result).toMatch(/^https?:\/\/localhost:\d+\/some\/path$/)
   })
 })

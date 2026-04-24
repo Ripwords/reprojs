@@ -26,10 +26,18 @@ function summary(e: ReportEventDTO): string {
       const to = p.to ? "someone" : "nobody"
       return `reassigned from ${from} to ${to}`
     }
-    case "tag_added":
-      return `added tag ${String(p.name)}`
-    case "tag_removed":
-      return `removed tag ${String(p.name)}`
+    case "assignee_added":
+      return `assigned user ${String(p.userId ?? "")}`
+    case "assignee_removed":
+      return `unassigned user ${String(p.userId ?? "")}`
+    case "tag_added": {
+      const name = p.name ?? p.tag
+      return `added tag ${String(name ?? "")}`.trim()
+    }
+    case "tag_removed": {
+      const name = p.name ?? p.tag
+      return `removed tag ${String(name ?? "")}`.trim()
+    }
     default:
       return e.kind
   }
@@ -61,9 +69,10 @@ function actorInitials(e: ReportEventDTO): string {
         <div class="flex-1 min-w-0">
           <div class="text-default">
             <span class="font-medium">{{ actorLabel(e) }}</span>
-            <span class="text-muted"> {{ summary(e) }}</span>
+            <span>&nbsp;</span>
+            <span class="text-muted">{{ summary(e) }}</span>
           </div>
-          <div class="text-xs text-muted mt-0.5">{{ relTime(e.createdAt) }}</div>
+          <div class="text-sm text-muted mt-0.5">{{ relTime(e.createdAt) }}</div>
         </div>
       </li>
     </ul>

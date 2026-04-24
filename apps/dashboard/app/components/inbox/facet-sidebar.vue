@@ -111,7 +111,7 @@ const priorityDot: Record<ReportPriority, string> = {
 <template>
   <aside class="space-y-7 text-sm">
     <section>
-      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+      <h3 class="px-2 mb-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted">
         Assignee
       </h3>
       <ul>
@@ -136,7 +136,7 @@ const priorityDot: Record<ReportPriority, string> = {
             />
             <span class="flex-1 truncate text-left font-medium">{{ assigneeLabel(a) }}</span>
             <span
-              class="text-xs font-medium tabular-nums"
+              class="text-sm font-medium tabular-nums"
               :class="isAssigneeSelected(a) ? 'text-primary' : 'text-muted'"
             >
               {{ a.count }}
@@ -147,7 +147,7 @@ const priorityDot: Record<ReportPriority, string> = {
     </section>
 
     <section>
-      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+      <h3 class="px-2 mb-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted">
         Priority
       </h3>
       <ul>
@@ -170,7 +170,7 @@ const priorityDot: Record<ReportPriority, string> = {
             />
             <span class="flex-1 text-left font-medium">{{ priorityLabel(p) }}</span>
             <span
-              class="text-xs font-medium tabular-nums"
+              class="text-sm font-medium tabular-nums"
               :class="selectedPriority.includes(p) ? 'text-primary' : 'text-muted'"
             >
               {{ priorityCounts[p] ?? 0 }}
@@ -181,7 +181,7 @@ const priorityDot: Record<ReportPriority, string> = {
     </section>
 
     <section v-if="tags.length">
-      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Tags</h3>
+      <h3 class="px-2 mb-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted">Tags</h3>
       <ul>
         <li v-for="t in tags" :key="t.name">
           <button
@@ -202,7 +202,7 @@ const priorityDot: Record<ReportPriority, string> = {
             />
             <span class="flex-1 truncate text-left font-medium">{{ t.name }}</span>
             <span
-              class="text-xs font-medium tabular-nums"
+              class="text-sm font-medium tabular-nums"
               :class="selectedTags.includes(t.name) ? 'text-primary' : 'text-muted'"
             >
               {{ t.count }}
@@ -213,7 +213,7 @@ const priorityDot: Record<ReportPriority, string> = {
     </section>
 
     <section>
-      <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Source</h3>
+      <h3 class="px-2 mb-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted">Source</h3>
       <ul>
         <li v-for="item in sourceItems" :key="item.token">
           <button
@@ -238,7 +238,7 @@ const priorityDot: Record<ReportPriority, string> = {
             />
             <span class="flex-1 text-left font-medium">{{ item.label }}</span>
             <span
-              class="text-xs font-medium tabular-nums"
+              class="text-sm font-medium tabular-nums"
               :class="selectedSource.includes(item.token) ? 'text-primary' : 'text-muted'"
             >
               {{ item.count }}

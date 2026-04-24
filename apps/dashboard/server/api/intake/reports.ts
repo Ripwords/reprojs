@@ -3,7 +3,7 @@ import { and, count, eq, gte, sql } from "drizzle-orm"
 import { randomUUID } from "node:crypto"
 import { LogsAttachment, ReportIntakeInput } from "@reprojs/shared"
 import { db } from "../../db"
-import { projects, reports, reportAttachments } from "../../db/schema"
+import { githubIntegrations, projects, reports, reportAttachments } from "../../db/schema"
 import {
   applyIntakePostCors,
   applyIntakePreflightCors,
@@ -307,9 +307,32 @@ export default defineEventHandler(async (event) => {
     await Promise.all(writes)
   }
 
-  await enqueueSync(report.id, project.id).catch((err) => {
-    console.error("[github] enqueueSync failed on intake", err)
-  })
+  // Auto-create GitHub issue on intake when the toggle is on.
+  // Runs after all attachments are persisted so the sync worker sees them.
+  // Fire-and-forget: enqueueSync is a single SQL UPSERT (microseconds), so a
+  // plain await does not meaningfully delay the 201 response to the SDK.
+  const [integration] = await db
+    .select({
+      status: githubIntegrations.status,
+      autoCreateOnIntake: githubIntegrations.autoCreateOnIntake,
+      repoOwner: githubIntegrations.repoOwner,
+      repoName: githubIntegrations.repoName,
+    })
+    .from(githubIntegrations)
+    .where(eq(githubIntegrations.projectId, project.id))
+    .limit(1)
+
+  if (
+    integration &&
+    integration.status === "connected" &&
+    integration.autoCreateOnIntake &&
+    integration.repoOwner &&
+    integration.repoName
+  ) {
+    await enqueueSync(report.id, project.id).catch((err) => {
+      console.error("[github] enqueueSync failed on intake", err)
+    })
+  }
 
   event.node.res.statusCode = 201
   return {

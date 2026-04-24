@@ -65,18 +65,22 @@ export function resolveGithubAppCredentials(input: {
 }
 
 // -----------------------------------------------------------------------------
-// Runtime wrapper: reads env + DB, caches. Invalidated by the manifest-callback
-// after a successful write so the next request picks up the new credentials.
+// Runtime wrapper: reads env + DB on every call.
+//
+// An in-process cache used to live here, invalidated by the manifest-callback
+// + delete-app endpoints. That caused cross-process consistency bugs for
+// integration tests that seed the `github_app` row directly (the test process
+// could invalidate its own copy, but the running dev-server process kept its
+// stale cache until a local write route fired). The backing query is a
+// single-row indexed SELECT — cheap enough to run every time.
 // -----------------------------------------------------------------------------
 
-let cache: GithubAppCredentials | null | undefined
-
+/** @deprecated Credentials are no longer cached; this is a no-op kept for API compatibility. */
 export function invalidateGithubAppCache(): void {
-  cache = undefined
+  // intentionally empty — see comment above
 }
 
 export async function getGithubAppCredentials(): Promise<GithubAppCredentials | null> {
-  if (cache !== undefined) return cache
   const [row] = await db.select().from(githubApp).where(eq(githubApp.id, 1)).limit(1)
   const dbRow = row
     ? {
@@ -88,7 +92,7 @@ export async function getGithubAppCredentials(): Promise<GithubAppCredentials | 
         clientSecret: row.clientSecret,
       }
     : null
-  cache = resolveGithubAppCredentials({
+  return resolveGithubAppCredentials({
     env: {
       GITHUB_APP_ID: env.GITHUB_APP_ID,
       GITHUB_APP_PRIVATE_KEY: env.GITHUB_APP_PRIVATE_KEY,
@@ -99,5 +103,4 @@ export async function getGithubAppCredentials(): Promise<GithubAppCredentials | 
     },
     dbRow,
   })
-  return cache
 }

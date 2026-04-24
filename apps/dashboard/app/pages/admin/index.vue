@@ -45,7 +45,7 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
     <!-- Page header -->
     <header class="flex items-end justify-between gap-4">
       <div>
-        <div class="text-xs font-medium uppercase tracking-[0.18em] text-muted">Admin</div>
+        <div class="text-sm font-medium uppercase tracking-[0.18em] text-muted">Admin</div>
         <h1 class="mt-1 text-3xl font-semibold text-default tracking-tight">Overview</h1>
         <p class="mt-1.5 text-sm text-muted">
           Snapshot of incoming reports, health, and recent team activity across all projects.
@@ -68,7 +68,7 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
         >
           <UIcon name="i-heroicons-inbox" class="size-4" />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">Open reports</div>
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">Open reports</div>
         <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
           {{ metrics?.open ?? 0 }}
         </div>
@@ -78,7 +78,7 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
         <div class="flex items-center justify-center size-8 rounded-lg bg-muted text-muted">
           <UIcon name="i-heroicons-sparkles" class="size-4" />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">
           New · last 7 days
         </div>
         <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
@@ -90,7 +90,7 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
         <div class="flex items-center justify-center size-8 rounded-lg bg-muted text-muted">
           <UIcon name="i-heroicons-chart-bar" class="size-4" />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">
           Total reports
         </div>
         <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
@@ -111,11 +111,11 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
             class="size-3.5 text-muted opacity-0 group-hover:opacity-100 transition"
           />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">Projects</div>
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">Projects</div>
         <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
           {{ metrics?.projects ?? 0 }}
         </div>
-        <div class="mt-1 text-xs text-muted">
+        <div class="mt-1 text-sm text-muted">
           {{ metrics?.projectsWithGithub ?? 0 }} connected to GitHub
         </div>
       </NuxtLink>
@@ -140,7 +140,7 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
               class="flex items-center gap-3 px-5 py-3 text-sm transition-colors hover:bg-elevated/50"
             >
               <span
-                class="shrink-0 text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-elevated text-muted"
+                class="shrink-0 text-sm font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-elevated text-muted"
               >
                 {{ r.projectName }}
               </span>
@@ -152,7 +152,7 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
                 class="capitalize shrink-0"
               />
               <span class="flex-1 min-w-0 truncate text-default">{{ r.title }}</span>
-              <span class="text-xs text-muted whitespace-nowrap tabular-nums">
+              <span class="text-sm text-muted whitespace-nowrap tabular-nums">
                 {{ relativeTime(r.receivedAt) }}
               </span>
             </NuxtLink>
@@ -181,7 +181,7 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
                 {{ e.actor?.name ?? e.actor?.email ?? "System" }}
               </span>
               <span class="text-muted"> {{ describeEvent(e) }}</span>
-              <div class="mt-0.5 text-xs text-muted tabular-nums">
+              <div class="mt-0.5 text-sm text-muted tabular-nums">
                 {{ relativeTime(e.createdAt) }}
               </div>
             </div>
@@ -202,13 +202,13 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
             class="flex items-center gap-4 px-5 py-3 text-sm transition-colors hover:bg-elevated/50"
           >
             <span class="flex-1 min-w-0 truncate font-medium text-default">{{ p.name }}</span>
-            <span class="text-xs text-muted tabular-nums shrink-0">
+            <span class="text-sm text-muted tabular-nums shrink-0">
               <span class="font-semibold text-default">{{ p.openCount }}</span> open
             </span>
-            <span class="text-xs text-muted tabular-nums shrink-0">
+            <span class="text-sm text-muted tabular-nums shrink-0">
               {{ p.newLast7Count }} new · 7d
             </span>
-            <span class="text-xs text-muted tabular-nums shrink-0"> {{ p.totalCount }} total </span>
+            <span class="text-sm text-muted tabular-nums shrink-0"> {{ p.totalCount }} total </span>
             <UIcon name="i-heroicons-chevron-right" class="size-4 text-muted shrink-0" />
           </NuxtLink>
         </li>

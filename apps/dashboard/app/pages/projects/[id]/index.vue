@@ -61,7 +61,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
     <!-- Page header -->
     <header class="flex items-end justify-between gap-4">
       <div>
-        <div class="text-xs font-medium uppercase tracking-[0.18em] text-muted">Project</div>
+        <div class="text-sm font-medium uppercase tracking-[0.18em] text-muted">Project</div>
         <h1 class="mt-1 text-3xl font-semibold text-default tracking-tight">
           {{ project?.name ?? "…" }}
         </h1>
@@ -97,7 +97,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
             class="size-3.5 text-muted opacity-0 group-hover:opacity-100 transition"
           />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">Open reports</div>
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">Open reports</div>
         <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
           {{ metrics?.open ?? 0 }}
         </div>
@@ -107,7 +107,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
         <div class="flex items-center justify-center size-8 rounded-lg bg-muted text-muted">
           <UIcon name="i-heroicons-sparkles" class="size-4" />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">
           New · last 7 days
         </div>
         <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
@@ -119,7 +119,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
         <div class="flex items-center justify-center size-8 rounded-lg bg-muted text-muted">
           <UIcon name="i-heroicons-chart-bar" class="size-4" />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">
           Total reports
         </div>
         <div class="mt-1 text-3xl font-semibold text-default tracking-tight tabular-nums">
@@ -147,7 +147,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
             class="size-3.5 text-muted opacity-0 group-hover:opacity-100 transition"
           />
         </div>
-        <div class="mt-4 text-xs font-medium uppercase tracking-wider text-muted">GitHub sync</div>
+        <div class="mt-4 text-sm font-medium uppercase tracking-wider text-muted">GitHub sync</div>
         <div
           class="mt-1 text-base font-semibold text-default tracking-tight truncate"
           :class="{ 'text-muted': integration.status !== 'connected' }"
@@ -164,7 +164,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
           <h2 class="text-sm font-semibold text-default tracking-tight">Recent reports</h2>
           <NuxtLink
             :to="`/projects/${projectId}/reports`"
-            class="text-xs font-medium text-muted hover:text-primary transition-colors"
+            class="text-sm font-medium text-muted hover:text-primary transition-colors"
           >
             View all →
           </NuxtLink>
@@ -189,7 +189,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
                 class="capitalize shrink-0"
               />
               <span class="flex-1 min-w-0 truncate text-default">{{ r.title }}</span>
-              <span class="text-xs text-muted whitespace-nowrap tabular-nums">
+              <span class="text-sm text-muted whitespace-nowrap tabular-nums">
                 {{ relativeTime(r.receivedAt) }}
               </span>
             </NuxtLink>
@@ -218,7 +218,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
                 {{ e.actor?.name ?? e.actor?.email ?? "System" }}
               </span>
               <span class="text-muted"> {{ describeEvent(e) }}</span>
-              <div class="mt-0.5 text-xs text-muted tabular-nums">
+              <div class="mt-0.5 text-sm text-muted tabular-nums">
                 {{ relativeTime(e.createdAt) }}
               </div>
             </div>

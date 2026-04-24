@@ -158,7 +158,7 @@ const columns = computed<TableColumn<UserDTO>[]>(() => [
             { class: "text-sm font-medium text-default" },
             row.original.name ?? row.original.email,
           ),
-          row.original.name ? h("div", { class: "text-xs text-muted" }, row.original.email) : null,
+          row.original.name ? h("div", { class: "text-sm text-muted" }, row.original.email) : null,
         ]),
       ]),
   },
@@ -252,7 +252,7 @@ const columns = computed<TableColumn<UserDTO>[]>(() => [
         :data="usersList"
         :columns="columns"
         :loading="pending"
-        :ui="{ td: 'text-sm', th: 'text-xs font-medium text-muted uppercase' }"
+        :ui="{ td: 'text-sm', th: 'text-sm font-medium text-muted uppercase' }"
       />
     </UCard>
 

@@ -220,13 +220,13 @@ function isActive(item: NavItem): boolean {
           <span v-if="!collapsed" class="text-sm truncate flex-1">Invitations</span>
           <span
             v-if="!collapsed"
-            class="text-xs font-semibold px-1.5 py-0.5 rounded bg-primary-500 text-white"
+            class="text-sm font-semibold px-1.5 py-0.5 rounded bg-primary-500 text-white"
           >
             {{ pendingInviteCount }}
           </span>
           <span
             v-else
-            class="absolute ml-5 mt-[-18px] text-[10px] font-semibold px-1 py-0 rounded-full bg-primary-500 text-white"
+            class="absolute ml-5 mt-[-18px] text-sm font-semibold px-1 py-0 rounded-full bg-primary-500 text-white"
           >
             {{ pendingInviteCount }}
           </span>
@@ -238,7 +238,7 @@ function isActive(item: NavItem): boolean {
         <div
           v-if="!collapsed && currentProjectName"
           :title="currentProjectName"
-          class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted truncate"
+          class="mb-2 px-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted truncate"
         >
           {{ currentProjectName }}
         </div>
@@ -274,7 +274,7 @@ function isActive(item: NavItem): boolean {
       <div v-if="adminItems.length > 0" class="mt-6 px-2">
         <div
           v-if="!collapsed"
-          class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted"
+          class="mb-2 px-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted"
         >
           Admin
         </div>

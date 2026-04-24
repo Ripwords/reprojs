@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm"
 import { check, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
-import { user } from "./auth-schema"
 import { projects } from "./projects"
 
 export const reports = pgTable(
@@ -22,7 +21,6 @@ export const reports = pgTable(
     status: text("status", { enum: ["open", "in_progress", "resolved", "closed"] })
       .notNull()
       .default("open"),
-    assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
     priority: text("priority", { enum: ["low", "normal", "high", "urgent"] })
       .notNull()
       .default("normal"),
@@ -40,6 +38,13 @@ export const reports = pgTable(
     githubIssueNumber: integer("github_issue_number"),
     githubIssueNodeId: text("github_issue_node_id"),
     githubIssueUrl: text("github_issue_url"),
+    milestoneNumber: integer("milestone_number"),
+    milestoneTitle: text("milestone_title"),
+    githubSyncedAt: timestamp("github_synced_at", { withTimezone: true, mode: "date" }),
+    githubCommentsSyncedAt: timestamp("github_comments_synced_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
   },
   (table) => ({
     projectCreatedIdx: index("reports_project_created_idx").on(
@@ -51,7 +56,6 @@ export const reports = pgTable(
       table.status,
       sql`${table.createdAt} DESC`,
     ),
-    projectAssigneeIdx: index("reports_project_assignee_idx").on(table.projectId, table.assigneeId),
     projectPriorityIdx: index("reports_project_priority_idx").on(table.projectId, table.priority),
     tagsGinIdx: index("reports_tags_gin_idx").using("gin", table.tags),
     githubIssueNumberIdx: index("reports_github_issue_number_idx")

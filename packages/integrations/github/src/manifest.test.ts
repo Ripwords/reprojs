@@ -16,12 +16,12 @@ describe("buildGithubAppManifest", () => {
     expect(m.setup_url).toBe("https://repro.example.com/api/integrations/github/install-callback")
   })
 
-  test("webhook is created inactive — operators enable it manually after setup", () => {
+  test("webhook is created active for public baseUrls — events flow immediately after install", () => {
     const m = buildGithubAppManifest({ baseUrl: "https://repro.example.com" })
-    expect(m.hook_attributes.active).toBe(false)
+    expect(m.hook_attributes.active).toBe(true)
   })
 
-  test("localhost baseUrl uses a public placeholder webhook URL (GitHub rejects localhost)", () => {
+  test("localhost baseUrl uses a public placeholder webhook URL inactive (GitHub rejects localhost)", () => {
     const m = buildGithubAppManifest({ baseUrl: "http://localhost:3000" })
     expect(m.hook_attributes.url).toBe("https://example.com/webhook")
     expect(m.hook_attributes.active).toBe(false)
@@ -42,9 +42,17 @@ describe("buildGithubAppManifest", () => {
     expect(m.default_permissions.emails).toBe("read")
   })
 
-  test("default_events contains issues only (installation* events are auto-delivered)", () => {
+  test("default_events subscribes to every event the webhook handler dispatches on", () => {
+    // installation + installation_repositories are auto-delivered — excluded
+    // here (listing them causes GitHub to reject the manifest).
     const m = buildGithubAppManifest({ baseUrl: "https://x.test" })
-    expect(m.default_events).toEqual(["issues"])
+    expect(m.default_events).toEqual([
+      "issues",
+      "sub_issues",
+      "issue_comment",
+      "label",
+      "milestone",
+    ])
   })
 
   test("setup_on_update true so admins get redirected back after editing installation", () => {

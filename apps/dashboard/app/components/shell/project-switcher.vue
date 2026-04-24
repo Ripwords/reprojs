@@ -46,7 +46,7 @@ const shortcutHint = computed(() => (isMac.value ? "⌘K" : "Ctrl K"))
          since SSR wouldn't render the right value anyway. -->
     <ClientOnly>
       <kbd
-        class="hidden md:inline-flex items-center ml-2 px-1.5 py-0.5 rounded border border-default bg-muted/60 text-xs font-mono text-muted"
+        class="hidden md:inline-flex items-center ml-2 px-1.5 py-0.5 rounded border border-default bg-muted/60 text-sm font-mono text-muted"
         aria-hidden="true"
       >
         {{ shortcutHint }}

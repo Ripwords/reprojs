@@ -97,7 +97,7 @@ async function bulkAssign(assigneeId: string | null) {
   try {
     await $fetch(`/api/projects/${projectId.value}/reports/bulk-update`, {
       method: "POST",
-      body: { reportIds: checkedIds.value, assigneeId },
+      body: { reportIds: checkedIds.value, assigneeIds: assigneeId ? [assigneeId] : [] },
       credentials: "include",
     })
     clearSelection()
@@ -203,8 +203,8 @@ useKeyboardShortcuts({
 // ---- Columns ----
 const timeCompact = (iso: string) => relativeTime(iso, { compact: true })
 
-function initials(name: string | null, email: string): string {
-  const base = name?.trim() || email
+function initials(name: string | null, email: string | null): string {
+  const base = name?.trim() || email || "?"
   return base.slice(0, 2).toUpperCase()
 }
 
@@ -267,14 +267,14 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
     cell: ({ row }) => {
       const n = row.original.githubIssueNumber
       const url = row.original.githubIssueUrl
-      if (n == null || !url) return h("span", { class: "text-muted text-xs" }, "—")
+      if (n == null || !url) return h("span", { class: "text-muted text-sm" }, "—")
       return h(
         "a",
         {
           href: url,
           target: "_blank",
           rel: "noopener",
-          class: "inline-flex items-center gap-1 text-xs text-muted hover:text-default transition",
+          class: "inline-flex items-center gap-1 text-sm text-muted hover:text-default transition",
           title: `GitHub issue #${n}`,
           onClick: (e: MouseEvent) => e.stopPropagation(),
         },
@@ -283,21 +283,21 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
     },
   },
   {
-    accessorKey: "assignee",
+    id: "assignee",
     header: "Assignee",
     cell: ({ row }) => {
-      const a = row.original.assignee
-      if (!a) return h("span", { class: "text-muted text-xs" }, "—")
-      return h("span", { class: "inline-flex items-center gap-2 text-xs" }, [
+      const a = row.original.assignees?.[0]
+      if (!a) return h("span", { class: "text-muted text-sm" }, "—")
+      return h("span", { class: "inline-flex items-center gap-2 text-sm" }, [
         h(
           "span",
           {
             class:
-              "size-5 rounded-full bg-elevated text-default flex items-center justify-center text-[10px] font-semibold",
+              "size-5 rounded-full bg-elevated text-default flex items-center justify-center text-sm font-semibold",
           },
           initials(a.name, a.email),
         ),
-        h("span", { class: "truncate max-w-[8rem]" }, a.name ?? a.email),
+        h("span", { class: "truncate max-w-[8rem]" }, a.name ?? a.email ?? "—"),
       ])
     },
   },
@@ -307,7 +307,7 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
     cell: ({ row }) =>
       h(
         "span",
-        { class: "text-xs text-muted truncate max-w-[10rem] inline-block" },
+        { class: "text-sm text-muted truncate max-w-[10rem] inline-block" },
         row.original.reporterEmail ?? "—",
       ),
   },
@@ -318,7 +318,7 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
       h(UTooltip, { text: new Date(row.original.receivedAt).toLocaleString() }, () =>
         h(
           "span",
-          { class: "text-xs text-muted whitespace-nowrap" },
+          { class: "text-sm text-muted whitespace-nowrap" },
           timeCompact(row.original.receivedAt),
         ),
       ),
@@ -412,7 +412,7 @@ function onRowSelect(_e: Event, row: TableRowLike) {
           :loading="pending"
           :get-row-id="getRowId"
           :ui="{
-            th: 'text-xs font-medium text-muted',
+            th: 'text-sm font-medium text-muted',
             td: 'py-2 text-sm',
             tr: 'cursor-pointer hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30',
           }"

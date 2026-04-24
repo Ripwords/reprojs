@@ -89,7 +89,7 @@ function relativeTime(iso: string): string {
   <div class="space-y-3">
     <div class="grid grid-cols-2 gap-3">
       <div class="p-4 rounded-lg border border-default bg-default">
-        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Failed</div>
+        <div class="text-sm font-semibold uppercase tracking-[0.14em] text-muted">Failed</div>
         <div
           class="mt-1 text-2xl font-semibold tabular-nums tracking-tight"
           :class="failedCount > 0 ? 'text-error' : 'text-default'"
@@ -98,7 +98,7 @@ function relativeTime(iso: string): string {
         </div>
       </div>
       <div class="p-4 rounded-lg border border-default bg-default">
-        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Last sync</div>
+        <div class="text-sm font-semibold uppercase tracking-[0.14em] text-muted">Last sync</div>
         <div class="mt-1 text-base font-semibold text-default">
           {{ lastSyncedAt ? relativeTime(lastSyncedAt) : "—" }}
         </div>
@@ -128,7 +128,7 @@ function relativeTime(iso: string): string {
           <div class="text-sm text-muted truncate mt-0.5">
             {{ j.lastError ?? "Unknown error" }}
           </div>
-          <div class="mt-1 text-xs text-muted tabular-nums">
+          <div class="mt-1 text-sm text-muted tabular-nums">
             {{ j.attempts }} attempt{{ j.attempts === 1 ? "" : "s" }} ·
             {{ relativeTime(j.updatedAt) }}
           </div>

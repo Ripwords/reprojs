@@ -4,7 +4,6 @@ import { diffTags } from "./inbox-query"
 export interface BeforeAfter {
   status?: { from: string; to: string }
   priority?: { from: string; to: string }
-  assigneeId?: { from: string | null; to: string | null }
   tags?: { from: string[]; to: string[] }
 }
 
@@ -36,9 +35,6 @@ export function buildReportEvents(
   }
   if (change.priority && change.priority.from !== change.priority.to) {
     push("priority_changed", { from: change.priority.from, to: change.priority.to })
-  }
-  if (change.assigneeId && change.assigneeId.from !== change.assigneeId.to) {
-    push("assignee_changed", { from: change.assigneeId.from, to: change.assigneeId.to })
   }
   if (change.tags) {
     const { added, removed } = diffTags(change.tags.from, change.tags.to)

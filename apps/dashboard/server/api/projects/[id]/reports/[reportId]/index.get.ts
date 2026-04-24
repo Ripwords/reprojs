@@ -5,9 +5,9 @@
 // DTO contract.
 import { createError, defineEventHandler, getRouterParam } from "h3"
 import { and, eq } from "drizzle-orm"
-import type { ReportAssigneeDTO, ReportContext, ReportSummaryDTO } from "@reprojs/shared"
+import type { ReportContext, ReportSummaryDTO } from "@reprojs/shared"
 import { db } from "../../../../../db"
-import { reportAttachments, reports } from "../../../../../db/schema"
+import { reportAssignees, reportAttachments, reports } from "../../../../../db/schema"
 import { user as userTable } from "../../../../../db/schema/auth-schema"
 import { requireProjectRole } from "../../../../../lib/permissions"
 
@@ -32,14 +32,12 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
       tags: reports.tags,
       source: reports.source,
       devicePlatform: reports.devicePlatform,
-      assigneeId: reports.assigneeId,
-      assigneeName: userTable.name,
-      assigneeEmail: userTable.email,
       githubIssueNumber: reports.githubIssueNumber,
       githubIssueUrl: reports.githubIssueUrl,
+      milestoneNumber: reports.milestoneNumber,
+      milestoneTitle: reports.milestoneTitle,
     })
     .from(reports)
-    .leftJoin(userTable, eq(userTable.id, reports.assigneeId))
     .where(and(eq(reports.id, reportId), eq(reports.projectId, projectId)))
     .limit(1)
 
@@ -47,9 +45,9 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
     throw createError({ statusCode: 404, statusMessage: "Report not found" })
   }
 
-  // Parallel: screenshot thumbnail + replay existence. Mirrors how the list
-  // endpoint computes `thumbnailUrl` and `hasReplay`.
-  const [screenshotRows, replayRows] = await Promise.all([
+  // Parallel: screenshot thumbnail + replay existence + assignees.
+  // Mirrors how the list endpoint computes `thumbnailUrl` and `hasReplay`.
+  const [screenshotRows, replayRows, assigneeRows] = await Promise.all([
     db
       .select({ id: reportAttachments.id })
       .from(reportAttachments)
@@ -62,13 +60,20 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
       .from(reportAttachments)
       .where(and(eq(reportAttachments.reportId, reportId), eq(reportAttachments.kind, "replay")))
       .limit(1),
+    db
+      .select({
+        userId: reportAssignees.userId,
+        githubLogin: reportAssignees.githubLogin,
+        githubAvatarUrl: reportAssignees.githubAvatarUrl,
+        name: userTable.name,
+        email: userTable.email,
+      })
+      .from(reportAssignees)
+      .leftJoin(userTable, eq(userTable.id, reportAssignees.userId))
+      .where(eq(reportAssignees.reportId, reportId)),
   ])
 
   const ctx = row.context as ReportContext
-  const assignee: ReportAssigneeDTO | null =
-    row.assigneeId && row.assigneeEmail
-      ? { id: row.assigneeId, name: row.assigneeName ?? null, email: row.assigneeEmail }
-      : null
 
   return {
     id: row.id,
@@ -91,6 +96,14 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
     devicePlatform: row.devicePlatform ?? null,
     githubIssueNumber: row.githubIssueNumber ?? null,
     githubIssueUrl: row.githubIssueUrl ?? null,
-    assignee,
+    milestoneNumber: row.milestoneNumber ?? null,
+    milestoneTitle: row.milestoneTitle ?? null,
+    assignees: assigneeRows.map((a) => ({
+      id: a.userId,
+      name: a.name ?? null,
+      email: a.email ?? null,
+      githubLogin: a.githubLogin,
+      githubAvatarUrl: a.githubAvatarUrl,
+    })),
   }
 })

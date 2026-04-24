@@ -12,6 +12,22 @@ import type {
   IssueStateInput,
   UpdateLabelsInput,
 } from "./types"
+import { listRepoLabels, listAssignableUsers, listMilestones } from "./repo-read"
+export {
+  updateIssueTitle,
+  updateIssueMilestone,
+  addAssignees,
+  removeAssignees,
+  updateIssueState,
+} from "./issue-writes"
+export type { IssueStateUpdate } from "./issue-writes"
+export {
+  createIssueComment,
+  updateIssueComment,
+  deleteIssueComment,
+  listIssueComments,
+} from "./comments"
+export type { GithubComment } from "./comments"
 
 export function createInstallationClient(
   opts: InstallationClientOptions,
@@ -135,5 +151,10 @@ export function createInstallationClient(
         return null
       }
     },
+
+    listRepoLabels: (owner: string, repo: string) => listRepoLabels(octokit, owner, repo),
+    listAssignableUsers: (owner: string, repo: string) => listAssignableUsers(octokit, owner, repo),
+    listMilestones: (owner: string, repo: string, state?: "open" | "all") =>
+      listMilestones(octokit, owner, repo, state),
   }
 }

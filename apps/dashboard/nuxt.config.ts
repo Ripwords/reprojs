@@ -2,9 +2,8 @@ import tailwindcss from "@tailwindcss/vite"
 
 export default defineNuxtConfig({
   compatibilityDate: "2026-04-17",
-  modules: ["@nuxt/ui", "@nuxt/fonts", "nuxt-security"],
+  modules: ["@nuxt/ui", "@nuxt/fonts", "nuxt-security", "@vueuse/nuxt"],
   css: ["~/assets/css/tailwind.css"],
-
   // Scan source at build time and bundle every `<UIcon>` / `i-*` reference
   // into the client JS. Without this, icons fall through to `@nuxt/icon`'s
   // `/api/_nuxt_icon/:collection.json?icons=*` runtime endpoint — which
@@ -55,6 +54,13 @@ export default defineNuxtConfig({
     optimizeDeps: {
       include: ["better-auth/vue", "better-auth/client/plugins", "rrweb-player", "shiki"],
     },
+    server: {
+      // Allow an externally-tunnelled host to reach the dev server. Set
+      // DEV_TUNNEL_HOST in your local .env (e.g. `repro-dev.yourdomain.com`)
+      // — defaults to an empty allowlist in production/CI so no accidental
+      // hostname ever ships in the repo.
+      allowedHosts: process.env.DEV_TUNNEL_HOST ? [process.env.DEV_TUNNEL_HOST] : [],
+    },
   },
 
   // nuxt-security defaults are fine for the dashboard itself (same-origin),
@@ -79,7 +85,24 @@ export default defineNuxtConfig({
     // at startup (before nuxt.config is evaluated), so any inherited
     // NODE_ENV=test from the parent shell is lost. A custom env var survives
     // the Nuxt init sequence unchanged.
-    rateLimiter: process.env.DISABLE_NUXT_SECURITY_RATE_LIMIT === "1" ? false : undefined,
+    // The env-var escape hatch is ONLY honoured outside production — if it
+    // somehow leaks into a prod .env the global rate limiter stays on.
+    rateLimiter:
+      process.env.NODE_ENV !== "production" && process.env.DISABLE_NUXT_SECURITY_RATE_LIMIT === "1"
+        ? false
+        : undefined,
+    // CSP: nuxt-security's default img-src is ['\'self\'', 'data:'] which
+    // blocks GitHub user avatars (avatars.githubusercontent.com/u/<id>?v=4)
+    // rendered in the assignees picker and comment author rows. Extend
+    // img-src — not override — so we keep 'self' + data: and add the
+    // GitHub CDN host. Allow https: broadly as well so user-supplied avatar
+    // URLs from other identity providers (when we add Jira/Linear) don't
+    // each require a code change.
+    headers: {
+      contentSecurityPolicy: {
+        "img-src": ["'self'", "data:", "https:"],
+      },
+    },
   },
   routeRules: {
     // better-auth owns request/response shape for every /api/auth/* call —
@@ -111,6 +134,20 @@ export default defineNuxtConfig({
         xssValidator: false,
       },
     },
+    // GitHub webhook — nuxt-security's per-IP rate limiter would block
+    // GitHub's exponential-backoff delivery retries during restarts /
+    // deployments. The webhook handler enforces its own defence-in-depth
+    // (5 MB body cap → HMAC-SHA256 signature → delivery dedupe →
+    // installation allowlist), so the nuxt-security layer adds no
+    // meaningful protection here. requestSizeLimiter is also off because
+    // the handler reads and checks body size itself.
+    "/api/integrations/github/webhook": {
+      security: {
+        rateLimiter: false,
+        requestSizeLimiter: false,
+        xssValidator: false,
+      },
+    },
   },
   nitro: {
     experimental: {
@@ -118,6 +155,8 @@ export default defineNuxtConfig({
     },
     scheduledTasks: {
       "*/1 * * * *": ["github:sync"],
+      // Daily at 03:00 UTC — cleans up any unconsumed expired write-lock rows.
+      "0 3 * * *": ["github:cleanup-write-locks"],
     },
     routeRules: {
       // Baseline security headers for every dashboard response.

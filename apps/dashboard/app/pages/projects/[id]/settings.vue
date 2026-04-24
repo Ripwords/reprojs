@@ -293,7 +293,7 @@ async function confirmDelete() {
           <h2 class="text-base font-semibold text-default">Embed snippet</h2>
         </template>
         <pre
-          class="text-xs bg-elevated rounded p-3 overflow-x-auto"
+          class="text-sm bg-elevated rounded p-3 overflow-x-auto"
         ><code>&lt;script src=&quot;{{ dashboardUrl }}/sdk/repro.iife.js&quot;&gt;&lt;/script&gt;
 &lt;script&gt;
   Repro.init({

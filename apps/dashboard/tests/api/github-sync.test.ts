@@ -1,5 +1,5 @@
 // apps/dashboard/tests/api/github-sync.test.ts
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
@@ -9,10 +9,12 @@ import { __setClientOverride, signInstallState } from "../../server/lib/github"
 import {
   apiFetch,
   createUser,
+  seedGithubApp,
   seedProject,
   signIn,
   truncateDomain,
   truncateGithub,
+  truncateGithubApp,
   truncateReports,
 } from "../helpers"
 import { db } from "../../server/db"
@@ -76,14 +78,15 @@ export function makeMock(overrides: Partial<GitHubInstallationClient> = {}): {
   return { client: { ...defaults, ...overrides }, calls }
 }
 
-beforeAll(() => {
-  process.env.GITHUB_APP_ID = process.env.GITHUB_APP_ID ?? "123"
-  process.env.GITHUB_APP_PRIVATE_KEY =
-    process.env.GITHUB_APP_PRIVATE_KEY ??
-    "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----"
-  process.env.GITHUB_APP_WEBHOOK_SECRET =
-    process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret"
+// The dev server reads GitHub App credentials from the DB via
+// `getGithubAppCredentials()`. Seeding the singleton `github_app` row is the
+// only way both processes (test + dev server) agree on the webhook secret
+// used for install-state HMACs — mutating `process.env` here only affects
+// the test process.
+beforeAll(async () => {
   process.env.ATTACHMENT_URL_SECRET = process.env.ATTACHMENT_URL_SECRET ?? "test-attachment-secret"
+  await truncateGithubApp()
+  await seedGithubApp()
 })
 
 describe("github integration — install + config", () => {
@@ -423,6 +426,7 @@ describe("webhook", () => {
       headers: {
         "content-type": "application/json",
         "x-github-event": "issues",
+        "x-github-delivery": crypto.randomUUID(),
         "x-hub-signature-256": sign(
           process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret",
           body,
@@ -459,6 +463,7 @@ describe("webhook", () => {
       headers: {
         "content-type": "application/json",
         "x-github-event": "installation",
+        "x-github-delivery": crypto.randomUUID(),
         "x-hub-signature-256": sign(
           process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret",
           body,
@@ -596,7 +601,7 @@ describe("manual sync + unlink + enqueue hooks", () => {
     expect(evs.find((e) => e.kind === "github_unlinked")).toBeDefined()
   })
 
-  test("intake with connected integration enqueues a sync job", async () => {
+  test("intake with connected integration and autoCreateOnIntake=true enqueues a sync job", async () => {
     const ownerId = await createUser("owner@example.com", "admin")
     const pid = await seedProject({
       name: "g",
@@ -604,9 +609,13 @@ describe("manual sync + unlink + enqueue hooks", () => {
       allowedOrigins: [ORIGIN],
       createdBy: ownerId,
     })
-    await db
-      .insert(githubIntegrations)
-      .values({ projectId: pid, installationId: 10, repoOwner: "acme", repoName: "frontend" })
+    await db.insert(githubIntegrations).values({
+      projectId: pid,
+      installationId: 10,
+      repoOwner: "acme",
+      repoName: "frontend",
+      autoCreateOnIntake: true,
+    })
     const fd = new FormData()
     fd.set(
       "report",

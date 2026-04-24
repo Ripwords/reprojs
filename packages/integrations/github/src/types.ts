@@ -47,6 +47,9 @@ export interface FindIssueByMarkerInput {
   marker: string
 }
 
+import type { RepoLabel, AssignableUser, RepoMilestone } from "./repo-read"
+export type { RepoLabel, AssignableUser, RepoMilestone }
+
 export interface GitHubInstallationClient {
   createIssue(input: CreateIssueInput): Promise<GitHubIssueRef>
   getIssue(input: IssueStateInput): Promise<{ state: "open" | "closed"; labels: string[] }>
@@ -55,4 +58,7 @@ export interface GitHubInstallationClient {
   updateIssueLabels(input: UpdateLabelsInput): Promise<void>
   listInstallationRepositories(): Promise<InstallationRepository[]>
   findIssueByMarker(input: FindIssueByMarkerInput): Promise<GitHubIssueRef | null>
+  listRepoLabels(owner: string, repo: string): Promise<RepoLabel[]>
+  listAssignableUsers(owner: string, repo: string): Promise<AssignableUser[]>
+  listMilestones(owner: string, repo: string, state?: "open" | "all"): Promise<RepoMilestone[]>
 }

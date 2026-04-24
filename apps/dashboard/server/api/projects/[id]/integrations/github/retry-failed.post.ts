@@ -10,19 +10,21 @@ export default defineEventHandler(async (event) => {
   if (!projectId) throw createError({ statusCode: 400, statusMessage: "missing project id" })
   await requireProjectRole(event, projectId, "developer")
 
-  const failedIds = await db
-    .select({ reportId: reportSyncJobs.reportId })
-    .from(reportSyncJobs)
-    .innerJoin(reports, eq(reports.id, reportSyncJobs.reportId))
-    .where(and(eq(reports.projectId, projectId), eq(reportSyncJobs.state, "failed")))
+  // Scope by project, then flip every failed row — including multiple failed
+  // rows per report (one per signature) — back to pending. `state = 'failed'`
+  // must stay on the UPDATE itself so we don't inadvertently reset pending or
+  // syncing siblings for the same report.
+  const reportIds = (
+    await db.select({ id: reports.id }).from(reports).where(eq(reports.projectId, projectId))
+  ).map((r) => r.id)
 
-  if (failedIds.length === 0) return { retried: 0 }
+  if (reportIds.length === 0) return { retried: 0 }
 
-  const ids = failedIds.map((r) => r.reportId)
-  await db
+  const result = await db
     .update(reportSyncJobs)
     .set({ state: "pending", nextAttemptAt: new Date(), updatedAt: new Date() })
-    .where(inArray(reportSyncJobs.reportId, ids))
+    .where(and(inArray(reportSyncJobs.reportId, reportIds), eq(reportSyncJobs.state, "failed")))
+    .returning({ reportId: reportSyncJobs.reportId, signature: reportSyncJobs.signature })
 
-  return { retried: ids.length }
+  return { retried: result.length }
 })
