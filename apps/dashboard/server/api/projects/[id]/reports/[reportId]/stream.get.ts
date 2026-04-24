@@ -1,39 +1,16 @@
 // apps/dashboard/server/api/projects/[id]/reports/[reportId]/stream.get.ts
 //
-// Server-Sent Events endpoint that pushes live updates for a single report to
-// the browser. Replaces the drawer's 20-second polling with immediate refetch
-// triggers. Events are small ({kind, payload?}) — the client decides what to
-// refresh based on the kind.
-//
-// Auth: same `viewer+` gate as the report detail endpoint. The session cookie
-// piggy-backs on the EventSource connection automatically.
-//
-// Memory-safety design (match against report-events-bus.ts invariants):
-//
-//   Cleanup is idempotent and triggered from THREE paths so no single
-//   failure mode leaks:
-//     (a) `stream.onClosed(...)` — the happy path, h3's own lifecycle hook
-//     (b) the underlying Node request's `close` event — fires even if h3's
-//         higher-level handler was bypassed (exception mid-dispatch, for
-//         example)
-//     (c) the self-eviction guard below — consecutive push failures beyond
-//         LISTENER_FAILURE_THRESHOLD mark the subscriber dead so subsequent
-//         publishes drop it from the bus
-//
-//   A single `cleanup()` function is wired into all three; it's guarded by a
-//   `cleanedUp` flag so duplicate invocations are no-ops (no double-free of
-//   the heartbeat interval, no double-unsubscribe).
-//
-//   The heartbeat interval MUST be cleared by cleanup even if the push inside
-//   it fails — we swallow its rejection with `.catch(() => {})` and do not
-//   treat heartbeat pushes as failures (they shouldn't evict real event
-//   subscribers).
-//
-//   A 25-second comment-line heartbeat keeps intermediaries (Cloudflare,
-//   reverse proxies) from idling the connection — shorter than Cloudflare's
-//   100-second default idle timeout.
+// Server-Sent Events endpoint. Writes SSE frames directly to Node's raw
+// response object rather than going through h3's `createEventStream` helper.
+// The helper wraps writes in a web `TransformStream` that's piped via
+// `sendStream` in Nitro's dev-mode response pipeline — somewhere in that
+// chain frames buffer rather than flushing, so the browser sees an
+// established connection with zero events even though `subscribers=1` on
+// the bus and push() is called. Writing to `res.write` directly forces an
+// immediate flush to the socket, which cloudflared / proxies pass straight
+// through.
 
-import { createError, createEventStream, defineEventHandler, getRouterParam } from "h3"
+import { createError, defineEventHandler, getRouterParam } from "h3"
 import { and, eq } from "drizzle-orm"
 import { db } from "../../../../../db"
 import { reports } from "../../../../../db/schema"
@@ -47,6 +24,12 @@ import {
 const HEARTBEAT_MS = 25_000
 const LISTENER_FAILURE_THRESHOLD = 3
 
+function formatFrame(payload: unknown): string {
+  // SSE requires each `data:` line to end with `\n`; two `\n`s separate frames.
+  const json = JSON.stringify(payload)
+  return `data: ${json}\n\n`
+}
+
 export default defineEventHandler(async (event) => {
   const projectId = getRouterParam(event, "id")
   const reportId = getRouterParam(event, "reportId")
@@ -55,8 +38,6 @@ export default defineEventHandler(async (event) => {
   }
   await requireProjectRole(event, projectId, "viewer")
 
-  // Confirm the report exists in this project — avoids leaking existence of
-  // reports from other projects the viewer can't access.
   const [row] = await db
     .select({ id: reports.id })
     .from(reports)
@@ -66,14 +47,30 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "report not found" })
   }
 
-  const stream = createEventStream(event)
+  const res = event.node.res
+  const req = event.node.req
 
-  // Shared lifecycle state. The listener counts its own push failures so a
-  // dead client doesn't keep occupying a bus slot.
+  // Tell Nitro we own the response. Without this flag h3 will try to send a
+  // second response body after our handler returns, which breaks the stream.
+  event._handled = true
+
+  res.statusCode = 200
+  res.setHeader("Content-Type", "text/event-stream")
+  res.setHeader("Cache-Control", "no-cache, no-transform")
+  res.setHeader("Connection", "keep-alive")
+  res.setHeader("X-Accel-Buffering", "no")
+  // Flush the headers immediately so the browser sees the 200 + content-type
+  // before any frames. Some proxies won't start forwarding the body until
+  // they've seen the full header block.
+  if (typeof (res as unknown as { flushHeaders?: () => void }).flushHeaders === "function") {
+    ;(res as unknown as { flushHeaders: () => void }).flushHeaders()
+  }
+
   let consecutiveFailures = 0
   let cleanedUp = false
   let heartbeat: ReturnType<typeof setInterval> | null = null
   let unsubscribe: (() => void) | null = null
+  let resolveHandlerPromise: (() => void) | null = null
 
   function cleanup() {
     if (cleanedUp) return
@@ -86,22 +83,38 @@ export default defineEventHandler(async (event) => {
       try {
         unsubscribe()
       } catch {
-        // already unsubscribed — idempotent by design
+        // already unsubscribed — idempotent
       }
       unsubscribe = null
     }
+    try {
+      res.end()
+    } catch {
+      // Socket already torn down — non-fatal.
+    }
+    if (resolveHandlerPromise) {
+      resolveHandlerPromise()
+      resolveHandlerPromise = null
+    }
   }
 
-  async function write(payload: ReportStreamEvent) {
+  function write(payload: ReportStreamEvent) {
+    // Stamp each frame with a nonce so back-to-back identical payloads remain
+    // distinct on the wire (defense in depth against any client-side caching).
+    const envelope = {
+      ...payload,
+      nonce: `${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
+    }
     try {
-      await stream.push({ data: JSON.stringify(payload) })
+      const ok = res.write(formatFrame(envelope))
+      if (!ok) {
+        // Backpressure — socket buffer full. Not a failure, just informational.
+        // Node will signal 'drain' when it's ready for more.
+      }
       consecutiveFailures = 0
     } catch {
       consecutiveFailures++
       if (consecutiveFailures >= LISTENER_FAILURE_THRESHOLD) {
-        // Client is gone or stuck — stop burdening the bus with this
-        // subscriber. cleanup() is idempotent so the happy-path onClosed
-        // / request-close hooks remain safe even after this self-eviction.
         cleanup()
       }
     }
@@ -110,8 +123,7 @@ export default defineEventHandler(async (event) => {
   try {
     unsubscribe = subscribeReportStream(reportId, write)
   } catch (err) {
-    // Hit the per-report subscriber cap. Surface as 429 so the browser (or
-    // a load test) gets clear signal rather than silently dropping events.
+    cleanup()
     throw createError({
       statusCode: 429,
       statusMessage:
@@ -121,32 +133,30 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Initial "ready" marker so the client knows the stream is live.
+  // Initial ready frame — lets the client know the connection is live, and
+  // proves the write path end-to-end if nothing else happens for a while.
   write({ kind: "triage", payload: { ready: true } })
 
   heartbeat = setInterval(() => {
-    // Heartbeat pushes bypass the failure counter — a keepalive that can't
-    // deliver doesn't meaningfully differ from the underlying connection
-    // already being dead, and we DON'T want a transient backpressure blip on
-    // the SSE transport to evict a live subscriber. The real-event path
-    // (write()) is what drives eviction.
-    stream.push(": keepalive\n\n").catch(() => {})
+    try {
+      // SSE comment line; clients ignore it, but it keeps intermediary proxies
+      // from idling the connection closed.
+      res.write(": keepalive\n\n")
+    } catch {
+      // Socket dead — cleanup will run via the 'close' listener below.
+    }
   }, HEARTBEAT_MS)
 
-  // Primary cleanup hook — h3 signals this when the stream is closed by
-  // either side (client disconnect, server .close(), error).
-  stream.onClosed(cleanup)
+  // Primary cleanup trigger: Node fires 'close' on the request when the
+  // client disconnects (tab close, navigation, network drop).
+  req.once("close", cleanup)
 
-  // Belt-and-suspenders: Node's underlying request also emits 'close' when
-  // the socket dies. In rare paths where stream.onClosed is bypassed (an
-  // exception thrown after the stream was established but before h3 wired up
-  // its own listener, etc.), this still runs.
-  try {
-    event.node.req.once("close", cleanup)
-  } catch {
-    // Some test harnesses wrap event.node.req in a way that doesn't expose
-    // `.once`. Non-fatal — onClosed is still the primary path.
-  }
+  // Keep the handler alive until cleanup() runs — Nitro awaits this, which
+  // keeps the response open so write() calls actually hit the socket.
+  // Resolved by cleanup() via `resolveHandlerPromise`.
+  await new Promise<void>((resolve) => {
+    resolveHandlerPromise = resolve
+  })
 
-  return stream.send()
+  return ""
 })

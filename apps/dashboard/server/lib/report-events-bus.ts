@@ -47,7 +47,24 @@ type ListenerEntry = {
 /** Hard cap to defend against subscription floods from a buggy client. */
 export const MAX_SUBSCRIBERS_PER_REPORT = 20
 
-const listeners = new Map<string, Set<ListenerEntry>>()
+// Nitro's dev-mode HMR reloads individual modules on file change. When this
+// module reloads, any consumer that imported publishReportStream from an
+// earlier revision keeps that old function, and a naïve `new Map()` here
+// would give each reload its own listeners store — publishes from one
+// revision's webhook handler wouldn't reach subscribers on another revision's
+// bus. Stashing the Map on globalThis under a Symbol.for() key keeps the
+// state pinned across reloads. Production runs don't hit this path (no HMR),
+// but the extra indirection is negligible and the pattern is idiomatic for
+// Nitro in-memory singletons.
+const BUS_KEY = Symbol.for("repro.report-events-bus.listeners")
+type BusGlobal = typeof globalThis & {
+  [BUS_KEY]?: Map<string, Set<ListenerEntry>>
+}
+const busGlobal = globalThis as BusGlobal
+if (!busGlobal[BUS_KEY]) {
+  busGlobal[BUS_KEY] = new Map()
+}
+const listeners = busGlobal[BUS_KEY]
 
 /**
  * Subscribe to a report's stream. Returns an unsubscribe function that is

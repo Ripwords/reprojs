@@ -1,22 +1,22 @@
 // apps/dashboard/app/composables/use-report-stream.ts
 //
-// Client-side subscription to the per-report SSE endpoint. Wraps VueUse's
-// `useEventSource` and invokes the caller's handler for each message.
+// Client-side subscription to the per-report SSE endpoint. Uses VueUse's
+// `useEventSource`, which is the Nuxt-documented GET-based SSE consumer
+// (https://nuxt.com/docs/4.x/getting-started/data-fetching#consuming-sse-server-sent-events-via-post-request).
 //
-// Memory-safety design:
-//   - `useEventSource` already teardowns the underlying EventSource on
-//     `onScopeDispose`, which Vue fires when the component's setup scope
-//     ends (route change, unmount). We additionally call `close()` in
-//     `onBeforeUnmount` as a belt-and-suspenders hook.
-//   - The `watch` we register on `data` is automatically disposed with the
-//     component's setup scope — no manual `stop()` needed, assuming the
-//     composable is only used inside `<script setup>` (the documented
-//     contract; Vue warns at runtime if called outside a setup context).
-//   - Reconnect is bounded: 10 retries with 2-second backoff. After that
-//     the stream goes silent rather than retrying forever. Users get the
-//     same data via the next page load or a manual refresh trigger.
-//   - Parse errors from malformed server payloads are swallowed — a bad
-//     single event must not tear down the stream.
+// The server stamps every frame with a unique nonce — without that, two
+// back-to-back frames with identical kind+payload would serialise to the
+// same string, and Vue's `watch(data)` does a strict-equality check which
+// would coalesce them into a single handler call. The nonce guarantees every
+// frame bumps the ref and triggers the watcher.
+//
+// Memory-safety: `useEventSource` closes the underlying connection on the
+// component's setup scope disposal. We layer an explicit `onBeforeUnmount`
+// close() on top as a belt-and-suspenders, plus the watcher stops with the
+// setup scope automatically.
+//
+// Reconnect: `useEventSource`'s `autoReconnect` caps retries so we don't
+// burn battery on mobile during prolonged outages.
 
 import { onBeforeUnmount, watch } from "vue"
 import { useEventSource } from "@vueuse/core"
@@ -44,8 +44,6 @@ export function useReportStream(
       retries: 10,
       delay: 2_000,
       onFailed() {
-        // Silent after bounded retries — a forever-retry loop burns battery
-        // on mobile clients and adds server load during outages.
         console.warn("[report-stream] giving up after 10 reconnect attempts")
       },
     },
@@ -57,13 +55,10 @@ export function useReportStream(
       const parsed = JSON.parse(raw) as ReportStreamEvent
       onEvent(parsed)
     } catch {
-      // Malformed payload — ignore rather than break the stream.
+      // Malformed payload — ignore rather than tear down the stream.
     }
   })
 
-  // useEventSource registers an onScopeDispose internally, but an extra
-  // close() on unmount is harmless (the library no-ops repeat closes) and
-  // keeps the lifecycle intent explicit at the call-site level.
   onBeforeUnmount(() => {
     close()
   })
