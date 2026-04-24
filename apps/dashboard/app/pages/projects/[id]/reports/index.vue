@@ -23,8 +23,6 @@ const toast = useToast()
 const projectId = computed(() => route.params.id as string)
 
 useHead({ title: "Reports" })
-const { session } = useSession()
-const sessionUserId = computed(() => session.value?.data?.user?.id ?? "")
 
 const { query, update, toApi } = useInboxQuery()
 
@@ -36,9 +34,8 @@ const { data, pending, refresh } = useApi<{
     status: Record<ReportStatus, number>
     priority: Record<ReportPriority, number>
     assignees: Array<{
-      id: string | null
-      name: string | null
-      email: string | null
+      login: string
+      avatarUrl: string | null
       count: number
     }>
     tags: Array<{ name: string; count: number }>
@@ -91,13 +88,13 @@ async function bulkStatus(status: ReportStatus) {
     submittingBulk.value = false
   }
 }
-async function bulkAssign(assigneeId: string | null) {
+async function bulkAssign(login: string | null) {
   submittingBulk.value = true
   const n = checkedIds.value.length
   try {
     await $fetch(`/api/projects/${projectId.value}/reports/bulk-update`, {
       method: "POST",
-      body: { reportIds: checkedIds.value, assigneeIds: assigneeId ? [assigneeId] : [] },
+      body: { reportIds: checkedIds.value, assignees: login ? [login] : [] },
       credentials: "include",
     })
     clearSelection()
@@ -126,15 +123,15 @@ function openReport(reportId: string) {
   navigateTo(`/projects/${projectId.value}/reports/${reportId}`)
 }
 
+// Assignee bulk-options come from the github logins surfaced by the facet.
+// The dashboard no longer tracks its own assignee identity — "Me" only makes
+// sense if the current session user has linked a github identity, and we
+// don't have that value on the client, so drop the shortcut. Users can
+// still pick their own login from the list.
 const assigneeOptions = computed(() => {
-  const opts: Array<{ value: string | null; label: string }> = [
-    { value: null, label: "Unassign" },
-    { value: sessionUserId.value, label: "Me" },
-  ]
+  const opts: Array<{ value: string | null; label: string }> = [{ value: null, label: "Unassign" }]
   for (const a of data.value?.facets.assignees ?? []) {
-    if (a.id && a.id !== sessionUserId.value) {
-      opts.push({ value: a.id, label: a.name ?? a.email ?? a.id })
-    }
+    opts.push({ value: a.login, label: `@${a.login}` })
   }
   return opts
 })
@@ -202,11 +199,6 @@ useKeyboardShortcuts({
 
 // ---- Columns ----
 const timeCompact = (iso: string) => relativeTime(iso, { compact: true })
-
-function initials(name: string | null, email: string | null): string {
-  const base = name?.trim() || email || "?"
-  return base.slice(0, 2).toUpperCase()
-}
 
 const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
   {
@@ -289,15 +281,21 @@ const columns = computed<TableColumn<ReportSummaryDTO>[]>(() => [
       const a = row.original.assignees?.[0]
       if (!a) return h("span", { class: "text-muted text-sm" }, "—")
       return h("span", { class: "inline-flex items-center gap-2 text-sm" }, [
-        h(
-          "span",
-          {
-            class:
-              "size-5 rounded-full bg-elevated text-default flex items-center justify-center text-sm font-semibold",
-          },
-          initials(a.name, a.email),
-        ),
-        h("span", { class: "truncate max-w-[8rem]" }, a.name ?? a.email ?? "—"),
+        a.avatarUrl
+          ? h("img", {
+              src: a.avatarUrl,
+              alt: a.login,
+              class: "size-5 rounded-full",
+            })
+          : h(
+              "span",
+              {
+                class:
+                  "size-5 rounded-full bg-elevated text-default flex items-center justify-center text-sm font-semibold",
+              },
+              a.login.slice(0, 2).toUpperCase(),
+            ),
+        h("span", { class: "truncate max-w-[8rem]" }, `@${a.login}`),
       ])
     },
   },
@@ -349,7 +347,6 @@ function onRowSelect(_e: Event, row: TableRowLike) {
       :selected-assignee="query.assignee"
       :selected-tags="query.tag"
       :selected-source="query.source"
-      :session-user-id="sessionUserId"
       @priority="update({ priority: $event })"
       @assignee="update({ assignee: $event })"
       @tag="update({ tag: $event })"

@@ -17,9 +17,8 @@
 import type { ReportPriority } from "@reprojs/shared"
 
 interface Assignee {
-  id: string | null
-  name: string | null
-  email: string | null
+  login: string
+  avatarUrl: string | null
   count: number
 }
 
@@ -32,7 +31,6 @@ interface Props {
   selectedAssignee: string[]
   selectedTags: string[]
   selectedSource: string[]
-  sessionUserId: string
 }
 
 const props = defineProps<Props>()
@@ -72,19 +70,13 @@ function toggleSource(token: string) {
 }
 
 function isAssigneeSelected(a: Assignee): boolean {
-  if (a.id === null) return props.selectedAssignee.includes("unassigned")
-  if (a.id === props.sessionUserId) return props.selectedAssignee.includes("me")
-  return props.selectedAssignee.includes(a.id)
+  return props.selectedAssignee.includes(a.login)
 }
 function assigneeToken(a: Assignee): string {
-  if (a.id === null) return "unassigned"
-  if (a.id === props.sessionUserId) return "me"
-  return a.id
+  return a.login
 }
 function assigneeLabel(a: Assignee): string {
-  if (a.id === null) return "Unassigned"
-  if (a.id === props.sessionUserId) return "Me"
-  return a.name ?? a.email ?? a.id
+  return `@${a.login}`
 }
 
 function priorityLabel(p: ReportPriority): string {
@@ -115,7 +107,7 @@ const priorityDot: Record<ReportPriority, string> = {
         Assignee
       </h3>
       <ul>
-        <li v-for="a in assignees" :key="a.id ?? '__unassigned'">
+        <li v-for="a in assignees" :key="a.login">
           <button
             type="button"
             :aria-pressed="isAssigneeSelected(a)"

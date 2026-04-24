@@ -2,11 +2,15 @@
      Vertical triage panel for the right-side sidebar on the dedicated
      report page. Laid out as three labelled sections (Properties, Tags,
      GitHub) separated by hairlines, with eyebrow labels + mid-weight
-     select menus. Tags render as proper chips with a hover dismiss. -->
+     select menus. Tags render as proper chips with a hover dismiss.
+
+     Assignees + milestone are GitHub-only features — the sections only
+     render when (a) the project has a connected GitHub integration AND
+     (b) this specific report is already linked to an issue. If either
+     condition is missing there's nowhere to round-trip the value. -->
 <script setup lang="ts">
 import type {
   GithubConfigDTO,
-  ProjectMemberDTO,
   ReportPriority,
   ReportStatus,
   ReportSummaryDTO,
@@ -31,10 +35,6 @@ const toast = useToast()
 const STATUSES: ReportStatus[] = ["open", "in_progress", "resolved", "closed"]
 const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
 
-const { data: members } = useApi<ProjectMemberDTO[]>(
-  `/api/projects/${props.projectId}/members?role=developer,owner`,
-)
-
 // Check GitHub integration state up-front so we can gate the "Create GitHub
 // issue" button on whether the app is actually installed + connected for this
 // project. Without this, clicking the button enqueues a sync job that quietly
@@ -49,7 +49,14 @@ const githubReady = computed(
 // Per-project integration state — drives the live picker section
 const projectIdRef = toRef(() => props.projectId)
 const { state: integrationState } = useGithubIntegration(projectIdRef)
-const isLinked = computed(() => integrationState.value.isLinked)
+const isProjectLinked = computed(() => integrationState.value.isLinked)
+
+// Assignees + milestone can only be edited when the *report itself* is
+// already linked to a GitHub issue. A connected integration alone isn't
+// enough; the server returns 409 if we tried.
+const isReportLinked = computed(
+  () => isProjectLinked.value && props.report.githubIssueNumber !== null,
+)
 
 const tagDraft = ref("")
 const posting = ref(false)
@@ -161,22 +168,11 @@ const priorityModel = computed<ReportPriority>({
     if (v !== props.report.priority) void patch({ priority: v })
   },
 })
-const primaryAssignee = computed<string>({
-  get: () => props.report.assignees?.[0]?.id ?? "",
-  set: (value: string | null) => {
-    void patch({ assigneeIds: value ? [value] : [] })
-  },
-})
 
 const statusItems = computed(() => STATUSES.map((s) => ({ label: s.replace("_", " "), value: s })))
 const priorityItems = computed(() => PRIORITIES.map((p) => ({ label: p, value: p })))
-const assigneeItems = computed(() => [
-  { label: "Unassigned", value: "" },
-  ...(members.value ?? []).map((m) => ({
-    label: m.name ?? m.email,
-    value: m.userId,
-  })),
-])
+
+const assigneeLogins = computed(() => props.report.assignees.map((a) => a.login))
 
 const open = reactive({
   properties: true,
@@ -216,37 +212,19 @@ const open = reactive({
             :disabled="!canEdit || posting"
           />
         </div>
-        <div class="flex items-center gap-3">
+        <!-- Assignee + milestone only render when the report is already
+             linked to a GitHub issue. Without a linked issue there's
+             nowhere to round-trip the value, and showing a disabled
+             picker is more confusing than hiding it. -->
+        <div v-if="isReportLinked" class="flex items-center gap-3">
           <label class="w-20 shrink-0 text-sm font-medium text-muted">Assignee</label>
-          <template v-if="isLinked">
-            <AssigneesPicker
-              :project-id="projectId"
-              :model-value="{
-                dashboardUserIds: report.assignees.filter((a) => a.id).map((a) => a.id as string),
-                githubLogins: report.assignees
-                  .filter((a) => !a.id && a.githubLogin)
-                  .map((a) => a.githubLogin as string),
-              }"
-              :disabled="!canEdit || posting"
-              class="flex-1 min-w-0"
-              @update:model-value="
-                patch({
-                  assigneeIds: $event.dashboardUserIds,
-                  githubAssigneeLogins: $event.githubLogins,
-                })
-              "
-            />
-          </template>
-          <template v-else>
-            <USelectMenu
-              v-model="primaryAssignee"
-              :items="assigneeItems"
-              value-key="value"
-              size="sm"
-              class="flex-1 min-w-0"
-              :disabled="!canEdit || posting"
-            />
-          </template>
+          <AssigneesPicker
+            :project-id="projectId"
+            :model-value="assigneeLogins"
+            :disabled="!canEdit || posting"
+            class="flex-1 min-w-0"
+            @update:model-value="patch({ assignees: $event })"
+          />
         </div>
         <div class="flex items-center gap-3">
           <label class="w-20 shrink-0 text-sm font-medium text-muted">Priority</label>
@@ -259,25 +237,23 @@ const open = reactive({
             :disabled="!canEdit || posting"
           />
         </div>
-        <template v-if="isLinked">
-          <div class="flex items-center gap-3">
-            <label class="w-20 shrink-0 text-sm font-medium text-muted">Milestone</label>
-            <MilestonePicker
-              :project-id="projectId"
-              :model-value="
-                report.milestoneNumber !== null && report.milestoneTitle !== null
-                  ? {
-                      number: report.milestoneNumber as number,
-                      title: report.milestoneTitle as string,
-                    }
-                  : null
-              "
-              :disabled="!canEdit || posting"
-              class="flex-1 min-w-0"
-              @update:model-value="patch({ milestone: $event })"
-            />
-          </div>
-        </template>
+        <div v-if="isReportLinked" class="flex items-center gap-3">
+          <label class="w-20 shrink-0 text-sm font-medium text-muted">Milestone</label>
+          <MilestonePicker
+            :project-id="projectId"
+            :model-value="
+              report.milestoneNumber !== null && report.milestoneTitle !== null
+                ? {
+                    number: report.milestoneNumber as number,
+                    title: report.milestoneTitle as string,
+                  }
+                : null
+            "
+            :disabled="!canEdit || posting"
+            class="flex-1 min-w-0"
+            @update:model-value="patch({ milestone: $event })"
+          />
+        </div>
       </div>
     </section>
 
@@ -292,7 +268,7 @@ const open = reactive({
         :aria-expanded="open.tags"
         @click="open.tags = !open.tags"
       >
-        <span>{{ isLinked ? "Labels" : "Tags" }}</span>
+        <span>{{ isProjectLinked ? "Labels" : "Tags" }}</span>
         <UIcon
           name="i-heroicons-chevron-down"
           class="size-4 transition-transform"
@@ -300,7 +276,7 @@ const open = reactive({
         />
       </button>
       <div v-show="open.tags">
-        <template v-if="isLinked">
+        <template v-if="isProjectLinked">
           <LabelsPicker
             :project-id="projectId"
             :model-value="report.tags"

@@ -1,9 +1,9 @@
 <!-- report-drawer/pickers/assignees-picker.vue
      GitHub-style assignee selector. Selected assignees are listed as
      avatar + name rows below a minimal trigger, matching GitHub's issue
-     sidebar layout. Merges dashboard-linked users and GitHub-only
-     collaborators into one list; GitHub-only entries are disambiguated
-     by a `gh:<login>` key prefix internally. -->
+     sidebar layout. The value emitted is a list of GitHub logins —
+     assignees are a GitHub-only concept in this app, so anyone who isn't
+     a repo collaborator can't appear here. -->
 <script setup lang="ts">
 type AssigneeOption = {
   githubUserId: string
@@ -14,11 +14,11 @@ type AssigneeOption = {
 
 const props = defineProps<{
   projectId: string
-  modelValue: { dashboardUserIds: string[]; githubLogins: string[] }
+  modelValue: string[]
   disabled?: boolean
 }>()
 const emit = defineEmits<{
-  "update:modelValue": [value: { dashboardUserIds: string[]; githubLogins: string[] }]
+  "update:modelValue": [value: string[]]
 }>()
 
 const searchTerm = ref("")
@@ -29,28 +29,29 @@ const { data, pending } = useFetch<{ items: AssigneeOption[] }>(
   { default: () => ({ items: [] }), watch: [searchTerm] },
 )
 
-// USelectMenu option shape — flat, with Nuxt UI's `avatar` object.
+// USelectMenu option shape. `linkedUser` is kept as a display hint — if the
+// collaborator happens to have linked their GitHub identity to a dashboard
+// account, we show their dashboard display name as the primary label and
+// their `@login` as the sublabel. We don't emit the dashboard user id.
 const options = computed(() =>
   (data.value?.items ?? []).map((opt) => ({
-    key: opt.linkedUser ? opt.linkedUser.id : `gh:${opt.login}`,
+    key: opt.login,
     label: opt.linkedUser?.name ?? opt.login,
     sublabel: opt.linkedUser ? `@${opt.login}` : null,
     ...(opt.avatarUrl ? { avatar: { src: opt.avatarUrl, alt: opt.login } } : {}),
   })),
 )
 
-// Quick lookup from key → full option so the selected-rows view renders
-// avatar + name without waiting for another round-trip. Indexed by both
-// dashboard-user id AND `gh:<login>`.
-const byKey = computed(() => {
+// Quick lookup from login → option so the selected-rows view renders avatar
+// + name without waiting for another round-trip.
+const byLogin = computed(() => {
   const m = new Map<
     string,
-    { key: string; label: string; sublabel: string | null; avatarUrl: string | null }
+    { login: string; label: string; sublabel: string | null; avatarUrl: string | null }
   >()
   for (const opt of data.value?.items ?? []) {
-    const key = opt.linkedUser ? opt.linkedUser.id : `gh:${opt.login}`
-    m.set(key, {
-      key,
+    m.set(opt.login, {
+      login: opt.login,
       label: opt.linkedUser?.name ?? opt.login,
       sublabel: opt.linkedUser ? `@${opt.login}` : null,
       avatarUrl: opt.avatarUrl,
@@ -60,44 +61,28 @@ const byKey = computed(() => {
 })
 
 const selectedKeys = computed({
-  get: () => [
-    ...props.modelValue.dashboardUserIds,
-    ...props.modelValue.githubLogins.map((l) => `gh:${l}`),
-  ],
-  set: (keys: string[]) => {
-    if (keys.length > 10) return
-    const dashboardUserIds: string[] = []
-    const githubLogins: string[] = []
-    for (const k of keys) {
-      if (k.startsWith("gh:")) githubLogins.push(k.slice(3))
-      else dashboardUserIds.push(k)
-    }
-    emit("update:modelValue", { dashboardUserIds, githubLogins })
+  get: () => props.modelValue,
+  set: (logins: string[]) => {
+    if (logins.length > 10) return
+    emit("update:modelValue", logins)
   },
 })
 
-// Selected-rows display: avatar + primary + secondary, same ordering as
-// selectedKeys so it's stable. Falls back to the raw login if the picker
-// dataset hasn't loaded yet (rare — picker loads eagerly).
+// Selected-rows display: avatar + primary + secondary, same ordering as the
+// value prop. Falls back to the raw login if the picker dataset hasn't
+// loaded yet (rare — picker loads eagerly) or a webhook-pushed login isn't
+// in the current search window.
 const selectedRows = computed(() =>
-  selectedKeys.value.map((key) => {
-    const hit = byKey.value.get(key)
+  selectedKeys.value.map((login) => {
+    const hit = byLogin.value.get(login)
     if (hit) return hit
-    // Unknown key (picker still loading, or user hand-added via webhook) —
-    // render what we know from the key itself.
-    const isGh = key.startsWith("gh:")
-    return {
-      key,
-      label: isGh ? key.slice(3) : key,
-      sublabel: isGh ? null : null,
-      avatarUrl: null as string | null,
-    }
+    return { login, label: login, sublabel: null, avatarUrl: null as string | null }
   }),
 )
 
-function removeOne(key: string) {
+function removeOne(login: string) {
   if (props.disabled) return
-  selectedKeys.value = selectedKeys.value.filter((k) => k !== key)
+  selectedKeys.value = selectedKeys.value.filter((l) => l !== login)
 }
 </script>
 
@@ -156,14 +141,14 @@ function removeOne(key: string) {
     <!-- Selected assignees: stacked avatar + name rows, GitHub-sidebar style.
          Hover reveals an × to remove. Whole row is clickable via the button. -->
     <ul v-if="selectedRows.length" role="list" class="flex flex-col gap-1 pt-1">
-      <li v-for="row in selectedRows" :key="row.key">
+      <li v-for="row in selectedRows" :key="row.login">
         <button
           type="button"
           class="group w-full flex items-center gap-2 px-1.5 py-1 rounded-md text-left transition-colors hover:bg-elevated/60 disabled:cursor-not-allowed disabled:opacity-60"
           :disabled="disabled"
           :title="`Remove ${row.label}`"
           :aria-label="`Remove ${row.label}`"
-          @click="removeOne(row.key)"
+          @click="removeOne(row.login)"
         >
           <UAvatar
             v-if="row.avatarUrl"

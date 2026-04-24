@@ -27,9 +27,9 @@ function summary(e: ReportEventDTO): string {
       return `reassigned from ${from} to ${to}`
     }
     case "assignee_added":
-      return `assigned user ${String(p.userId ?? "")}`
+      return `assigned @${String(p.githubLogin ?? "?")}`
     case "assignee_removed":
-      return `unassigned user ${String(p.userId ?? "")}`
+      return `unassigned @${String(p.githubLogin ?? "?")}`
     case "tag_added": {
       const name = p.name ?? p.tag
       return `added tag ${String(name ?? "")}`.trim()
