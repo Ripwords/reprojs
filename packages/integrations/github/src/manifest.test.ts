@@ -16,12 +16,12 @@ describe("buildGithubAppManifest", () => {
     expect(m.setup_url).toBe("https://repro.example.com/api/integrations/github/install-callback")
   })
 
-  test("webhook is created inactive — operators enable it manually after setup", () => {
+  test("webhook is created active for public baseUrls — events flow immediately after install", () => {
     const m = buildGithubAppManifest({ baseUrl: "https://repro.example.com" })
-    expect(m.hook_attributes.active).toBe(false)
+    expect(m.hook_attributes.active).toBe(true)
   })
 
-  test("localhost baseUrl uses a public placeholder webhook URL (GitHub rejects localhost)", () => {
+  test("localhost baseUrl uses a public placeholder webhook URL inactive (GitHub rejects localhost)", () => {
     const m = buildGithubAppManifest({ baseUrl: "http://localhost:3000" })
     expect(m.hook_attributes.url).toBe("https://example.com/webhook")
     expect(m.hook_attributes.active).toBe(false)

@@ -12,12 +12,13 @@
 //
 // Docs: https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest
 //
-// Webhooks are created DISABLED (hook_attributes.active = false). GitHub
-// refuses both blank URLs ("Hook url cannot be blank") and non-public URLs
-// ("not reachable over the public Internet"), so we always supply a valid-
-// looking URL but ship it inactive. Operators enable two-way sync manually
-// from their GitHub App settings page once the instance is deployed. See
-// docs/self-hosting/github-app.md.
+// Webhooks: for public baseUrls we ship the manifest with the webhook
+// pre-configured AND active (GitHub starts delivering events immediately
+// after install). For localhost we can't do that — GitHub refuses both
+// blank URLs ("Hook url cannot be blank") and non-public URLs ("not
+// reachable over the public Internet") — so we ship a placeholder URL
+// inactive. Localhost operators deploy to a real domain, update the URL in
+// GitHub App settings, and flip active there.
 
 const PLACEHOLDER_WEBHOOK_URL = "https://example.com/webhook"
 
@@ -64,16 +65,16 @@ export function buildGithubAppManifest(input: {
   if (!base.startsWith("https://") && !isLocalhost(base)) {
     throw new Error(`GitHub App manifest requires an https:// baseUrl (got: ${input.baseUrl})`)
   }
-  // For public baseUrls, pre-fill the webhook URL so operators only need to
-  // toggle active=true in GitHub. For localhost, use a placeholder — operators
-  // both update the URL AND toggle active after deploying to a real domain.
-  const webhookUrl = isLocalhost(base)
-    ? PLACEHOLDER_WEBHOOK_URL
-    : `${base}/api/integrations/github/webhook`
+  // For public baseUrls, pre-fill the webhook URL AND activate it — GitHub
+  // will start delivering events as soon as the app is installed. For
+  // localhost, ship a placeholder URL inactive; operators update both after
+  // deploying to a real domain.
+  const localhost = isLocalhost(base)
+  const webhookUrl = localhost ? PLACEHOLDER_WEBHOOK_URL : `${base}/api/integrations/github/webhook`
   return {
     name: input.name ?? "Repro",
     url: base,
-    hook_attributes: { url: webhookUrl, active: false },
+    hook_attributes: { url: webhookUrl, active: !localhost },
     redirect_url: `${base}/api/integrations/github/manifest-callback`,
     // `callback_urls` is the GitHub App's User authorization OAuth callback —
     // where GitHub redirects after "Sign in with GitHub" consent. Point it at
