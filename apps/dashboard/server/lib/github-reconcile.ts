@@ -170,11 +170,37 @@ async function reconcileAssignees(
   const sig = signAssignees(desiredLogins)
   await recordWriteLock(db, { reportId, kind: "assignees", signature: sig })
 
+  let postRemoveAssignees: string[] | undefined
   if (toRemove.length > 0) {
-    await removeAssignees(octokit, owner, repo, issueNumber, toRemove)
+    const removeRes = await removeAssignees(octokit, owner, repo, issueNumber, toRemove)
+    postRemoveAssignees = removeRes.currentAssigneeLogins
   }
+
   if (toAdd.length > 0) {
-    await addAssignees(octokit, owner, repo, issueNumber, toAdd)
+    const addRes = await addAssignees(octokit, owner, repo, issueNumber, toAdd)
+    const after = new Set(addRes.currentAssigneeLogins)
+    const dropped = toAdd.filter((login) => !after.has(login))
+    if (dropped.length > 0) {
+      // GitHub silently drops logins that aren't assignable to the repo
+      // (not a collaborator, suspended, org access revoked, etc.) — the
+      // HTTP response is 201 but the returned `assignees` array omits them.
+      // Without this warning the dashboard would look broken ("I assigned
+      // alice and nothing happened") with no signal in logs. Emitting to
+      // stderr surfaces the problem in `docker logs` + typical log drains.
+      console.warn(
+        `[github-reconcile] assignees dropped silently by GitHub for issue ${owner}/${repo}#${issueNumber}:`,
+        {
+          reportId,
+          dropped,
+          attemptedToAdd: toAdd,
+          afterAdd: addRes.currentAssigneeLogins,
+          postRemoveAssignees,
+          desired: desiredLogins,
+          live: live.assigneeLogins,
+          hint: "these logins aren't 'assignable' to the repo — verify they're collaborators at github.com/<owner>/<repo>/settings/access",
+        },
+      )
+    }
   }
 }
 

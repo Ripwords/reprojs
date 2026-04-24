@@ -26,20 +26,30 @@ export async function updateIssueMilestone(
   })
 }
 
+// GitHub's `POST /repos/:owner/:repo/issues/:n/assignees` silently drops any
+// login that isn't assignable to the repo (non-collaborator, missing access,
+// suspended user, etc.) — it still returns 201 with the updated issue, but
+// the `assignees` array on the response body won't include the rejected
+// login. Surfacing that as a return value lets callers detect the drop and
+// warn / retry / alert instead of silently accepting a failed assignment.
+// Same behaviour for `DELETE /.../assignees` (removes only what it can).
 export async function addAssignees(
   client: Octokit,
   owner: string,
   repo: string,
   issueNumber: number,
   logins: string[],
-): Promise<void> {
-  if (logins.length === 0) return
-  await client.rest.issues.addAssignees({
+): Promise<{ currentAssigneeLogins: string[] }> {
+  if (logins.length === 0) return { currentAssigneeLogins: [] }
+  const res = await client.rest.issues.addAssignees({
     owner,
     repo,
     issue_number: issueNumber,
     assignees: logins,
   })
+  return {
+    currentAssigneeLogins: (res.data.assignees ?? []).map((a) => a.login),
+  }
 }
 
 export async function removeAssignees(
@@ -48,14 +58,17 @@ export async function removeAssignees(
   repo: string,
   issueNumber: number,
   logins: string[],
-): Promise<void> {
-  if (logins.length === 0) return
-  await client.rest.issues.removeAssignees({
+): Promise<{ currentAssigneeLogins: string[] }> {
+  if (logins.length === 0) return { currentAssigneeLogins: [] }
+  const res = await client.rest.issues.removeAssignees({
     owner,
     repo,
     issue_number: issueNumber,
     assignees: logins,
   })
+  return {
+    currentAssigneeLogins: (res.data.assignees ?? []).map((a) => a.login),
+  }
 }
 
 export type IssueStateUpdate =

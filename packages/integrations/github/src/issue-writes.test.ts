@@ -94,8 +94,24 @@ describe("addAssignees", () => {
 
   test("no-op on empty logins", async () => {
     const { octokit, calls } = makeFakeOctokit()
-    await addAssignees(octokit, "acme", "frontend", 42, [])
+    const res = await addAssignees(octokit, "acme", "frontend", 42, [])
     expect(calls.addAssignees.length).toBe(0)
+    expect(res.currentAssigneeLogins).toEqual([])
+  })
+
+  test("returns post-write assignee list so callers can detect silent drops", async () => {
+    // GitHub's REST endpoint returns 201 even when some logins aren't
+    // assignable — the rejected logins are just absent from the returned
+    // `assignees` array. Surface that list so the reconciler can warn.
+    const octokit = {
+      rest: {
+        issues: {
+          addAssignees: async () => ({ data: { assignees: [{ login: "alice" }] } }),
+        },
+      },
+    } as unknown as Octokit
+    const res = await addAssignees(octokit, "acme", "frontend", 42, ["alice", "bob"])
+    expect(res.currentAssigneeLogins).toEqual(["alice"])
   })
 })
 
@@ -114,8 +130,9 @@ describe("removeAssignees", () => {
 
   test("no-op on empty logins", async () => {
     const { octokit, calls } = makeFakeOctokit()
-    await removeAssignees(octokit, "acme", "frontend", 42, [])
+    const res = await removeAssignees(octokit, "acme", "frontend", 42, [])
     expect(calls.removeAssignees.length).toBe(0)
+    expect(res.currentAssigneeLogins).toEqual([])
   })
 })
 
