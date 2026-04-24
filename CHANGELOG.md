@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.4.2
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.4.1...v0.4.2)
+
+### 🚀 Enhancements
+
+- **sync:** In-process trigger + shared outbox runner ([4b59420](https://github.com/Ripwords/ReproJs/commit/4b59420))
+- **github:** Create custom labels in linked repo from the picker ([18ad810](https://github.com/Ripwords/ReproJs/commit/18ad810))
+
+### 🩹 Fixes
+
+- **github:** Gate test-only reconcile shim on __hasClientOverride ([cc3b0e8](https://github.com/Ripwords/ReproJs/commit/cc3b0e8))
+
+### 📖 Documentation
+
+- **sdk:** Fix the <script async> init race ([10a3dc3](https://github.com/Ripwords/ReproJs/commit/10a3dc3))
+
+### ✅ Tests
+
+- Wait for in-process sync trigger to settle before asserting ([29489d0](https://github.com/Ripwords/ReproJs/commit/29489d0))
+
+### 🎨 Styles
+
+- **triage:** Redesign sidebar with divided sections + cleaner chips ([03661ae](https://github.com/Ripwords/ReproJs/commit/03661ae))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.4.1
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.4.0...v0.4.1)
