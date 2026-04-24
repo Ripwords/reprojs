@@ -76,6 +76,15 @@ function makePickerClient(overrides: Partial<GitHubInstallationClient>): GitHubI
     listRepoLabels: async () => [],
     listAssignableUsers: async () => [],
     listMilestones: async () => [],
+    createLabel: async (
+      _owner: string,
+      _repo: string,
+      input: { name: string; color?: string },
+    ) => ({
+      name: input.name,
+      color: input.color ?? "cccccc",
+      description: null,
+    }),
   }
   return { ...defaults, ...overrides }
 }
@@ -232,6 +241,41 @@ describe("github picker endpoints — HTTP", () => {
       body,
     })
     expect(webhookRes.status).toBe(202)
+  })
+
+  test("POST labels — 401 when unauthenticated", async () => {
+    const { projectId } = await seedLinkedProject("label-unauth@x.com")
+    const res = await apiFetch(`/api/projects/${projectId}/integrations/github/labels`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "anything" }),
+    })
+    expect(res.status).toBe(401)
+  })
+
+  test("POST labels — 400 on invalid hex colour", async () => {
+    const { projectId, cookie } = await seedLinkedProject("label-bad-colour@x.com")
+    const res = await apiFetch(`/api/projects/${projectId}/integrations/github/labels`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ name: "oops", color: "not-a-hex" }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  test("POST labels — 409 when integration is disconnected", async () => {
+    const { projectId, cookie } = await seedLinkedProject("label-off@x.com")
+    await db
+      .update(githubIntegrations)
+      .set({ status: "disconnected" })
+      .where(eq(githubIntegrations.projectId, projectId))
+
+    const res = await apiFetch(`/api/projects/${projectId}/integrations/github/labels`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ name: "triage" }),
+    })
+    expect(res.status).toBe(409)
   })
 
   test("member webhook returns 202 and matches signed request", async () => {

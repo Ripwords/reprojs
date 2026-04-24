@@ -35,3 +35,17 @@ export type UpdateGithubConfigInput = z.infer<typeof UpdateGithubConfigInput>
 
 export const InstallRedirectResponse = z.object({ url: z.string().url() })
 export type InstallRedirectResponse = z.infer<typeof InstallRedirectResponse>
+
+// POST /api/projects/:id/integrations/github/labels — create a new label on
+// the linked repo. Colour defaults server-side when omitted. GitHub enforces
+// a 50-char name limit and allows only hex (no leading #), so we normalise
+// before validating.
+export const CreateGithubLabelInput = z.object({
+  name: z.string().trim().min(1).max(50),
+  color: z
+    .string()
+    .regex(/^#?[0-9a-fA-F]{6}$/, "color must be a 6-char hex")
+    .optional(),
+  description: z.string().max(100).optional(),
+})
+export type CreateGithubLabelInput = z.infer<typeof CreateGithubLabelInput>

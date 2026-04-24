@@ -2,7 +2,12 @@
      GitHub-style label selector. The selected labels are the focal display —
      rendered as coloured pill badges below a minimal, unobtrusive trigger.
      Clicking the trigger opens the full multi-select dropdown with color
-     swatches; clicking a badge's × removes that label inline. -->
+     swatches; clicking a badge's × removes that label inline.
+
+     Custom labels: typing a name that doesn't match any existing repo label
+     surfaces a "Create '<name>'" option at the bottom of the dropdown. On
+     select we POST /labels to create it in the linked GitHub repo, refetch
+     the list, and append it to the current selection. -->
 <script setup lang="ts">
 type RepoLabel = { name: string; color: string; description: string | null }
 
@@ -15,7 +20,10 @@ const emit = defineEmits<{
   "update:modelValue": [value: string[]]
 }>()
 
-const { data, pending, error } = useFetch<{ items: RepoLabel[] }>(
+const toast = useToast()
+const creating = ref(false)
+
+const { data, pending, error, refresh } = useFetch<{ items: RepoLabel[] }>(
   () => `/api/projects/${props.projectId}/integrations/github/labels`,
   { default: () => ({ items: [] }) },
 )
@@ -54,6 +62,42 @@ function removeLabel(name: string) {
   current.value = current.value.filter((n) => n !== name)
 }
 
+// Create a new label in the linked repo, refetch the list so the pill
+// renders with its server-assigned colour, then append to the current
+// selection. Any 4xx surfaces as a toast so the user knows what broke
+// (conflicts → "already exists", 400 → validation).
+async function createLabel(name: string) {
+  if (props.disabled || creating.value) return
+  const trimmed = name.trim()
+  if (!trimmed) return
+  if (current.value.includes(trimmed)) return
+
+  creating.value = true
+  try {
+    await $fetch(`/api/projects/${props.projectId}/integrations/github/labels`, {
+      method: "POST",
+      body: { name: trimmed },
+      credentials: "include",
+    })
+    await refresh()
+    current.value = [...current.value, trimmed]
+    toast.add({
+      title: `Created label "${trimmed}"`,
+      color: "success",
+      icon: "i-heroicons-check-circle",
+    })
+  } catch (err) {
+    toast.add({
+      title: "Could not create label",
+      description: err instanceof Error ? err.message : undefined,
+      color: "error",
+      icon: "i-heroicons-exclamation-triangle",
+    })
+  } finally {
+    creating.value = false
+  }
+}
+
 // Pick readable text color (white or near-black) against the hex background.
 // Rec. 709 luminance weighting matches GitHub's own label-readability heuristic.
 function textColorForBg(hex: string): string {
@@ -74,15 +118,17 @@ function textColorForBg(hex: string): string {
       value-key="name"
       label-key="name"
       multiple
-      :loading="pending"
+      :loading="pending || creating"
       :disabled="disabled"
       size="sm"
       variant="outline"
       class="w-full"
+      :create-item="{ position: 'bottom', when: 'empty' }"
       :ui="{
         base: 'justify-between',
         label: 'text-muted font-normal',
       }"
+      @create="createLabel"
     >
       <template #default>
         <span class="inline-flex items-center gap-1.5 text-muted">
@@ -108,44 +154,52 @@ function textColorForBg(hex: string): string {
       </template>
     </USelectMenu>
 
-    <!-- Selected labels: GitHub-authentic pills, readable regardless of hue. -->
+    <!-- Selected labels: GitHub-authentic pills, readable regardless of hue.
+         The pill itself is a passive span; only the × button removes. -->
     <div v-if="selectedWithColor.length || orphanLabels.length" class="flex flex-wrap gap-1.5">
-      <button
+      <span
         v-for="label in selectedWithColor"
         :key="label.name"
-        type="button"
-        class="group inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-semibold leading-snug tracking-tight ring-1 ring-inset ring-black/10 transition-[transform,opacity] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+        class="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-sm font-semibold leading-snug tracking-tight ring-1 ring-inset ring-black/10"
         :style="{
           backgroundColor: `#${label.color}`,
           color: textColorForBg(label.color),
         }"
-        :title="`Remove ${label.name}`"
-        :disabled="disabled"
-        :aria-label="`Remove label ${label.name}`"
-        @click="removeLabel(label.name)"
       >
         <span>{{ label.name }}</span>
-        <UIcon
-          name="i-lucide-x"
-          class="size-3 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
-        />
-      </button>
+        <button
+          v-if="!disabled"
+          type="button"
+          class="inline-flex items-center justify-center size-4 rounded-full opacity-60 hover:opacity-100 hover:bg-black/10 transition-opacity cursor-pointer"
+          :aria-label="`Remove label ${label.name}`"
+          :title="`Remove ${label.name}`"
+          @click="removeLabel(label.name)"
+        >
+          <UIcon name="i-lucide-x" class="size-3 shrink-0" />
+        </button>
+      </span>
 
       <!-- Orphan labels: out-of-band, needs attention. Distinct dashed treatment
            so they read as "pending reconciliation" rather than a real label. -->
-      <button
+      <span
         v-for="name in orphanLabels"
         :key="`orphan:${name}`"
-        type="button"
-        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium leading-snug tracking-tight border border-dashed border-warning-500 text-warning-500 bg-warning-500/5 transition-colors hover:bg-warning-500/10"
-        :title="`${name} is not present in the linked repository's label set — click to remove`"
-        :disabled="disabled"
-        :aria-label="`Remove orphan label ${name}`"
-        @click="removeLabel(name)"
+        class="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-sm font-medium leading-snug tracking-tight border border-dashed border-warning-500 text-warning-500 bg-warning-500/5"
+        :title="`${name} is not present in the linked repository's label set`"
       >
-        <span>{{ name }}</span>
         <UIcon name="i-lucide-triangle-alert" class="size-3 shrink-0" />
-      </button>
+        <span>{{ name }}</span>
+        <button
+          v-if="!disabled"
+          type="button"
+          class="inline-flex items-center justify-center size-4 rounded-full opacity-60 hover:opacity-100 hover:bg-warning-500/15 transition-opacity cursor-pointer"
+          :aria-label="`Remove orphan label ${name}`"
+          :title="`Remove ${name}`"
+          @click="removeLabel(name)"
+        >
+          <UIcon name="i-lucide-x" class="size-3 shrink-0" />
+        </button>
+      </span>
     </div>
 
     <p v-if="error" class="text-sm text-muted">

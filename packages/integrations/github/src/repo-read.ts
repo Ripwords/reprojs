@@ -46,6 +46,37 @@ export async function listAssignableUsers(
   return items
 }
 
+// Default colour used when the UI doesn't supply one. Matches GitHub's own
+// default grey so freshly-created labels don't stand out against the repo's
+// existing palette.
+const DEFAULT_LABEL_COLOR = "cccccc"
+
+export type CreateLabelInput = {
+  name: string
+  color?: string
+  description?: string
+}
+
+export async function createLabel(
+  client: Octokit,
+  owner: string,
+  repo: string,
+  input: CreateLabelInput,
+): Promise<RepoLabel> {
+  const res = await client.rest.issues.createLabel({
+    owner,
+    repo,
+    name: input.name,
+    color: (input.color ?? DEFAULT_LABEL_COLOR).replace(/^#/, ""),
+    ...(input.description !== undefined ? { description: input.description } : {}),
+  })
+  return {
+    name: res.data.name,
+    color: res.data.color,
+    description: res.data.description ?? null,
+  }
+}
+
 export async function listMilestones(
   client: Octokit,
   owner: string,

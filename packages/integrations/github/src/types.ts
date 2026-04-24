@@ -47,8 +47,8 @@ export interface FindIssueByMarkerInput {
   marker: string
 }
 
-import type { RepoLabel, AssignableUser, RepoMilestone } from "./repo-read"
-export type { RepoLabel, AssignableUser, RepoMilestone }
+import type { RepoLabel, AssignableUser, RepoMilestone, CreateLabelInput } from "./repo-read"
+export type { RepoLabel, AssignableUser, RepoMilestone, CreateLabelInput }
 
 export interface GitHubInstallationClient {
   createIssue(input: CreateIssueInput): Promise<GitHubIssueRef>
@@ -61,4 +61,5 @@ export interface GitHubInstallationClient {
   listRepoLabels(owner: string, repo: string): Promise<RepoLabel[]>
   listAssignableUsers(owner: string, repo: string): Promise<AssignableUser[]>
   listMilestones(owner: string, repo: string, state?: "open" | "all"): Promise<RepoMilestone[]>
+  createLabel(owner: string, repo: string, input: CreateLabelInput): Promise<RepoLabel>
 }
