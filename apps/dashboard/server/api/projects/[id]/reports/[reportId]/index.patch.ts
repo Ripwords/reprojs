@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [current] = await tx
       .select({
         id: reports.id,
@@ -240,25 +240,32 @@ export default defineEventHandler(async (event) => {
     const allEvents = [...reportChangeEvents, ...assigneeEvents]
     if (allEvents.length > 0) await tx.insert(reportEvents).values(allEvents)
 
-    // Enqueue a GitHub sync job when push_on_edit is enabled and the report is
-    // already linked to a GitHub issue. If not linked, no push-on-edit.
-    // (New-report → GitHub creates still happen via the intake enqueue path.)
+    // Determine whether to enqueue a GitHub sync job — but defer the actual
+    // enqueue + SSE publish until AFTER the transaction commits. Previously
+    // both ran inside the tx against the global `db` client, so a later
+    // rollback of this transaction would leave a phantom sync job (and an
+    // SSE notification for changes that didn't actually land) behind.
+    let shouldEnqueueGithubSync = false
     if (hasEvents && current.githubIssueNumber !== null) {
       const [gi] = await tx
         .select({ pushOnEdit: githubIntegrations.pushOnEdit, status: githubIntegrations.status })
         .from(githubIntegrations)
         .where(eq(githubIntegrations.projectId, id))
         .limit(1)
-      if (gi?.status === "connected" && gi.pushOnEdit) {
-        await enqueueSync(reportId, id)
-      }
+      shouldEnqueueGithubSync = gi?.status === "connected" && gi.pushOnEdit === true
     }
 
-    // Push the change to any open report-stream subscribers (SSE).
-    if (hasEvents) {
-      publishReportStream(reportId, { kind: "triage" })
-    }
-
-    return { ok: true, updated: true }
+    return { ok: true, updated: true, hasEvents, shouldEnqueueGithubSync }
   })
+
+  // Post-commit side effects: only run if the transaction actually committed
+  // AND there was something to publish. Thrown errors inside the tx above
+  // abort this block via the normal promise-reject path.
+  if (result.updated && result.hasEvents) {
+    if (result.shouldEnqueueGithubSync) {
+      await enqueueSync(reportId, id)
+    }
+    publishReportStream(reportId, { kind: "triage" })
+  }
+  return { ok: result.ok, updated: result.updated }
 })

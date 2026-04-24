@@ -120,6 +120,15 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Register the 'close' listener BEFORE subscribing to the bus. A client
+  // that disconnects in the tiny window between flushHeaders() and bus
+  // subscription would otherwise have its close event fire into the void —
+  // cleanup() never runs, the handler-awaited promise never resolves, the
+  // request object stays pinned in memory, and (if we got as far as
+  // subscribing) the bus accumulates a dead listener. Registering first
+  // makes the cleanup path the FIRST thing ready to fire.
+  req.once("close", cleanup)
+
   try {
     unsubscribe = subscribeReportStream(reportId, write)
   } catch (err) {
@@ -143,13 +152,9 @@ export default defineEventHandler(async (event) => {
       // from idling the connection closed.
       res.write(": keepalive\n\n")
     } catch {
-      // Socket dead — cleanup will run via the 'close' listener below.
+      // Socket dead — cleanup will run via the 'close' listener registered above.
     }
   }, HEARTBEAT_MS)
-
-  // Primary cleanup trigger: Node fires 'close' on the request when the
-  // client disconnects (tab close, navigation, network drop).
-  req.once("close", cleanup)
 
   // Keep the handler alive until cleanup() runs — Nitro awaits this, which
   // keeps the response open so write() calls actually hit the socket.
