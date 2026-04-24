@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { db } from "../db"
 import { githubIntegrations, reportSyncJobs } from "../db/schema"
 import type { SyncJobPayload } from "../db/schema"
+import { triggerReportSync } from "./github-sync-runner"
 
 // Each enqueue must scope its UPSERT to a distinct signature — otherwise a
 // pending reconcile and a pending comment_upsert collide on the composite PK
@@ -41,6 +42,10 @@ export async function enqueueSync(reportId: string, projectId: string): Promise<
       target: [reportSyncJobs.reportId, reportSyncJobs.signature],
       set: { state: "pending", nextAttemptAt: new Date(), updatedAt: new Date() },
     })
+  // Fire the sync worker in-process so the GitHub write lands within a
+  // second of the dashboard write — no cron wait. Error handling lives
+  // inside the runner; it's fire-and-forget from here.
+  triggerReportSync(reportId)
 }
 
 /**
@@ -63,6 +68,7 @@ export async function enqueueCommentUpsert(reportId: string, commentId: string):
       target: [reportSyncJobs.reportId, reportSyncJobs.signature],
       set: { state: "pending", nextAttemptAt: new Date(), updatedAt: new Date(), payload },
     })
+  triggerReportSync(reportId)
 }
 
 export async function enqueueCommentDelete(
@@ -84,4 +90,5 @@ export async function enqueueCommentDelete(
       target: [reportSyncJobs.reportId, reportSyncJobs.signature],
       set: { state: "pending", nextAttemptAt: new Date(), updatedAt: new Date(), payload },
     })
+  triggerReportSync(reportId)
 }

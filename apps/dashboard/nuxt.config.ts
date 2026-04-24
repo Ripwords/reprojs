@@ -168,8 +168,23 @@ export default defineNuxtConfig({
     experimental: {
       tasks: true,
     },
+    // Scheduled tasks run on Nitro/croner. The 6-field form (`* * * * * *`)
+    // accepts seconds; the 5-field form uses minutes.
+    //
+    // `github:sync` is now the SAFETY NET, not the hot path. Dashboard
+    // writes trigger the same sync runner in-process (see
+    // `server/lib/github-sync-runner.ts`), so end-to-end latency from
+    // PATCH to GitHub is sub-second on the happy path. This cron only
+    // exists to (a) recover rows stuck in 'syncing' after a worker
+    // crash, and (b) retry rows whose `next_attempt_at` has caught up
+    // with the exponential backoff.
+    //
+    // Dev keeps a 10-second tick so a developer reproducing a retry
+    // scenario doesn't wait a minute to see the next attempt. Prod at
+    // 60s keeps DB load predictable — in-process triggers carry the
+    // happy-path traffic either way.
     scheduledTasks: {
-      "*/1 * * * *": ["github:sync"],
+      [process.env.NODE_ENV === "production" ? "*/1 * * * *" : "*/10 * * * * *"]: ["github:sync"],
       // Daily at 03:00 UTC — cleans up any unconsumed expired write-lock rows.
       "0 3 * * *": ["github:cleanup-write-locks"],
     },
