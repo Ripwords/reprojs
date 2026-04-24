@@ -64,13 +64,15 @@ async function highlight(
 const raw = {
   script: {
     lang: "html" as const,
-    code: `<script src="${SDK_ORIGIN}/sdk/repro.iife.js" async><\/script>
-<script>
-  Repro.init({
-    projectKey: "${PROJECT_KEY_EXAMPLE}",
-    endpoint: "${SDK_ORIGIN}",
-  })
-<\/script>`,
+    // `onload` ties the init call to the bundle's own load completion —
+    // without it, an async script + separate inline init race, and the
+    // inline often runs first with "Repro is not defined". See
+    // docs/guide/sdk.md for the trade-off + a synchronous alternative.
+    code: `<script
+  src="${SDK_ORIGIN}/sdk/repro.iife.js"
+  async
+  onload="Repro.init({ projectKey: '${PROJECT_KEY_EXAMPLE}', endpoint: '${SDK_ORIGIN}' })"
+><\/script>`,
   },
   init: {
     lang: "typescript" as const,

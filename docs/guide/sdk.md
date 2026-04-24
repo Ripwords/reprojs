@@ -7,7 +7,26 @@ The SDK is one package — `@reprojs/core` — that bundles the widget UI, recor
 ### `<script>` tag
 
 ```html
-<script src="https://your-dashboard.example.com/sdk/repro.iife.js" async></script>
+<script
+  src="https://your-dashboard.example.com/sdk/repro.iife.js"
+  async
+  onload="Repro.init({
+    projectKey: 'rp_pk_xxxxxxxxxxxxxxxxxxxxxxxx',
+    endpoint: 'https://your-dashboard.example.com',
+  })"
+></script>
+```
+
+The `/sdk/repro.iife.js` bundle is served by the dashboard itself, so you always load a version that matches your dashboard. The IIFE registers a single global: `window.Repro`.
+
+::: warning Why the `onload` attribute?
+A naive split — `<script async>` for the bundle + a separate inline `<script>` that calls `Repro.init(…)` — looks cleaner, but the `async` attribute lets the browser reorder execution. The inline script often runs _before_ the bundle has parsed, and you'll see `ReferenceError: Repro is not defined`. Putting the init call on `onload` ties it to the bundle's own load completion so the call is always safe.
+:::
+
+If you prefer to keep init inline, drop `async` — that reverts to synchronous in-order execution at the cost of a ~50 KB parse during page load:
+
+```html
+<script src="https://your-dashboard.example.com/sdk/repro.iife.js"></script>
 <script>
   Repro.init({
     projectKey: "rp_pk_xxxxxxxxxxxxxxxxxxxxxxxx",
@@ -15,8 +34,6 @@ The SDK is one package — `@reprojs/core` — that bundles the widget UI, recor
   })
 </script>
 ```
-
-The `/sdk/repro.iife.js` bundle is served by the dashboard itself, so you always load a version that matches your dashboard. The IIFE registers a single global: `window.Repro`.
 
 ### ESM / bundler
 
