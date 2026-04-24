@@ -173,7 +173,5 @@ function removeOne(login: string) {
         </button>
       </li>
     </ul>
-
-    <p v-else-if="!pending" class="px-1.5 text-sm text-muted italic">No one assigned</p>
   </div>
 </template>

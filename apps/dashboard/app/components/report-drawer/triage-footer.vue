@@ -1,13 +1,12 @@
 <!-- apps/dashboard/app/components/report-drawer/triage-footer.vue
-     Vertical triage panel for the right-side sidebar on the dedicated
-     report page. Laid out as three labelled sections (Properties, Tags,
-     GitHub) separated by hairlines, with eyebrow labels + mid-weight
-     select menus. Tags render as proper chips with a hover dismiss.
+     Triage panel for the report drawer sidebar. Three collapsible
+     sections (Properties · Labels · GitHub) separated by whitespace,
+     each with a single unified typographic scale — text-sm everywhere.
 
-     Assignees + milestone are GitHub-only features — the sections only
-     render when (a) the project has a connected GitHub integration AND
-     (b) this specific report is already linked to an issue. If either
-     condition is missing there's nowhere to round-trip the value. -->
+     Assignees + milestone are GitHub-mirrored — they only render when
+     the project has a connected GitHub integration AND this report is
+     already linked to an issue. Status/priority/tags/labels always
+     render. -->
 <script setup lang="ts">
 import type {
   GithubConfigDTO,
@@ -35,10 +34,6 @@ const toast = useToast()
 const STATUSES: ReportStatus[] = ["open", "in_progress", "resolved", "closed"]
 const PRIORITIES: ReportPriority[] = ["urgent", "high", "normal", "low"]
 
-// Check GitHub integration state up-front so we can gate the "Create GitHub
-// issue" button on whether the app is actually installed + connected for this
-// project. Without this, clicking the button enqueues a sync job that quietly
-// fails when processed — the user sees a success toast and nothing happens.
 const { data: githubConfig } = useApi<GithubConfigDTO>(
   `/api/projects/${props.projectId}/integrations/github`,
 )
@@ -46,14 +41,9 @@ const githubReady = computed(
   () => Boolean(githubConfig.value?.installed) && githubConfig.value?.status === "connected",
 )
 
-// Per-project integration state — drives the live picker section
 const projectIdRef = toRef(() => props.projectId)
 const { state: integrationState } = useGithubIntegration(projectIdRef)
 const isProjectLinked = computed(() => integrationState.value.isLinked)
-
-// Assignees + milestone can only be edited when the *report itself* is
-// already linked to a GitHub issue. A connected integration alone isn't
-// enough; the server returns 409 if we tried.
 const isReportLinked = computed(
   () => isProjectLinked.value && props.report.githubIssueNumber !== null,
 )
@@ -71,11 +61,7 @@ async function createIssue() {
       credentials: "include",
     })
     emit("patched")
-    toast.add({
-      title: "GitHub issue created",
-      color: "success",
-      icon: "i-heroicons-check-circle",
-    })
+    toast.add({ title: "GitHub issue created", color: "success", icon: "i-heroicons-check-circle" })
   } catch (err) {
     toast.add({
       title: "Could not create GitHub issue",
@@ -96,11 +82,7 @@ async function unlink() {
     })
     unlinkOpen.value = false
     emit("patched")
-    toast.add({
-      title: "Unlinked from GitHub",
-      color: "success",
-      icon: "i-heroicons-check-circle",
-    })
+    toast.add({ title: "Unlinked from GitHub", color: "success", icon: "i-heroicons-check-circle" })
   } catch (err) {
     toast.add({
       title: "Could not unlink",
@@ -126,11 +108,7 @@ async function patch(body: Record<string, unknown>) {
       credentials: "include",
     })
     emit("patched")
-    toast.add({
-      title: "Saved",
-      color: "success",
-      icon: "i-heroicons-check-circle",
-    })
+    toast.add({ title: "Saved", color: "success", icon: "i-heroicons-check-circle" })
   } catch (err) {
     toast.add({
       title: "Could not save",
@@ -169,76 +147,126 @@ const priorityModel = computed<ReportPriority>({
   },
 })
 
-const statusItems = computed(() => STATUSES.map((s) => ({ label: s.replace("_", " "), value: s })))
-const priorityItems = computed(() => PRIORITIES.map((p) => ({ label: p, value: p })))
+function titleCase(s: string): string {
+  return s
+    .split(/[\s_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ")
+}
+
+const statusItems = computed(() => STATUSES.map((s) => ({ label: titleCase(s), value: s })))
+const priorityItems = computed(() => PRIORITIES.map((p) => ({ label: titleCase(p), value: p })))
 
 const assigneeLogins = computed(() => props.report.assignees.map((a) => a.login))
 
-const open = reactive({
-  properties: true,
-  tags: true,
-  github: true,
+// Collapsed-state summaries — shown inline when the section is closed so
+// the sidebar stays informative at a glance without forcing an expand.
+const propertiesSummary = computed(() => {
+  const parts: string[] = [titleCase(props.report.status), titleCase(props.report.priority)]
+  if (isReportLinked.value) {
+    const n = props.report.assignees.length
+    if (n > 0) parts.push(`${n} Assignee${n === 1 ? "" : "s"}`)
+    if (props.report.milestoneTitle) parts.push(props.report.milestoneTitle)
+  }
+  return parts.join(" · ")
+})
+const labelsSummary = computed(() => {
+  const n = props.report.tags.length
+  if (n === 0) return "None"
+  return `${n} ${n === 1 ? "Label" : "Labels"}`
+})
+const githubSummary = computed(() => {
+  if (props.report.githubIssueNumber && props.report.githubIssueUrl) {
+    return `#${props.report.githubIssueNumber}`
+  }
+  return githubReady.value ? "Not Linked" : "Not Configured"
+})
+
+const open = reactive({ properties: true, labels: true, github: true })
+
+// Priority dot colour — quiet signal in the collapsed header so severity
+// stays legible without expanding Properties.
+const priorityDotClass = computed<string>(() => {
+  switch (props.report.priority) {
+    case "urgent":
+      return "bg-error"
+    case "high":
+      return "bg-warning"
+    case "normal":
+      return "bg-primary/70"
+    case "low":
+    default:
+      return "bg-muted-foreground/50"
+  }
 })
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Properties group — status, assignee, priority laid out as
-         label / select pairs with breathing room. Grouped under one
-         "Properties" umbrella rather than three floating sections. -->
-    <section>
+  <div class="divide-y divide-default/60">
+    <!-- Properties -->
+    <section class="py-4 first:pt-0">
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-2 mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        class="flex w-full items-center gap-2 pb-3 text-sm font-semibold text-default hover:text-primary transition-colors"
         :aria-expanded="open.properties"
         @click="open.properties = !open.properties"
       >
+        <UIcon name="i-lucide-sliders-horizontal" class="size-4 shrink-0 opacity-80" />
         <span>Properties</span>
+        <span
+          class="ml-auto inline-flex items-center gap-1.5 min-w-0 max-w-[60%] truncate text-sm font-normal text-dimmed"
+        >
+          <span
+            class="inline-block size-1.5 rounded-full shrink-0"
+            :class="priorityDotClass"
+            aria-hidden="true"
+          />
+          <span class="truncate">{{ propertiesSummary }}</span>
+        </span>
         <UIcon
           name="i-heroicons-chevron-down"
-          class="size-4 transition-transform"
-          :class="open.properties ? '' : '-rotate-90'"
+          class="size-4 shrink-0 opacity-60 transition-transform duration-200"
+          :class="{ '-rotate-90': !open.properties }"
         />
       </button>
-      <div v-show="open.properties" class="space-y-3">
-        <div class="flex items-center gap-3">
-          <label class="w-20 shrink-0 text-sm font-medium text-muted">Status</label>
+      <div v-show="open.properties" class="flex flex-col gap-2 pt-1">
+        <div class="grid grid-cols-[5.5rem_1fr] items-center gap-3">
+          <span class="text-sm font-medium text-muted">Status</span>
           <USelectMenu
             v-model="statusModel"
             :items="statusItems"
             value-key="value"
-            size="sm"
-            class="flex-1 min-w-0"
+            size="md"
+            class="w-full min-w-0"
             :disabled="!canEdit || posting"
           />
         </div>
-        <!-- Assignee + milestone only render when the report is already
-             linked to a GitHub issue. Without a linked issue there's
-             nowhere to round-trip the value, and showing a disabled
-             picker is more confusing than hiding it. -->
-        <div v-if="isReportLinked" class="flex items-center gap-3">
-          <label class="w-20 shrink-0 text-sm font-medium text-muted">Assignee</label>
+
+        <div v-if="isReportLinked" class="flex flex-col gap-1.5">
+          <span class="text-sm font-medium text-muted">Assignees</span>
           <AssigneesPicker
             :project-id="projectId"
             :model-value="assigneeLogins"
             :disabled="!canEdit || posting"
-            class="flex-1 min-w-0"
             @update:model-value="patch({ assignees: $event })"
           />
         </div>
-        <div class="flex items-center gap-3">
-          <label class="w-20 shrink-0 text-sm font-medium text-muted">Priority</label>
+
+        <div class="grid grid-cols-[5.5rem_1fr] items-center gap-3">
+          <span class="text-sm font-medium text-muted">Priority</span>
           <USelectMenu
             v-model="priorityModel"
             :items="priorityItems"
             value-key="value"
-            size="sm"
-            class="flex-1 min-w-0"
+            size="md"
+            class="w-full min-w-0 capitalize"
             :disabled="!canEdit || posting"
           />
         </div>
-        <div v-if="isReportLinked" class="flex items-center gap-3">
-          <label class="w-20 shrink-0 text-sm font-medium text-muted">Milestone</label>
+
+        <div v-if="isReportLinked" class="grid grid-cols-[5.5rem_1fr] items-center gap-3">
+          <span class="text-sm font-medium text-muted">Milestone</span>
           <MilestonePicker
             :project-id="projectId"
             :model-value="
@@ -250,32 +278,33 @@ const open = reactive({
                 : null
             "
             :disabled="!canEdit || posting"
-            class="flex-1 min-w-0"
+            class="w-full min-w-0"
             @update:model-value="patch({ milestone: $event })"
           />
         </div>
       </div>
     </section>
 
-    <div class="border-t border-default/60" />
-
-    <!-- Tags / Labels — when repo-linked, shows the live label picker;
-         otherwise the manual tag-chip editor. -->
-    <section>
+    <!-- Labels / Tags -->
+    <section class="py-4">
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-2 mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
-        :aria-expanded="open.tags"
-        @click="open.tags = !open.tags"
+        class="flex w-full items-center gap-2 pb-3 text-sm font-semibold text-default hover:text-primary transition-colors"
+        :aria-expanded="open.labels"
+        @click="open.labels = !open.labels"
       >
-        <span>{{ isProjectLinked ? "Labels" : "Tags" }}</span>
+        <UIcon name="i-lucide-tag" class="size-4 shrink-0 opacity-80" />
+        <span>Labels</span>
+        <span class="ml-auto truncate text-sm font-normal text-dimmed">
+          {{ labelsSummary }}
+        </span>
         <UIcon
           name="i-heroicons-chevron-down"
-          class="size-4 transition-transform"
-          :class="open.tags ? '' : '-rotate-90'"
+          class="size-4 shrink-0 opacity-60 transition-transform duration-200"
+          :class="{ '-rotate-90': !open.labels }"
         />
       </button>
-      <div v-show="open.tags">
+      <div v-show="open.labels" class="pt-1">
         <template v-if="isProjectLinked">
           <LabelsPicker
             :project-id="projectId"
@@ -285,95 +314,94 @@ const open = reactive({
           />
         </template>
         <template v-else>
-          <div class="flex flex-wrap gap-1.5 items-center">
-            <span
-              v-for="t in report.tags"
-              :key="t"
-              :class="[
-                'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium',
-                'bg-primary/10 text-primary ring-1 ring-primary/20',
-                canEdit ? 'cursor-pointer hover:bg-primary/15 transition-colors' : '',
-              ]"
-              @click="canEdit ? removeTag(t) : null"
-            >
-              <UIcon name="i-heroicons-hashtag" class="size-3" />
-              <span>{{ t }}</span>
-              <UIcon v-if="canEdit" name="i-heroicons-x-mark" class="size-3 opacity-60" />
-            </span>
+          <div class="flex flex-col gap-2">
             <UInput
               v-if="canEdit"
               v-model="tagDraft"
-              placeholder="Add tag…"
-              size="sm"
-              variant="soft"
+              placeholder="Add a label…"
+              size="md"
+              variant="outline"
               icon="i-heroicons-plus"
-              class="w-28"
+              class="w-full"
               @keydown.enter.prevent="addTag"
             />
-            <span v-if="!canEdit && report.tags.length === 0" class="text-sm text-muted italic">
-              None
-            </span>
+            <div v-if="report.tags.length" class="flex flex-wrap gap-1.5">
+              <span
+                v-for="t in report.tags"
+                :key="t"
+                class="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-sm font-semibold leading-snug tracking-tight ring-1 ring-inset ring-black/10 bg-primary/15 text-primary"
+              >
+                <span>{{ t }}</span>
+                <button
+                  v-if="canEdit"
+                  type="button"
+                  class="inline-flex items-center justify-center size-4 rounded-full text-current opacity-60 hover:opacity-100 hover:bg-black/10 transition-opacity cursor-pointer"
+                  :aria-label="`Remove label ${t}`"
+                  :title="`Remove ${t}`"
+                  @click="removeTag(t)"
+                >
+                  <UIcon name="i-lucide-x" class="size-3 shrink-0" />
+                </button>
+              </span>
+            </div>
+            <span v-else-if="!canEdit" class="text-sm text-muted italic">None</span>
           </div>
         </template>
       </div>
     </section>
 
-    <div class="border-t border-default/60" />
-
-    <!-- GitHub integration — when linked, shows repo + issue-number chip;
-         otherwise a create button. The linked state gets a faint
-         border+bg instead of a bare link so it reads as "record" rather
-         than "inline text". -->
-    <section>
+    <!-- GitHub -->
+    <section class="py-4 last:pb-0">
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-2 mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        class="flex w-full items-center gap-2 pb-3 text-sm font-semibold text-default hover:text-primary transition-colors"
         :aria-expanded="open.github"
         @click="open.github = !open.github"
       >
+        <UIcon name="i-simple-icons-github" class="size-4 shrink-0 opacity-80" />
         <span>GitHub</span>
+        <span class="ml-auto truncate text-sm font-normal text-dimmed">
+          {{ githubSummary }}
+        </span>
         <UIcon
           name="i-heroicons-chevron-down"
-          class="size-4 transition-transform"
-          :class="open.github ? '' : '-rotate-90'"
+          class="size-4 shrink-0 opacity-60 transition-transform duration-200"
+          :class="{ '-rotate-90': !open.github }"
         />
       </button>
-      <div v-show="open.github">
+      <div v-show="open.github" class="flex flex-col gap-2 pt-1">
         <template v-if="report.githubIssueNumber && report.githubIssueUrl">
           <a
             :href="safeHref(report.githubIssueUrl)"
             target="_blank"
             rel="noopener"
-            class="group flex items-center gap-2 rounded-lg border border-default bg-elevated/40 px-3 py-2 text-sm transition-colors hover:border-primary/30 hover:bg-elevated/80"
+            class="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-default bg-elevated/40 hover:bg-elevated/80 hover:border-primary/30 transition-colors text-default"
           >
-            <UIcon name="i-simple-icons-github" class="size-4 text-default" />
-            <span class="flex-1 min-w-0 truncate">
-              <span class="text-muted">{{ ghRepoFullName(report.githubIssueUrl) }}</span>
-              <span class="mx-1 text-muted">·</span>
-              <span class="text-default font-medium">#{{ report.githubIssueNumber }}</span>
+            <UIcon name="i-simple-icons-github" class="size-4 shrink-0" />
+            <span class="inline-flex items-baseline gap-1.5 flex-1 min-w-0">
+              <span class="truncate text-sm text-muted">
+                {{ ghRepoFullName(report.githubIssueUrl) }}
+              </span>
+              <span class="shrink-0 font-mono text-sm font-medium">
+                #{{ report.githubIssueNumber }}
+              </span>
             </span>
             <UIcon
               name="i-heroicons-arrow-top-right-on-square"
-              class="size-3.5 text-muted transition-colors group-hover:text-primary"
+              class="size-4 shrink-0 text-muted group-hover:text-primary transition-colors"
             />
           </a>
-          <UButton
+          <button
             v-if="canEdit"
-            size="sm"
-            color="neutral"
-            variant="ghost"
-            label="Unlink issue"
-            icon="i-heroicons-link-slash"
-            class="mt-2"
-            block
+            type="button"
+            class="inline-flex items-center gap-1.5 self-start px-2 py-1 rounded-md text-sm text-muted hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
             @click="unlinkOpen = true"
-          />
+          >
+            <UIcon name="i-heroicons-link-slash" class="size-4" />
+            <span>Unlink issue</span>
+          </button>
         </template>
-        <!-- Three states for the unlinked case:
-           1. Integration ready → "Create GitHub issue" (primary action)
-           2. Integration missing / disconnected but viewer can edit →
-              soft prompt with a link to the integrations page
-           3. Viewer-only (no edit rights) → italic "Not linked" -->
+
         <UButton
           v-else-if="canEdit && githubReady"
           size="md"
@@ -385,9 +413,10 @@ const open = reactive({
           block
           @click="createIssue"
         />
+
         <div
           v-else-if="canEdit"
-          class="rounded-lg border border-dashed border-default bg-elevated/40 p-3 space-y-2"
+          class="flex flex-col gap-2.5 p-3 rounded-lg border border-dashed border-default bg-elevated/40"
         >
           <div class="flex items-start gap-2">
             <UIcon
@@ -400,7 +429,7 @@ const open = reactive({
           </div>
           <UButton
             :to="`/projects/${projectId}/integrations`"
-            size="sm"
+            size="md"
             color="neutral"
             variant="outline"
             icon="i-simple-icons-github"
