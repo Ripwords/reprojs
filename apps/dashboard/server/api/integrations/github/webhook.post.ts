@@ -305,6 +305,7 @@ export default defineEventHandler(async (event) => {
             payload: { from: linked.r.status, to: desired, source: "github" },
           })
         })
+        publishReportStream(linked.r.id, { kind: "triage", payload: { source: "github" } })
       }
     } else if (p.action === "labeled" || p.action === "unlabeled") {
       const issueLabels = p.issue.labels?.map((l) => l.name) ?? []
@@ -386,6 +387,7 @@ export default defineEventHandler(async (event) => {
             await tx.insert(reportEvents).values(eventsToInsert)
           }
         })
+        publishReportStream(linked.r.id, { kind: "triage", payload: { source: "github" } })
       }
     } else if (p.action === "assigned" || p.action === "unassigned") {
       const linked = await findLinkedReport(
@@ -412,6 +414,7 @@ export default defineEventHandler(async (event) => {
       }
 
       await applyInboundAssignees(linked.r.id, linked.r.projectId, p.issue.assignees ?? [])
+      publishReportStream(linked.r.id, { kind: "triage", payload: { source: "github" } })
     } else if (p.action === "milestoned" || p.action === "demilestoned") {
       const linked = await findLinkedReport(
         p.issue.number,
@@ -460,6 +463,7 @@ export default defineEventHandler(async (event) => {
           },
         })
       })
+      publishReportStream(linked.r.id, { kind: "triage", payload: { source: "github" } })
     } else if (p.action === "edited" && p.changes?.title) {
       const linked = await findLinkedReport(
         p.issue.number,
@@ -490,13 +494,9 @@ export default defineEventHandler(async (event) => {
           .update(reports)
           .set({ title: newTitle, updatedAt: new Date() })
           .where(eq(reports.id, linked.r.id))
+        publishReportStream(linked.r.id, { kind: "triage", payload: { source: "github" } })
       }
     }
-
-    // Regardless of which issues-sub-action landed (closed/reopened/labeled/
-    // unlabeled/assigned/unassigned/milestoned/demilestoned/edited), the
-    // dashboard row was touched — nudge any open SSE subscribers to refetch.
-    publishReportStream(linked.r.id, { kind: "triage", payload: { source: "github" } })
   } else if (kind === "issue_comment") {
     const p = payload as IssueCommentPayload
     const action = p.action

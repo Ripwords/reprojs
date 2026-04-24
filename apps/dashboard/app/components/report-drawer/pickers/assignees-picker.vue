@@ -32,7 +32,11 @@ const options = computed(() =>
     key: opt.linkedUser ? opt.linkedUser.id : `gh:${opt.login}`,
     label: opt.linkedUser?.name ?? opt.login,
     sublabel: opt.linkedUser ? `@${opt.login}` : null,
-    avatar: opt.avatarUrl,
+    // Nuxt UI's USelectMenu renders an `avatar` field on BOTH the dropdown
+    // row and the selected-chip. Must be an object (`{ src }`); passing a
+    // raw string gets ignored. Omit the field entirely when no URL so the
+    // fallback (initials) kicks in instead of a broken image.
+    ...(opt.avatarUrl ? { avatar: { src: opt.avatarUrl, alt: opt.login } } : {}),
   })),
 )
 
@@ -67,7 +71,19 @@ const selectedKeys = computed({
     placeholder="Select assignees"
   >
     <template #option="{ option }">
-      <UAvatar :src="option.avatar ?? undefined" size="xs" class="mr-2 shrink-0" />
+      <UAvatar
+        v-if="option.avatar"
+        :src="option.avatar.src"
+        :alt="option.avatar.alt"
+        size="xs"
+        class="mr-2 shrink-0"
+      />
+      <UAvatar
+        v-else
+        :text="option.label.slice(0, 2).toUpperCase()"
+        size="xs"
+        class="mr-2 shrink-0"
+      />
       <div class="flex-1 min-w-0">
         <div class="truncate">{{ option.label }}</div>
         <div v-if="option.sublabel" class="text-xs text-muted truncate">{{ option.sublabel }}</div>
