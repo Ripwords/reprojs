@@ -105,6 +105,21 @@ export default defineNuxtConfig({
     },
   },
   routeRules: {
+    // Every authenticated API response is user-specific and must not be
+    // cached by intermediaries. Without this, a Cloudflare proxy in front
+    // of the dashboard can serve a stale GET `/api/projects/:id/integrations/github`
+    // after the user PATCHes a toggle — the UI reads back the pre-save
+    // value and silently regresses to what looked like "the toggle keeps
+    // turning itself off." `no-store` forbids any shared or browser cache
+    // from holding the response at all.
+    //
+    // Specifically scoped to /api/** so we don't break static asset
+    // caching (Nuxt's /_nuxt/ bundles, /sdk/repro.iife.js, favicons, etc.).
+    "/api/**": {
+      headers: {
+        "Cache-Control": "private, no-store",
+      },
+    },
     // better-auth owns request/response shape for every /api/auth/* call —
     // rate-limits, validates, and sets session cookies itself. Letting
     // nuxt-security middleware touch bodies or throttle here causes subtle
