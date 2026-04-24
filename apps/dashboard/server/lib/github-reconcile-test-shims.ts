@@ -55,10 +55,26 @@ export function buildNoopOctokitShim(
         },
         addAssignees: async (args: Record<string, unknown>) => {
           calls.updateAssignees?.push(args)
+          // `addAssignees` returns the updated issue's assignees list in
+          // production; reconcileAssignees diffs against this to detect
+          // silent drops. Echo back what was requested so tests that don't
+          // care about silent-drop detection see every login "stick".
+          return {
+            data: {
+              assignees: ((args.assignees as string[] | undefined) ?? []).map((login) => ({
+                login,
+              })),
+            },
+          }
         },
         removeAssignees: async (args: Record<string, unknown>) => {
           calls.updateAssignees?.push(args)
+          return { data: { assignees: [] } }
         },
+        // Pre-flight probe the reconciler runs before every addAssignees.
+        // Return a successful 204-shape by default; tests that want to
+        // verify the "not assignable" branch wire a custom shim.
+        checkUserCanBeAssigned: async () => ({ status: 204 }),
       },
     },
   } as unknown as Octokit
@@ -114,8 +130,17 @@ export function buildFacadeRoutingOctokitShim(client: GitHubInstallationClient):
             calls.updateIssueMilestone.push(args)
           }
         },
-        addAssignees: async () => {},
-        removeAssignees: async () => {},
+        addAssignees: async (args: Record<string, unknown>) => ({
+          data: {
+            assignees: ((args.assignees as string[] | undefined) ?? []).map((login) => ({
+              login,
+            })),
+          },
+        }),
+        removeAssignees: async () => ({ data: { assignees: [] } }),
+        // Facade-routed tests pre-date the pre-flight probe — treat every
+        // user as assignable so the legacy call-count assertions hold.
+        checkUserCanBeAssigned: async () => ({ status: 204 }),
       },
     },
   } as unknown as Octokit

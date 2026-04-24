@@ -26,6 +26,34 @@ export async function updateIssueMilestone(
   })
 }
 
+// Pre-flight check against `GET /repos/:owner/:repo/assignees/:username`.
+// Returns true if GitHub considers the login assignable on this repo, false
+// otherwise. GitHub's endpoint returns 204 for assignable and 404 for not —
+// anything else (rate limit, auth failure, network blip) also resolves to
+// false so we treat "can't verify" as "don't push" rather than pushing and
+// hitting a silent drop.
+export async function checkUserCanBeAssigned(
+  client: Octokit,
+  owner: string,
+  repo: string,
+  username: string,
+): Promise<boolean> {
+  try {
+    await client.rest.issues.checkUserCanBeAssigned({ owner, repo, assignee: username })
+    return true
+  } catch (err: unknown) {
+    // Octokit throws with a `status` field on the RequestError. 404 is the
+    // canonical "not assignable" signal from GitHub; any other status means
+    // we couldn't verify, which we still treat as a negative result above.
+    const status = (err as { status?: number } | null)?.status
+    if (status === 404) return false
+    // Re-throw unexpected errors so the caller sees them (rate limits,
+    // auth failures, 5xx) instead of silently treating them as "not
+    // assignable" and skipping the write forever.
+    throw err
+  }
+}
+
 // GitHub's `POST /repos/:owner/:repo/issues/:n/assignees` silently drops any
 // login that isn't assignable to the repo (non-collaborator, missing access,
 // suspended user, etc.) — it still returns 201 with the updated issue, but

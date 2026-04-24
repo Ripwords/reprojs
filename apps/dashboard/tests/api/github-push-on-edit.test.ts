@@ -112,10 +112,24 @@ function makeMockWithRichIssue(liveIssue: LiveIssue): {
         },
         addAssignees: async (args: Record<string, unknown>) => {
           calls.addAssignees.push(args)
+          // The reconciler inspects response.data.assignees to detect silent
+          // drops by GitHub; echo the requested logins back so this test
+          // simulates a fully successful assignment.
+          return {
+            data: {
+              assignees: ((args.assignees as string[] | undefined) ?? []).map((login) => ({
+                login,
+              })),
+            },
+          }
         },
         removeAssignees: async (args: Record<string, unknown>) => {
           calls.removeAssignees.push(args)
+          return { data: { assignees: [] } }
         },
+        // Pre-flight probe the reconciler runs before every addAssignees —
+        // treat everyone as assignable so the existing assertions hold.
+        checkUserCanBeAssigned: async () => ({ status: 204 }),
       },
     },
   } as unknown as Octokit

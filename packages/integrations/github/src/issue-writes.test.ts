@@ -115,6 +115,58 @@ describe("addAssignees", () => {
   })
 })
 
+describe("checkUserCanBeAssigned", () => {
+  test("returns true when GitHub reports 204 (assignable)", async () => {
+    const { checkUserCanBeAssigned } = await import("./issue-writes")
+    const octokit = {
+      rest: {
+        issues: {
+          checkUserCanBeAssigned: async () => ({ status: 204 }),
+        },
+      },
+    } as unknown as Octokit
+    const ok = await checkUserCanBeAssigned(octokit, "acme", "frontend", "alice")
+    expect(ok).toBe(true)
+  })
+
+  test("returns false when GitHub throws 404 (not assignable)", async () => {
+    const { checkUserCanBeAssigned } = await import("./issue-writes")
+    const octokit = {
+      rest: {
+        issues: {
+          checkUserCanBeAssigned: async () => {
+            const err = Object.assign(new Error("Not Found"), { status: 404 })
+            throw err
+          },
+        },
+      },
+    } as unknown as Octokit
+    const ok = await checkUserCanBeAssigned(octokit, "acme", "frontend", "bob")
+    expect(ok).toBe(false)
+  })
+
+  test("re-throws unexpected errors (rate limit, auth, 5xx) rather than treating them as 'not assignable'", async () => {
+    const { checkUserCanBeAssigned } = await import("./issue-writes")
+    const octokit = {
+      rest: {
+        issues: {
+          checkUserCanBeAssigned: async () => {
+            const err = Object.assign(new Error("rate limited"), { status: 403 })
+            throw err
+          },
+        },
+      },
+    } as unknown as Octokit
+    let caught: unknown = null
+    try {
+      await checkUserCanBeAssigned(octokit, "acme", "frontend", "carol")
+    } catch (err) {
+      caught = err
+    }
+    expect((caught as { status?: number } | null)?.status).toBe(403)
+  })
+})
+
 describe("removeAssignees", () => {
   test("calls removeAssignees with provided logins", async () => {
     const { octokit, calls } = makeFakeOctokit()

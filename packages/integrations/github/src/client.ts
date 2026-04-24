@@ -19,6 +19,7 @@ export {
   addAssignees,
   removeAssignees,
   updateIssueState,
+  checkUserCanBeAssigned,
 } from "./issue-writes"
 export type { IssueStateUpdate } from "./issue-writes"
 export {

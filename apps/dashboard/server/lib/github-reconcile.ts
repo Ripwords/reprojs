@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm"
 import { type LogsAttachment, type ReportContext } from "@reprojs/shared"
 import {
   addAssignees,
+  checkUserCanBeAssigned,
   createIssueComment,
   deleteIssueComment,
   listIssueComments,
@@ -167,37 +168,72 @@ async function reconcileAssignees(
   const { toAdd, toRemove } = diffAssignees(live.assigneeLogins, desiredLogins)
   if (toAdd.length === 0 && toRemove.length === 0) return
 
-  const sig = signAssignees(desiredLogins)
-  await recordWriteLock(db, { reportId, kind: "assignees", signature: sig })
+  // Pre-flight: ask GitHub (via `GET /repos/:owner/:repo/assignees/:username`)
+  // whether each login we're about to add is actually assignable on this repo.
+  // Without this, a stale picker cache or a collaborator who was removed
+  // between pick-time and save-time would result in a 201 OK with the login
+  // silently dropped from the response — the historic "I assigned alice and
+  // nothing happened, there's no error anywhere" bug. Running the probe
+  // concurrently keeps the extra round-trip cost sub-second even for the
+  // 10-assignee maximum.
+  const assignableChecks = await Promise.all(
+    toAdd.map(async (login) => ({
+      login,
+      ok: await checkUserCanBeAssigned(octokit, owner, repo, login),
+    })),
+  )
+  const notAssignable = assignableChecks.filter((c) => !c.ok).map((c) => c.login)
+  const assignableAdd = assignableChecks.filter((c) => c.ok).map((c) => c.login)
 
-  let postRemoveAssignees: string[] | undefined
-  if (toRemove.length > 0) {
-    const removeRes = await removeAssignees(octokit, owner, repo, issueNumber, toRemove)
-    postRemoveAssignees = removeRes.currentAssigneeLogins
+  if (notAssignable.length > 0) {
+    console.warn(
+      `[github-reconcile] assignees rejected by GitHub pre-flight for ${owner}/${repo}#${issueNumber}:`,
+      {
+        reportId,
+        notAssignable,
+        hint: "GET /repos/<owner>/<repo>/assignees/<login> returned 404 — verify the user is a collaborator at github.com/<owner>/<repo>/settings/access",
+      },
+    )
   }
 
-  if (toAdd.length > 0) {
-    const addRes = await addAssignees(octokit, owner, repo, issueNumber, toAdd)
+  if (toRemove.length === 0 && assignableAdd.length === 0) {
+    // Everything we wanted to add was rejected and there's nothing to remove.
+    // Skip the writes entirely — we have no work left to do.
+    return
+  }
+
+  // Sign the write-lock over the POST-reconcile desired state so the webhook
+  // echo check matches what GitHub reports back. This is `live ∪ assignableAdd
+  // \ toRemove` — the set the issue will actually have after our writes
+  // settle, dropped logins excluded.
+  const effectiveDesired = [
+    ...live.assigneeLogins.filter((l) => !toRemove.includes(l)),
+    ...assignableAdd.filter((l) => !live.assigneeLogins.includes(l)),
+  ]
+  const sig = signAssignees(effectiveDesired)
+  await recordWriteLock(db, { reportId, kind: "assignees", signature: sig })
+
+  if (toRemove.length > 0) {
+    await removeAssignees(octokit, owner, repo, issueNumber, toRemove)
+  }
+
+  if (assignableAdd.length > 0) {
+    const addRes = await addAssignees(octokit, owner, repo, issueNumber, assignableAdd)
+    // Belt-and-braces: even after the pre-flight, GitHub can still refuse a
+    // login between the probe and the POST (race against a just-removed
+    // collaborator). Log the post-write drop separately so the two failure
+    // modes are distinguishable in `docker logs`.
     const after = new Set(addRes.currentAssigneeLogins)
-    const dropped = toAdd.filter((login) => !after.has(login))
-    if (dropped.length > 0) {
-      // GitHub silently drops logins that aren't assignable to the repo
-      // (not a collaborator, suspended, org access revoked, etc.) — the
-      // HTTP response is 201 but the returned `assignees` array omits them.
-      // Without this warning the dashboard would look broken ("I assigned
-      // alice and nothing happened") with no signal in logs. Emitting to
-      // stderr surfaces the problem in `docker logs` + typical log drains.
+    const droppedAfterPreflight = assignableAdd.filter((login) => !after.has(login))
+    if (droppedAfterPreflight.length > 0) {
       console.warn(
-        `[github-reconcile] assignees dropped silently by GitHub for issue ${owner}/${repo}#${issueNumber}:`,
+        `[github-reconcile] assignees dropped AFTER pre-flight for ${owner}/${repo}#${issueNumber}:`,
         {
           reportId,
-          dropped,
-          attemptedToAdd: toAdd,
+          droppedAfterPreflight,
+          preflightPassed: assignableAdd,
           afterAdd: addRes.currentAssigneeLogins,
-          postRemoveAssignees,
-          desired: desiredLogins,
-          live: live.assigneeLogins,
-          hint: "these logins aren't 'assignable' to the repo — verify they're collaborators at github.com/<owner>/<repo>/settings/access",
+          hint: "pre-flight said assignable but POST dropped — race with a collaborator removal, or org SSO flap",
         },
       )
     }
