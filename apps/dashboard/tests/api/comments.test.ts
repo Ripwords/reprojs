@@ -352,9 +352,13 @@ describe("comments API", () => {
       })
       .returning()
 
-    // Insert a pending upsert job for this comment
+    // Insert a pending upsert job for this comment — signature must match the
+    // shape used by the enqueue helper (`comment_upsert:<commentId>`), because
+    // the composite PK is `(reportId, signature)` and the delete handler
+    // targets that exact signature.
     await db.insert(reportSyncJobs).values({
       reportId,
+      signature: `comment_upsert:${comment.id}`,
       state: "pending",
       nextAttemptAt: new Date(),
       payload: { kind: "comment_upsert", commentId: comment.id },

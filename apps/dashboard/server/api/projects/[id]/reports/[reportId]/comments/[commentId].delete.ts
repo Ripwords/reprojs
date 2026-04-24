@@ -8,6 +8,11 @@ import { requireProjectRole } from "../../../../../../lib/permissions"
 import { publishReportStream } from "../../../../../../lib/report-events-bus"
 import { enqueueCommentDelete } from "../../../../../../lib/enqueue-sync"
 
+// Kept in sync with signatureCommentUpsert() in enqueue-sync.ts — scoped here
+// just to cancel the pending row by composite key when a never-pushed comment
+// is deleted. If the signature format ever changes, update both places.
+const commentUpsertSignature = (commentId: string): string => `comment_upsert:${commentId}`
+
 export default defineEventHandler(async (event) => {
   const projectId = getRouterParam(event, "id")
   const reportId = getRouterParam(event, "reportId")
@@ -49,20 +54,18 @@ export default defineEventHandler(async (event) => {
     // If linked to GitHub → enqueue a delete job
     await enqueueCommentDelete(reportId, commentId, comment.githubCommentId)
   } else {
-    // Not yet synced: if there's a pending upsert job for this report, clear it
-    // so we don't push a comment that was immediately deleted
-    const [existingJob] = await db
-      .select()
-      .from(reportSyncJobs)
-      .where(eq(reportSyncJobs.reportId, reportId))
-      .limit(1)
-
-    if (existingJob) {
-      const payload = existingJob.payload
-      if (payload && payload.kind === "comment_upsert" && payload.commentId === commentId) {
-        await db.delete(reportSyncJobs).where(eq(reportSyncJobs.reportId, reportId))
-      }
-    }
+    // Not yet synced: if there's a pending upsert job for this specific
+    // comment, drop it so we don't push a comment that was immediately
+    // deleted. Scope to the exact signature so unrelated pending work
+    // (reconcile, other comment upserts) is untouched.
+    await db
+      .delete(reportSyncJobs)
+      .where(
+        and(
+          eq(reportSyncJobs.reportId, reportId),
+          eq(reportSyncJobs.signature, commentUpsertSignature(commentId)),
+        ),
+      )
   }
 
   publishReportStream(reportId, {

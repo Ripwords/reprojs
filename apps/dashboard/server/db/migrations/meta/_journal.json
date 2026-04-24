@@ -85,6 +85,13 @@
       "when": 1776976650701,
       "tag": "0011_sleepy_elektra",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777600000000,
+      "tag": "0012_sync_job_signature",
+      "breakpoints": true
     }
   ]
 }

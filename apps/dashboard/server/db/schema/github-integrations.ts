@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -57,12 +58,22 @@ export const githubIntegrations = pgTable(
   }),
 )
 
+// Composite PK `(reportId, signature)` — without the signature column,
+// every enqueue call for the same report collides on the same row, so a
+// pending `comment_upsert` would clobber a pending `reconcile` (and vice
+// versa). Signature differentiates the unit of work:
+//   - `reconcile`                   — whole-report snapshot reconcile
+//   - `comment_upsert:<commentId>`  — per-comment create/edit
+//   - `comment_delete:<commentId>`  — per-comment delete
+// Default of `'reconcile'` keeps older test fixtures that insert `{ reportId }`
+// working; production enqueue paths always pass an explicit signature.
 export const reportSyncJobs = pgTable(
   "report_sync_jobs",
   {
     reportId: uuid("report_id")
-      .primaryKey()
+      .notNull()
       .references(() => reports.id, { onDelete: "cascade" }),
+    signature: text("signature").notNull().default("reconcile"),
     state: text("state", { enum: ["pending", "syncing", "failed"] })
       .notNull()
       .default("pending"),
@@ -74,6 +85,7 @@ export const reportSyncJobs = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
+    pk: primaryKey({ columns: [table.reportId, table.signature] }),
     pendingIdx: index("report_sync_jobs_pending_idx")
       .on(table.nextAttemptAt)
       .where(sql`${table.state} = 'pending'`),

@@ -21,10 +21,11 @@ const STALE_SYNCING_MS = 10 * 60_000
 const MAX_ATTEMPTS = 5
 
 async function processJob(job: SyncJob): Promise<void> {
-  await db
-    .update(reportSyncJobs)
-    .set({ state: "syncing", updatedAt: new Date() })
-    .where(eq(reportSyncJobs.reportId, job.reportId))
+  const jobKey = and(
+    eq(reportSyncJobs.reportId, job.reportId),
+    eq(reportSyncJobs.signature, job.signature),
+  )
+  await db.update(reportSyncJobs).set({ state: "syncing", updatedAt: new Date() }).where(jobKey)
   try {
     const payload = job.payload
     if (payload?.kind === "comment_upsert") {
@@ -35,11 +36,12 @@ async function processJob(job: SyncJob): Promise<void> {
       // null/undefined or kind === "reconcile" — standard report reconcile
       await reconcileReport(job.reportId)
     }
-    await db.delete(reportSyncJobs).where(eq(reportSyncJobs.reportId, job.reportId))
+    await db.delete(reportSyncJobs).where(jobKey)
   } catch (err) {
     if (err instanceof ReconcileSkipped) {
-      // reconcileReport has already deleted the job row before throwing
-      // ReconcileSkipped (e.g. no connected integration). No DB update needed.
+      // reconcileReport has already deleted the job row (and all sibling rows
+      // for the same report) before throwing ReconcileSkipped — e.g. when the
+      // integration is disconnected. Nothing left to update.
       return
     }
     const attempts = job.attempts + 1
@@ -54,7 +56,7 @@ async function processJob(job: SyncJob): Promise<void> {
         nextAttemptAt: new Date(Date.now() + backoffMs),
         updatedAt: new Date(),
       })
-      .where(eq(reportSyncJobs.reportId, job.reportId))
+      .where(jobKey)
   }
 }
 
