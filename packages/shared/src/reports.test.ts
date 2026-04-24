@@ -131,7 +131,9 @@ test("ReportSummaryDTO requires source and allows nullable devicePlatform", () =
     tags: [],
     githubIssueNumber: null,
     githubIssueUrl: null,
-    assignee: null,
+    assignees: [],
+    milestoneNumber: null,
+    milestoneTitle: null,
   }
 
   const web = ReportSummaryDTO.parse({ ...base, source: "web", devicePlatform: null })
