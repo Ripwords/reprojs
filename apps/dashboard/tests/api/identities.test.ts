@@ -131,10 +131,11 @@ describe("GET /api/me/identities/github/callback", () => {
     const [me] = await db.select().from(user).where(eq(user.email, "cb@example.com"))
 
     const { signIdentityState } = await import("../../server/lib/identity-oauth-state")
-    // The dev server uses BETTER_AUTH_SECRET from .env (not .env.test which bun test
-    // loads). Read the server's secret directly so the state we sign is verifiable
-    // by the running server.
-    const serverEnv = Bun.file(new URL("../../../../.env", import.meta.url))
+    // The dev server loads `apps/dashboard/.env` at startup (via `bun --env-file=...`
+    // in `bun run dev`). Read that same file directly so the state we sign is
+    // verifiable by the running server — the test process's own env snapshot
+    // may differ from the server's.
+    const serverEnv = Bun.file(new URL("../../.env", import.meta.url))
     const serverEnvText = await serverEnv.text()
     const serverSecret =
       serverEnvText.match(/^BETTER_AUTH_SECRET=(.+)$/m)?.[1] ?? process.env.BETTER_AUTH_SECRET!

@@ -24,10 +24,12 @@ import {
 import {
   apiFetch,
   createUser,
+  seedGithubApp,
   seedProject,
   signIn,
   truncateDomain,
   truncateGithub,
+  truncateGithubApp,
   truncateReports,
 } from "../helpers"
 
@@ -137,8 +139,14 @@ function makeMockWithRichIssue(liveIssue: LiveIssue): {
   return { client, calls }
 }
 
-beforeAll(() => {
+// Seed the singleton `github_app` row so both the test process and the dev
+// server resolve the same webhook secret via `getGithubAppCredentials()`.
+// Mutating `process.env.GITHUB_APP_*` only affects this process — the dev
+// server's env snapshot was frozen at its own startup.
+beforeAll(async () => {
   process.env.ATTACHMENT_URL_SECRET = process.env.ATTACHMENT_URL_SECRET ?? "test-attachment-secret"
+  await truncateGithubApp()
+  await seedGithubApp()
 })
 
 async function seedLinkedProject(opts: { pushOnEdit: boolean }) {

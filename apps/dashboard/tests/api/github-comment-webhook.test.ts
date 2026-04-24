@@ -12,9 +12,11 @@ import { signCommentDelete, signCommentUpsert } from "../../server/lib/github-di
 import { recordWriteLock } from "../../server/lib/github-write-locks"
 import {
   createUser,
+  seedGithubApp,
   seedProject,
   truncateDomain,
   truncateGithub,
+  truncateGithubApp,
   truncateReports,
 } from "../helpers"
 
@@ -102,8 +104,10 @@ function makeCommentPayload(
   }
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   process.env.ATTACHMENT_URL_SECRET = process.env.ATTACHMENT_URL_SECRET ?? "test-attachment-secret"
+  await truncateGithubApp()
+  await seedGithubApp()
 })
 
 describe("issue_comment webhook", () => {

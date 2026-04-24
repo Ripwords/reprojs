@@ -21,10 +21,12 @@ import { githubIntegrations, projectMembers, reportComments, reports } from "../
 import {
   apiFetch,
   createUser,
+  seedGithubApp,
   seedProject,
   signIn,
   truncateDomain,
   truncateGithub,
+  truncateGithubApp,
   truncateReports,
 } from "../helpers"
 
@@ -162,8 +164,10 @@ function makeMockClient(): {
   }
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   process.env.ATTACHMENT_URL_SECRET = process.env.ATTACHMENT_URL_SECRET ?? "test-attachment-secret"
+  await truncateGithubApp()
+  await seedGithubApp()
 })
 
 async function seedLinkedReport() {

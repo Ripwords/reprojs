@@ -17,9 +17,11 @@ import { signTitle, signMilestone } from "../../server/lib/github-diff"
 import { recordWriteLock } from "../../server/lib/github-write-locks"
 import {
   createUser,
+  seedGithubApp,
   seedProject,
   truncateDomain,
   truncateGithub,
+  truncateGithubApp,
   truncateReports,
 } from "../helpers"
 
@@ -58,8 +60,10 @@ async function sendWebhook(eventName: string, body: unknown) {
   return res
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   process.env.ATTACHMENT_URL_SECRET = process.env.ATTACHMENT_URL_SECRET ?? "test-attachment-secret"
+  await truncateGithubApp()
+  await seedGithubApp()
 })
 
 async function truncateWriteLocks() {

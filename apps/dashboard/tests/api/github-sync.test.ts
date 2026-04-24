@@ -9,10 +9,12 @@ import { __setClientOverride, signInstallState } from "../../server/lib/github"
 import {
   apiFetch,
   createUser,
+  seedGithubApp,
   seedProject,
   signIn,
   truncateDomain,
   truncateGithub,
+  truncateGithubApp,
   truncateReports,
 } from "../helpers"
 import { db } from "../../server/db"
@@ -76,14 +78,15 @@ export function makeMock(overrides: Partial<GitHubInstallationClient> = {}): {
   return { client: { ...defaults, ...overrides }, calls }
 }
 
-beforeAll(() => {
-  process.env.GITHUB_APP_ID = process.env.GITHUB_APP_ID ?? "123"
-  process.env.GITHUB_APP_PRIVATE_KEY =
-    process.env.GITHUB_APP_PRIVATE_KEY ??
-    "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----"
-  process.env.GITHUB_APP_WEBHOOK_SECRET =
-    process.env.GITHUB_APP_WEBHOOK_SECRET ?? "test-webhook-secret"
+// The dev server reads GitHub App credentials from the DB via
+// `getGithubAppCredentials()`. Seeding the singleton `github_app` row is the
+// only way both processes (test + dev server) agree on the webhook secret
+// used for install-state HMACs — mutating `process.env` here only affects
+// the test process.
+beforeAll(async () => {
   process.env.ATTACHMENT_URL_SECRET = process.env.ATTACHMENT_URL_SECRET ?? "test-attachment-secret"
+  await truncateGithubApp()
+  await seedGithubApp()
 })
 
 describe("github integration — install + config", () => {
