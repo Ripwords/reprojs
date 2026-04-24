@@ -40,7 +40,7 @@ import {
   signTitle,
 } from "./github-diff"
 import { recordWriteLock } from "./github-write-locks"
-import { withBotFooter, hasBotFooter, stripBotFooter } from "./comment-serializer"
+import { withBotFooter, stripBotFooter } from "./comment-serializer"
 import { resolveGithubUser } from "./github-identities"
 import type { GithubIntegration } from "../db/schema"
 
@@ -257,44 +257,10 @@ interface ExtendedClient {
   getRawOctokit?: () => Promise<Octokit> | Octokit
 }
 
-// Build a no-op Octokit shim for tests that need the reconcile to run but
-// don't care about write API shapes (they verify calls via mock facades).
-function buildTestOctokitShim(
-  calls: {
-    closeIssue?: Array<Record<string, unknown>>
-    reopenIssue?: Array<Record<string, unknown>>
-    updateIssueLabels?: Array<Record<string, unknown>>
-    updateIssueTitle?: Array<Record<string, unknown>>
-    updateIssueMilestone?: Array<Record<string, unknown>>
-    updateAssignees?: Array<Record<string, unknown>>
-  } = {},
-): Octokit {
-  return {
-    rest: {
-      issues: {
-        get: async () => ({ data: {} as never }),
-        setLabels: async (args: Record<string, unknown>) => {
-          calls.updateIssueLabels?.push(args)
-        },
-        update: async (args: Record<string, unknown>) => {
-          if ("state" in args) {
-            const state = args.state as string
-            if (state === "closed") calls.closeIssue?.push(args)
-            else calls.reopenIssue?.push(args)
-          }
-          if ("title" in args) calls.updateIssueTitle?.push(args)
-          if ("milestone" in args) calls.updateIssueMilestone?.push(args)
-        },
-        addAssignees: async (args: Record<string, unknown>) => {
-          calls.updateAssignees?.push(args)
-        },
-        removeAssignees: async (args: Record<string, unknown>) => {
-          calls.updateAssignees?.push(args)
-        },
-      },
-    },
-  } as unknown as Octokit
-}
+// Test-shim helpers live in `github-reconcile-test-shims.ts` so the
+// production reconcile stays readable. They're only reached when a test
+// has installed a facade-only mock via __setClientOverride().
+import { buildNoopOctokitShim, buildFacadeRoutingOctokitShim } from "./github-reconcile-test-shims"
 
 // --- Comment reconcilers ---
 
@@ -333,10 +299,14 @@ async function reconcileCommentUpsert(
     authorName = userRow?.name ?? null
   }
 
-  const serializedBody = withBotFooter(comment.body, {
-    name: authorRow?.name ?? authorName,
-    githubLogin: authorRow?.handle ?? null,
-  })
+  const serializedBody = withBotFooter(
+    comment.body,
+    {
+      name: authorRow?.name ?? authorName,
+      githubLogin: authorRow?.handle ?? null,
+    },
+    env.BETTER_AUTH_SECRET,
+  )
 
   if (comment.githubCommentId === null) {
     // Create on GitHub
@@ -489,7 +459,7 @@ async function backfillGithubComments(
 
   const valuesToInsert = newComments.map((c, i) => {
     const authorResolved = resolved[i]
-    const body = hasBotFooter(c.body) ? stripBotFooter(c.body) : c.body
+    const body = stripBotFooter(c.body, env.BETTER_AUTH_SECRET)
     return {
       reportId,
       userId: authorResolved?.kind === "dashboard-user" ? authorResolved.userId : null,
@@ -656,7 +626,7 @@ export async function reconcileReport(reportId: string): Promise<void> {
     } else {
       // Test stubs that only mock the facade methods (close/reopen/labels)
       // will route through the legacy path below.
-      octokit = buildTestOctokitShim()
+      octokit = buildNoopOctokitShim()
     }
   } else if (typeof (client as unknown as { getIssue?: unknown }).getIssue === "function") {
     // Legacy test path: the old mock only provides getIssue (state + labels).
@@ -675,52 +645,9 @@ export async function reconcileReport(reportId: string): Promise<void> {
       assigneeLogins: [], // Don't know live state; skip assignee reconcile
       milestoneNumber: report.milestoneNumber ?? null, // Assume milestone matches
     }
-    // Build a shim octokit that routes back through the facade for backward compat
-    const calls = (client as unknown as Record<string, unknown[]>)._calls as
-      | Record<string, Array<Record<string, unknown>>>
-      | undefined
-    octokit = {
-      rest: {
-        issues: {
-          get: async () => ({ data: {} as never }),
-          setLabels: async (args: Record<string, unknown>) => {
-            await client.updateIssueLabels({
-              owner: args.owner as string,
-              repo: args.repo as string,
-              number: args.issue_number as number,
-              labels: args.labels as string[],
-            })
-          },
-          update: async (args: Record<string, unknown>) => {
-            const state = args.state as string | undefined
-            if (state === "closed") {
-              await client.closeIssue({
-                owner: args.owner as string,
-                repo: args.repo as string,
-                number: args.issue_number as number,
-                reason: args.state_reason as "completed" | "not_planned" | undefined,
-              })
-            } else if (state === "open") {
-              await client.reopenIssue({
-                owner: args.owner as string,
-                repo: args.repo as string,
-                number: args.issue_number as number,
-              })
-            }
-            if (args.title !== undefined && calls) {
-              calls.updateIssueTitle = calls.updateIssueTitle ?? []
-              calls.updateIssueTitle.push(args)
-            }
-            if (args.milestone !== undefined && calls) {
-              calls.updateIssueMilestone = calls.updateIssueMilestone ?? []
-              calls.updateIssueMilestone.push(args)
-            }
-          },
-          addAssignees: async () => {},
-          removeAssignees: async () => {},
-        },
-      },
-    } as unknown as Octokit
+    // Route reconcile writes back through the facade mock so existing tests'
+    // call-count assertions still work. See the test-shims module header.
+    octokit = buildFacadeRoutingOctokitShim(client)
   } else {
     // Production path: build raw Octokit, get full live issue state.
     octokit = await getRawOctokit(gi.installationId)

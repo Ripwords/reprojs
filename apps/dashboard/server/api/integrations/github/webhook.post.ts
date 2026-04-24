@@ -11,7 +11,7 @@ import {
   reports,
 } from "../../../db/schema"
 import { getWebhookSecret } from "../../../lib/github"
-import { invalidateInstallationRepos } from "../../../lib/github-repo-cache"
+import { invalidateInstallationRepos } from "../../../lib/github-cache"
 import { publishReportStream } from "../../../lib/report-events-bus"
 import { githubCache } from "../../../lib/github-cache"
 import { parseGithubLabels } from "../../../lib/github-helpers"
@@ -31,7 +31,8 @@ import {
   signTitle,
 } from "../../../lib/github-diff"
 import { consumeWriteLock } from "../../../lib/github-write-locks"
-import { hasBotFooter, stripBotFooter } from "../../../lib/comment-serializer"
+import { stripBotFooter } from "../../../lib/comment-serializer"
+import { env } from "../../../lib/env"
 import { resolveGithubUser } from "../../../lib/github-identities"
 
 interface IssueAssignee {
@@ -525,7 +526,7 @@ export default defineEventHandler(async (event) => {
         return { ok: true, echo: true }
       }
 
-      const body = hasBotFooter(commentBody) ? stripBotFooter(commentBody) : commentBody
+      const body = stripBotFooter(commentBody, env.BETTER_AUTH_SECRET)
       const resolved = githubUser
         ? await resolveGithubUser(String(githubUser.id), githubUser.login, githubUser.avatar_url)
         : null

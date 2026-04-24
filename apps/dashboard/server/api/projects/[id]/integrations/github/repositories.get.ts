@@ -5,7 +5,7 @@ import { z } from "zod"
 import { db } from "../../../../../db"
 import { githubIntegrations } from "../../../../../db/schema"
 import { getGithubClient } from "../../../../../lib/github"
-import { getInstallationRepos } from "../../../../../lib/github-repo-cache"
+import { getInstallationRepos } from "../../../../../lib/github-cache"
 import { requireProjectRole } from "../../../../../lib/permissions"
 
 const querySchema = z.object({
