@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.4.0
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.3.0...v0.4.0)
+
+### 💅 Refactors
+
+- **assignees:** Github-only, drop dashboard-user linking ([557d2d6](https://github.com/Ripwords/ReproJs/commit/557d2d6))
+
+### 🤖 CI
+
+- **docker:** Don't fail release on flaky GHA cache export ([76221d2](https://github.com/Ripwords/ReproJs/commit/76221d2))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.3.0
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.2.0...v0.3.0)
