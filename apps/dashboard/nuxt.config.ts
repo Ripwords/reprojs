@@ -85,7 +85,12 @@ export default defineNuxtConfig({
     // at startup (before nuxt.config is evaluated), so any inherited
     // NODE_ENV=test from the parent shell is lost. A custom env var survives
     // the Nuxt init sequence unchanged.
-    rateLimiter: process.env.DISABLE_NUXT_SECURITY_RATE_LIMIT === "1" ? false : undefined,
+    // The env-var escape hatch is ONLY honoured outside production — if it
+    // somehow leaks into a prod .env the global rate limiter stays on.
+    rateLimiter:
+      process.env.NODE_ENV !== "production" && process.env.DISABLE_NUXT_SECURITY_RATE_LIMIT === "1"
+        ? false
+        : undefined,
     // CSP: nuxt-security's default img-src is ['\'self\'', 'data:'] which
     // blocks GitHub user avatars (avatars.githubusercontent.com/u/<id>?v=4)
     // rendered in the assignees picker and comment author rows. Extend
