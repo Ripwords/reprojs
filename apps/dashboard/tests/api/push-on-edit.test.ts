@@ -15,6 +15,7 @@ import {
   truncateDomain,
   truncateGithub,
   truncateReports,
+  waitForSyncTriggerSettle,
 } from "../helpers"
 
 await setup({ server: true, port: 3000, host: "localhost" })
@@ -115,6 +116,12 @@ describe("PATCH report — push_on_edit enqueue behavior", () => {
       body: { priority: "high" },
     })
     expect(status).toBe(200)
+
+    // The in-process trigger fires immediately after the PATCH. Without a
+    // configured GitHub App in this test, the reconcile call inside the
+    // trigger fails and the job is backed off back to `pending` with
+    // attempts=1. Wait for that settle before asserting on state.
+    await waitForSyncTriggerSettle()
 
     const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, reportId))
     expect(jobs.length).toBe(1)

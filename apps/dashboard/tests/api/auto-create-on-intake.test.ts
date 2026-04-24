@@ -14,6 +14,7 @@ import {
   truncateDomain,
   truncateGithub,
   truncateReports,
+  waitForSyncTriggerSettle,
 } from "../helpers"
 
 await setup({ server: true, port: 3000, host: "localhost" })
@@ -80,6 +81,12 @@ describe("intake — autoCreateOnIntake", () => {
     })
     expect(res.status).toBe(201)
     const { id } = (await res.json()) as { id: string }
+
+    // The in-process trigger fires right after the intake write; wait for
+    // it to settle before asserting on `state`. Without a github_app row
+    // configured here, reconcile errors out and the row backs off to
+    // `state='pending'` with attempts=1 — the assertion holds either way.
+    await waitForSyncTriggerSettle()
 
     const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, id))
     expect(jobs.length).toBe(1)

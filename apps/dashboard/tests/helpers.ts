@@ -208,6 +208,21 @@ export async function seedGithubApp(
 // re-importing the schema themselves.
 export { user, verification, eq }
 
+/**
+ * Brief sleep to let the in-process GitHub sync trigger settle. The trigger
+ * fires after an enqueue (PATCH / intake / comment write) and runs
+ * reconcileReport on the dashboard's side of the process. Tests that assert
+ * `report_sync_jobs.state === 'pending'` need to wait until the trigger has
+ * either succeeded (row gone) or failed-with-backoff (state back to
+ * 'pending' with attempts>0) — without it the assertion can catch the row
+ * mid-transition at state='syncing'.
+ *
+ * 500ms is generous vs. a typical trigger (<50ms) but covers slow CI runs.
+ */
+export async function waitForSyncTriggerSettle(ms = 500): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export function makePngBlob(): Blob {
   // Minimal valid 1x1 PNG (signature + IHDR + IDAT + IEND)
   const bytes = new Uint8Array([

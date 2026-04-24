@@ -16,6 +16,7 @@ import {
   truncateGithub,
   truncateGithubApp,
   truncateReports,
+  waitForSyncTriggerSettle,
 } from "../helpers"
 import { db } from "../../server/db"
 import {
@@ -518,6 +519,10 @@ describe("manual sync + unlink + enqueue hooks", () => {
       headers: { cookie },
     })
     expect(status).toBe(200)
+    // The in-process trigger runs reconcile against the facade mock here;
+    // wait for it to settle back to pending (mock's getIssue returns a state
+    // that matches — no writes happen, job row stays pending on backoff).
+    await waitForSyncTriggerSettle()
     const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, r?.id))
     expect(jobs.length).toBe(1)
     expect(jobs[0]?.state).toBe("pending")

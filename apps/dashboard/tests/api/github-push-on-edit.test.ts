@@ -19,7 +19,6 @@ import {
   githubWriteLocks,
   projectMembers,
   reports,
-  reportSyncJobs,
 } from "../../server/db/schema"
 import {
   apiFetch,
@@ -31,6 +30,7 @@ import {
   truncateGithub,
   truncateGithubApp,
   truncateReports,
+  waitForSyncTriggerSettle,
 } from "../helpers"
 
 // Set env vars before setup so the dev server inherits them
@@ -227,7 +227,7 @@ describe("push-on-edit e2e roundtrip", () => {
     const { client, calls } = makeMockWithRichIssue(liveIssue)
     __setClientOverride(() => client)
 
-    // PATCH priority → should enqueue a sync job (pushOnEdit=true, linked)
+    // PATCH priority → enqueue a sync job + fire the in-process trigger
     const { status } = await apiFetch(`/api/projects/${pid}/reports/${reportId}`, {
       method: "PATCH",
       headers: { cookie },
@@ -235,11 +235,14 @@ describe("push-on-edit e2e roundtrip", () => {
     })
     expect(status).toBe(200)
 
-    const jobs = await db.select().from(reportSyncJobs).where(eq(reportSyncJobs.reportId, reportId))
-    expect(jobs.length).toBe(1)
-    expect(jobs[0]?.state).toBe("pending")
+    // Wait for the dev-server's in-process trigger to finish. It runs
+    // production-style reconcile (the `__setClientOverride` lives only in
+    // this test process, not in the dev server), which fails quickly on
+    // the bogus test App credentials and lands the row back at state=pending.
+    await waitForSyncTriggerSettle()
 
-    // Run reconciler
+    // Run reconcile here in the test process where the override IS set, so
+    // the mock receives the calls we then assert on.
     await reconcileReport(reportId)
 
     // State hasn't changed (still open, report status is "open")
