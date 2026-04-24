@@ -1,6 +1,6 @@
 // apps/dashboard/tests/api/github-comment-webhook.test.ts
 // Tests for the issue_comment webhook branches: created/edited/deleted with write-lock echo skip.
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"

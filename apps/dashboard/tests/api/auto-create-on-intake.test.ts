@@ -1,6 +1,6 @@
 // apps/dashboard/tests/api/auto-create-on-intake.test.ts
 // Tests for the autoCreateOnIntake conditional enqueue in the intake endpoint.
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, describe, expect, test } from "bun:test"

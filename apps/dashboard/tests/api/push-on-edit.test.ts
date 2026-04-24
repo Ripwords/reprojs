@@ -1,6 +1,6 @@
 // apps/dashboard/tests/api/push-on-edit.test.ts
 // Tests for the push_on_edit conditional enqueue in the PATCH report handler.
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, describe, expect, test } from "bun:test"

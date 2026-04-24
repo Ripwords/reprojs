@@ -1,5 +1,5 @@
 // apps/dashboard/tests/api/github-sync.test.ts
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"

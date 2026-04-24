@@ -1,6 +1,6 @@
 // apps/dashboard/tests/api/github-push-on-edit.test.ts
 // End-to-end roundtrip: PATCH report → enqueue → reconcile → write-locks → echo-skip.
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"

@@ -1,4 +1,4 @@
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { afterEach, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test"
 import { eq } from "drizzle-orm"
 import { db } from "../../server/db"

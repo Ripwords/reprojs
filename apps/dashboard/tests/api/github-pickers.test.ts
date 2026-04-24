@@ -1,4 +1,4 @@
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test"

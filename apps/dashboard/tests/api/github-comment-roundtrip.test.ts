@@ -1,7 +1,7 @@
 // apps/dashboard/tests/api/github-comment-roundtrip.test.ts
 // Full roundtrip: dashboard comment POST → sync task reconcile → GitHub stub
 // → write-lock recorded → inbound webhook echo-skip.
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(60000)
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"

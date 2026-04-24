@@ -1,5 +1,5 @@
 // apps/dashboard/tests/api/logs-intake.test.ts
-import { setup } from "@nuxt/test-utils/e2e"
+import { setup } from "../nuxt-setup"
 import { setDefaultTimeout } from "bun:test"
 setDefaultTimeout(30000)
 import { afterEach, describe, expect, test } from "bun:test"
