@@ -17,7 +17,7 @@ import {
 import type { Octokit } from "@octokit/rest"
 import { env } from "./env"
 import { buildIssueBody, labelsFor, reportMarker } from "./github-helpers"
-import { getGithubClient } from "./github"
+import { getGithubClient, __hasClientOverride } from "./github"
 import { buildSignedAttachmentUrl } from "./signed-attachment-url"
 import { getStorage } from "./storage"
 import { db } from "../db"
@@ -654,7 +654,17 @@ export async function reconcileReport(reportId: string): Promise<void> {
   let live: LiveIssue
   let octokit: Octokit
 
-  if (typeof extClient.getRichIssue === "function") {
+  // Discriminate production vs. test ONLY on whether a test override is
+  // active. Previously this branched on method-shape (`typeof client.getIssue
+  // === 'function'`), which silently matched the REAL production client —
+  // that client also exposes `getIssue` — and routed every reconcile call
+  // through `buildFacadeRoutingOctokitShim`, a fake Octokit. Labels/state
+  // went through the facade back to the real client and did sync; assignees
+  // were served by the shim's stub addAssignees() which simply echoed the
+  // request back, never reaching GitHub. Result: "assignees never show up on
+  // GitHub but labels do." Checking the override flag instead keeps the
+  // shim scoped to genuine tests.
+  if (__hasClientOverride() && typeof extClient.getRichIssue === "function") {
     // Test/override path: mock client provides the rich issue + optionally a raw octokit.
     live = await extClient.getRichIssue({
       owner: gi.repoOwner,
@@ -668,10 +678,11 @@ export async function reconcileReport(reportId: string): Promise<void> {
       // will route through the legacy path below.
       octokit = buildNoopOctokitShim()
     }
-  } else if (typeof (client as unknown as { getIssue?: unknown }).getIssue === "function") {
-    // Legacy test path: the old mock only provides getIssue (state + labels).
-    // Use it for state/labels; treat assignees and milestone as already-matching
-    // (no change needed) to preserve backward compat.
+  } else if (
+    __hasClientOverride() &&
+    typeof (client as unknown as { getIssue?: unknown }).getIssue === "function"
+  ) {
+    // Legacy test path: facade-only mock (state + labels; no rich issue).
     const basic = await client.getIssue({
       owner: gi.repoOwner,
       repo: gi.repoName,

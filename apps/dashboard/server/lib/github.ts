@@ -22,6 +22,18 @@ export function __setClientOverride(
   overrideFactory = factory
 }
 
+/**
+ * True only when a test override is active. Used by the reconciler to
+ * decide whether to route through test shims OR go straight to a raw
+ * Octokit. Without this check, the reconciler used `typeof client.getIssue
+ * === "function"` as the discriminator — which misclassified the real
+ * production client (which has `getIssue`) as a facade-only test mock,
+ * silently no-op'ing every assignee write through the shim.
+ */
+export function __hasClientOverride(): boolean {
+  return overrideFactory !== null
+}
+
 export async function getGithubClient(installationId: number): Promise<GitHubInstallationClient> {
   if (overrideFactory) return overrideFactory(installationId)
   const creds = await getGithubAppCredentials()
