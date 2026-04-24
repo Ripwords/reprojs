@@ -111,7 +111,15 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # `ignore-error=true` isolates a flaky cache EXPORT (the GHA cache
+          # service routinely 502s mid-upload with GitHub's Unicorn error
+          # page) from the step's overall success. Without it, a transient
+          # cache push failure aborts the step AFTER the image has already
+          # been pushed to Docker Hub, cascading into the "Create GitHub
+          # Release" step being skipped — which is what happened on the
+          # v0.3.0 release. The tradeoff: the next build may be colder
+          # (one miss) but the release ships atomically.
+          cache-to: type=gha,mode=max,ignore-error=true
 
       # Backstop against the v0.1.11/v0.1.12 recovery dance: changelogen's
       # release script runs `gh release create` as its final step, but if the
