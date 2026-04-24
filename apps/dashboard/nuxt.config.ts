@@ -55,7 +55,11 @@ export default defineNuxtConfig({
       include: ["better-auth/vue", "better-auth/client/plugins", "rrweb-player", "shiki"],
     },
     server: {
-      allowedHosts: ["academics-suffering-automated-canvas.trycloudflare.com"],
+      // Allow an externally-tunnelled host to reach the dev server. Set
+      // DEV_TUNNEL_HOST in your local .env (e.g. `repro-dev.yourdomain.com`)
+      // — defaults to an empty allowlist in production/CI so no accidental
+      // hostname ever ships in the repo.
+      allowedHosts: process.env.DEV_TUNNEL_HOST ? [process.env.DEV_TUNNEL_HOST] : [],
     },
   },
 

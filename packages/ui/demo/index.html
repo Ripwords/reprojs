@@ -190,8 +190,11 @@
     <!-- Load the SDK (served by Bun at /sdk.iife.js) -->
     <script src="/sdk.iife.js"></script>
     <script>
-      const PROJECT_KEY = "rp_pk_b3XQHJG5q9AFy0mcD3cuqiAL"
-      const ENDPOINT = "https://academics-suffering-automated-canvas.trycloudflare.com"
+      // Overrides go on window so this file stays committable without hostnames
+      // or keys baked in. Drop values into scripts/serve-demo.ts (Bun's template
+      // injection) or set them in DevTools before the SDK loads.
+      const PROJECT_KEY = window.REPRO_DEMO_KEY ?? ""
+      const ENDPOINT = window.REPRO_DEMO_ENDPOINT ?? window.location.origin
 
       if (/^rp_pk_[A-Za-z0-9]{24}$/.test(PROJECT_KEY)) {
         Repro.init({
