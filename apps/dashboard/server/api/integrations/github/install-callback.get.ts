@@ -105,6 +105,7 @@ export default defineEventHandler(async (event) => {
       connectedBy: claims.userId,
       status: "connected",
       pushOnEdit: true,
+      autoCreateOnIntake: true,
     })
   }
 
