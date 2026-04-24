@@ -45,7 +45,7 @@ export interface GithubAppManifest {
    * `installation_repositories` are auto-delivered to every GitHub App and
    * must NOT be listed.
    */
-  default_events: Array<"issues">
+  default_events: Array<"issues" | "issue_comment" | "label" | "milestone" | "member">
 }
 
 function isLocalhost(base: string): boolean {
@@ -101,6 +101,10 @@ export function buildGithubAppManifest(input: {
       // when the App's clientId is reused for better-auth GitHub OAuth.
       emails: "read",
     },
-    default_events: ["issues"],
+    // Phase 0-3 webhook branches depend on every event subscribed here.
+    // `issue_comment` drives two-way comment sync; `label`/`milestone`/`member`
+    // drive picker-cache invalidation; `issues` carries status, assignee,
+    // milestone, title, and label events on the issue itself.
+    default_events: ["issues", "issue_comment", "label", "milestone", "member"],
   }
 }

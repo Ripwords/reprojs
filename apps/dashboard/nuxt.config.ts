@@ -4,7 +4,6 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-04-17",
   modules: ["@nuxt/ui", "@nuxt/fonts", "nuxt-security"],
   css: ["~/assets/css/tailwind.css"],
-
   // Scan source at build time and bundle every `<UIcon>` / `i-*` reference
   // into the client JS. Without this, icons fall through to `@nuxt/icon`'s
   // `/api/_nuxt_icon/:collection.json?icons=*` runtime endpoint — which
@@ -54,6 +53,9 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
     optimizeDeps: {
       include: ["better-auth/vue", "better-auth/client/plugins", "rrweb-player", "shiki"],
+    },
+    server: {
+      allowedHosts: ["academics-suffering-automated-canvas.trycloudflare.com"],
     },
   },
 

@@ -42,9 +42,11 @@ describe("buildGithubAppManifest", () => {
     expect(m.default_permissions.emails).toBe("read")
   })
 
-  test("default_events contains issues only (installation* events are auto-delivered)", () => {
+  test("default_events subscribes to every event the webhook handler dispatches on", () => {
+    // installation + installation_repositories are auto-delivered — excluded
+    // here (listing them causes GitHub to reject the manifest).
     const m = buildGithubAppManifest({ baseUrl: "https://x.test" })
-    expect(m.default_events).toEqual(["issues"])
+    expect(m.default_events).toEqual(["issues", "issue_comment", "label", "milestone", "member"])
   })
 
   test("setup_on_update true so admins get redirected back after editing installation", () => {

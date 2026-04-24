@@ -368,7 +368,7 @@ export default defineEventHandler(async (event) => {
               projectId: linked.r.projectId,
               actorId: null,
               kind: "tag_added",
-              payload: { tag, source: "github" },
+              payload: { name: tag, source: "github" },
             })
           }
           for (const tag of removedTags) {
@@ -377,7 +377,7 @@ export default defineEventHandler(async (event) => {
               projectId: linked.r.projectId,
               actorId: null,
               kind: "tag_removed",
-              payload: { tag, source: "github" },
+              payload: { name: tag, source: "github" },
             })
           }
 
