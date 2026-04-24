@@ -1,5 +1,140 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.2.0...v0.3.0)
+
+### 🚀 Enhancements
+
+- ✨  Add two way sync for github issue labels ([89d3d9e](https://github.com/Ripwords/ReproJs/commit/89d3d9e))
+- **webhook:** Add size cap helper for github webhooks ([8886440](https://github.com/Ripwords/ReproJs/commit/8886440))
+- **db:** Add github_webhook_deliveries table for replay protection ([f210471](https://github.com/Ripwords/ReproJs/commit/f210471))
+- **webhook:** Add delivery dedupe for replay protection ([f91987b](https://github.com/Ripwords/ReproJs/commit/f91987b))
+- **webhook:** Check installation id against known integrations ([f1ad47e](https://github.com/Ripwords/ReproJs/commit/f1ad47e))
+- **webhook:** Enforce size cap, replay dedupe, installation allowlist ([3865559](https://github.com/Ripwords/ReproJs/commit/3865559))
+- **db:** Add user_identities table (github provider) ([63cd11d](https://github.com/Ripwords/ReproJs/commit/63cd11d))
+- **db:** Add github_write_locks table for loop avoidance ([e16f5c5](https://github.com/Ripwords/ReproJs/commit/e16f5c5))
+- **db:** Add report_comments table (not yet wired) ([80cb4d4](https://github.com/Ripwords/ReproJs/commit/80cb4d4))
+- **db:** Add milestone, sync timestamps, and toggle columns ([964601e](https://github.com/Ripwords/ReproJs/commit/964601e))
+- **db:** Extend report_event_kind enum for assignees/comments/milestone ([fcc4a8b](https://github.com/Ripwords/ReproJs/commit/fcc4a8b))
+- **identities:** Signed oauth state helper for link flow ([e416b4d](https://github.com/Ripwords/ReproJs/commit/e416b4d))
+- **identities:** Resolver + upsert + unlink helpers ([c5796b2](https://github.com/Ripwords/ReproJs/commit/c5796b2))
+- **identities:** GET /api/me/identities ([3d1211b](https://github.com/Ripwords/ReproJs/commit/3d1211b))
+- **identities:** POST start endpoint generates signed oauth url ([dddb5f9](https://github.com/Ripwords/ReproJs/commit/dddb5f9))
+- **identities:** Callback exchanges code and upserts identity ([2d1527e](https://github.com/Ripwords/ReproJs/commit/2d1527e))
+- **identities:** DELETE endpoint unlinks the identity ([855bcc5](https://github.com/Ripwords/ReproJs/commit/855bcc5))
+- **identities:** Backfill user_identities from better-auth account rows ([c511746](https://github.com/Ripwords/ReproJs/commit/c511746))
+- **identities:** /settings/identities page with connect/disconnect ([c52520f](https://github.com/Ripwords/ReproJs/commit/c52520f))
+- **db:** Report_assignees schema + backfill migration (unapplied) ([44299e0](https://github.com/Ripwords/ReproJs/commit/44299e0))
+- **shared:** ReportSummaryDTO.assignees (array); TriagePatchInput.assigneeIds ([572ae66](https://github.com/Ripwords/ReproJs/commit/572ae66))
+- **github-cache:** Generic per-repo cache with TTL + SWR + single-flight ([4ad1071](https://github.com/Ripwords/ReproJs/commit/4ad1071))
+- **github-adapter:** List labels, assignees, milestones ([367f0aa](https://github.com/Ripwords/ReproJs/commit/367f0aa))
+- **api:** GET repo labels for a project ([2e615b4](https://github.com/Ripwords/ReproJs/commit/2e615b4))
+- **api:** GET assignable users with linkedUser resolution ([fb19d2c](https://github.com/Ripwords/ReproJs/commit/fb19d2c))
+- **api:** GET repo milestones ([091d610](https://github.com/Ripwords/ReproJs/commit/091d610))
+- **webhook:** Invalidate picker caches on label/milestone/member events ([69cfba2](https://github.com/Ripwords/ReproJs/commit/69cfba2))
+- **ui:** Composable exposing github integration state per project ([fbc29c3](https://github.com/Ripwords/ReproJs/commit/fbc29c3))
+- **shared:** Add milestone + githubAssigneeLogins to reports DTOs ([4c64078](https://github.com/Ripwords/ReproJs/commit/4c64078))
+- **triage:** PATCH + read endpoints support milestone + github-only assignees ([a278a30](https://github.com/Ripwords/ReproJs/commit/a278a30))
+- **ui:** Labels picker backed by repo label set ([9374bcc](https://github.com/Ripwords/ReproJs/commit/9374bcc))
+- **ui:** Assignees picker — dashboard-linked and github-only in one list ([52269e7](https://github.com/Ripwords/ReproJs/commit/52269e7))
+- **ui:** Milestone picker ([db4f968](https://github.com/Ripwords/ReproJs/commit/db4f968))
+- **triage:** Wire live pickers into drawer for linked projects ([56848b0](https://github.com/Ripwords/ReproJs/commit/56848b0))
+- **github-adapter:** Issue-write helpers (title, milestone, assignees, state) ([0e3f571](https://github.com/Ripwords/ReproJs/commit/0e3f571))
+- **github-diff:** Signature + assignee-diff helpers for write-locks ([09da9bc](https://github.com/Ripwords/ReproJs/commit/09da9bc))
+- **write-locks:** Record/consume/cleanup helpers ([c94dd5d](https://github.com/Ripwords/ReproJs/commit/c94dd5d))
+- **tasks:** Daily cleanup of expired github_write_locks ([57190e1](https://github.com/Ripwords/ReproJs/commit/57190e1))
+- **reconcile:** Diff + push title, labels, state, assignees, milestone with write-locks ([91e4768](https://github.com/Ripwords/ReproJs/commit/91e4768))
+- **triage:** Enqueue github sync on qualifying PATCH when push_on_edit=true ([a673712](https://github.com/Ripwords/ReproJs/commit/a673712))
+- **webhook:** Assigned/milestoned/edited branches + write-lock echo skip ([9cfddd6](https://github.com/Ripwords/ReproJs/commit/9cfddd6))
+- **integrations:** PushOnEdit UI toggle for GitHub integration ([dfd32b2](https://github.com/Ripwords/ReproJs/commit/dfd32b2))
+- **integration-api:** Expose autoCreateOnIntake toggle ([1574a7d](https://github.com/Ripwords/ReproJs/commit/1574a7d))
+- **integration-ui:** AutoCreateOnIntake toggle ([51fc8b7](https://github.com/Ripwords/ReproJs/commit/51fc8b7))
+- **intake:** Auto-create github issue on new report when toggle is on ([30b7674](https://github.com/Ripwords/ReproJs/commit/30b7674))
+- **github-adapter:** Issue-comment wrappers (create/update/delete/list) ([f395f3d](https://github.com/Ripwords/ReproJs/commit/f395f3d))
+- **comments:** Bot-footer serialize/strip/detect helpers ([9364473](https://github.com/Ripwords/ReproJs/commit/9364473))
+- **github-diff:** SignCommentUpsert + signCommentDelete ([e664a1d](https://github.com/Ripwords/ReproJs/commit/e664a1d))
+- **sync-jobs:** Carry comment-sync payloads ([021a0f7](https://github.com/Ripwords/ReproJs/commit/021a0f7))
+- **api:** GET/POST/PATCH/DELETE report comment endpoints ([76e6fb1](https://github.com/Ripwords/ReproJs/commit/76e6fb1))
+- **shared:** Comment DTOs ([2485a18](https://github.com/Ripwords/ReproJs/commit/2485a18))
+- **reconcile:** Handle comment_upsert and comment_delete job kinds + backfill on first link ([7514d3c](https://github.com/Ripwords/ReproJs/commit/7514d3c))
+- **webhook:** Issue_comment branches with write-lock echo skip ([2ce422e](https://github.com/Ripwords/ReproJs/commit/2ce422e))
+- **dashboard:** Add marked dependency and use-markdown composable ([aa39cf9](https://github.com/Ripwords/ReproJs/commit/aa39cf9))
+- **dashboard:** Add Comments tab to report detail page ([1b8a7a2](https://github.com/Ripwords/ReproJs/commit/1b8a7a2))
+- **dashboard:** Live report stream via SSE with memory-safe lifecycle ([92e6a2f](https://github.com/Ripwords/ReproJs/commit/92e6a2f))
+- **security:** XSS-safe markdown rendering with DOMPurify ([d43df70](https://github.com/Ripwords/ReproJs/commit/d43df70))
+
+### 🩹 Fixes
+
+- **ci/expo:** Gate npm publish on tag push so workflow_dispatch is a clean smoke test ([8a02e4f](https://github.com/Ripwords/ReproJs/commit/8a02e4f))
+- **expo:** Resolve @reprojs/* at build time so published package installs ([428a937](https://github.com/Ripwords/ReproJs/commit/428a937))
+- Update paths for drizzle-kit commands in package.json ([893bfdf](https://github.com/Ripwords/ReproJs/commit/893bfdf))
+- **reports:** Use drizzle exists/notExists for assignee filter subqueries ([00c9fb7](https://github.com/Ripwords/ReproJs/commit/00c9fb7))
+- **dashboard:** Test suite fixes for Phase 3 comment sync ([f91f617](https://github.com/Ripwords/ReproJs/commit/f91f617))
+- **github-app:** Drop in-process credentials cache for cross-process consistency ([9b77abf](https://github.com/Ripwords/ReproJs/commit/9b77abf))
+- **github-app:** Mark webhook active in manifest when baseUrl is public ([5a159e0](https://github.com/Ripwords/ReproJs/commit/5a159e0))
+- **github:** Subscribe to issue_comment/label/milestone/member events + activity feed tag rendering ([40e160c](https://github.com/Ripwords/ReproJs/commit/40e160c))
+- **webhook+ui:** Label sync publishes SSE events + assignee avatars render ([a8f8672](https://github.com/Ripwords/ReproJs/commit/a8f8672))
+- **csp:** Allow https: in img-src so github avatars render ([67f569a](https://github.com/Ripwords/ReproJs/commit/67f569a))
+- **github:** HMAC-sign bot footer, consolidate cache, extract test shims ([854089e](https://github.com/Ripwords/ReproJs/commit/854089e))
+- **api:** SSE cleanup-before-subscribe + defer post-commit side effects ([7c174fa](https://github.com/Ripwords/ReproJs/commit/7c174fa))
+- **test:** Seed github_app row for cross-process webhook-signing tests ([0731805](https://github.com/Ripwords/ReproJs/commit/0731805))
+- **github-app:** Require OAuth pair in envComplete + CI-safe state secret read ([4214368](https://github.com/Ripwords/ReproJs/commit/4214368))
+
+### 💅 Refactors
+
+- **reports:** List endpoint reads assignees from report_assignees ([f32fec0](https://github.com/Ripwords/ReproJs/commit/f32fec0))
+- **reports:** Detail endpoint reads assignees from report_assignees ([81bb184](https://github.com/Ripwords/ReproJs/commit/81bb184))
+- **triage:** Write assignees to report_assignees with diff + events ([dfa9ee3](https://github.com/Ripwords/ReproJs/commit/dfa9ee3))
+- **bulk-update:** Write assignees via diff into report_assignees ([058a6c1](https://github.com/Ripwords/ReproJs/commit/058a6c1))
+- **ui:** Bind assignee UI to assignees[0] (single-select preserved) ([4e4fa9b](https://github.com/Ripwords/ReproJs/commit/4e4fa9b))
+- **dev:** Move hardcoded tunnel host + demo endpoint out of tracked files ([17ae31c](https://github.com/Ripwords/ReproJs/commit/17ae31c))
+- **github:** Per-signature sync-job dedup with composite PK ([6eca61c](https://github.com/Ripwords/ReproJs/commit/6eca61c))
+
+### 📖 Documentation
+
+- Add Buy Me a Coffee link to README and docs site ([4b8bd1e](https://github.com/Ripwords/ReproJs/commit/4b8bd1e))
+- **spec:** Deeper github integration design ([76b241a](https://github.com/Ripwords/ReproJs/commit/76b241a))
+- **plan:** Deeper github integration — phase 0 (backbone) ([233a93f](https://github.com/Ripwords/ReproJs/commit/233a93f))
+- Webhook rotation + reserved phase-N toggle columns ([e541088](https://github.com/Ripwords/ReproJs/commit/e541088))
+- **plan:** Deeper github integration — phase 1 (live pickers) ([2322dba](https://github.com/Ripwords/ReproJs/commit/2322dba))
+- **plan:** Deeper github integration — phase 2 (push-on-edit) ([8f88ec3](https://github.com/Ripwords/ReproJs/commit/8f88ec3))
+- **plan:** Deeper github integration — phase 3 (comments two-way) ([2207954](https://github.com/Ripwords/ReproJs/commit/2207954))
+- **env:** Document test-friendly GitHub App + rate-limiter env defaults ([b496fd4](https://github.com/Ripwords/ReproJs/commit/b496fd4))
+
+### 🏡 Chore
+
+- **expo:** Silence intentional no-await-in-loop in FIFO queue test ([b39575c](https://github.com/Ripwords/ReproJs/commit/b39575c))
+- **expo:** Add changelogen config so release:expo tags as expo-v* ([a6dce39](https://github.com/Ripwords/ReproJs/commit/a6dce39))
+- **release:** Expo-v0.1.1 ([14ea5dd](https://github.com/Ripwords/ReproJs/commit/14ea5dd))
+- Fixups from phase-0 verification ([0dbf409](https://github.com/Ripwords/ReproJs/commit/0dbf409))
+- **github-app:** Manifest default_events: add sub_issues, drop member ([7d9a90c](https://github.com/Ripwords/ReproJs/commit/7d9a90c))
+- **github-app:** Default auto_create_on_intake to true for new installs ([a7fbab1](https://github.com/Ripwords/ReproJs/commit/a7fbab1))
+- **sse:** Strip diagnostics + revert to useEventSource from vueuse ([5d78dbd](https://github.com/Ripwords/ReproJs/commit/5d78dbd))
+- **repo:** Drop stray top-level server/ migration artifacts ([0fdd5a0](https://github.com/Ripwords/ReproJs/commit/0fdd5a0))
+- **security:** Gate nuxt-security rate-limiter opt-out on non-production ([f91164e](https://github.com/Ripwords/ReproJs/commit/f91164e))
+
+### ✅ Tests
+
+- **webhook:** Integration tests for hardened auth stack ([688bb19](https://github.com/Ripwords/ReproJs/commit/688bb19))
+- Rewrite assignee assertions for report_assignees shape ([0917b75](https://github.com/Ripwords/ReproJs/commit/0917b75))
+- **assignees:** Multi-assignee persistence, clearing, role guard, cap ([ed2ed59](https://github.com/Ripwords/ReproJs/commit/ed2ed59))
+- **webhook:** Raise timeout for oversized-body transfer ([b077006](https://github.com/Ripwords/ReproJs/commit/b077006))
+- **api:** Github picker endpoints ([0e3ecf1](https://github.com/Ripwords/ReproJs/commit/0e3ecf1))
+- **github:** End-to-end push-on-edit roundtrip integration test ([8fe5b60](https://github.com/Ripwords/ReproJs/commit/8fe5b60))
+- **github:** Align webhook secret across tests with env config ([45eb032](https://github.com/Ripwords/ReproJs/commit/45eb032))
+- **intake:** Auto-create on intake respects toggle ([049b233](https://github.com/Ripwords/ReproJs/commit/049b233))
+- **comments:** API endpoint coverage ([8dc9ee8](https://github.com/Ripwords/ReproJs/commit/8dc9ee8))
+- **dashboard:** Add comment roundtrip integration tests ([e837753](https://github.com/Ripwords/ReproJs/commit/e837753))
+- **shared:** Align ReportSummaryDTO test with new assignees/milestone shape ([9dca620](https://github.com/Ripwords/ReproJs/commit/9dca620))
+- **dashboard:** Route setup() through local no-op shim + env-agnostic safeHref ([216c5e6](https://github.com/Ripwords/ReproJs/commit/216c5e6))
+- **extension:** Rename Playwright e2e spec to .e2e.ts so bun test skips it ([11149b5](https://github.com/Ripwords/ReproJs/commit/11149b5))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+- Jer-tan ([@jer-tan](https://github.com/jer-tan))
+
 ## v0.2.0
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.1.18...v0.2.0)
