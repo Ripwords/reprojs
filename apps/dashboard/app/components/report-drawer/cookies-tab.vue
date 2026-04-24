@@ -30,7 +30,7 @@ const filtered = computed(() => {
       class="w-full"
     />
     <table class="w-full text-sm">
-      <thead class="text-left text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+      <thead class="text-left text-sm font-semibold uppercase tracking-[0.08em] text-muted">
         <tr class="border-b border-default">
           <th class="p-2.5">Name</th>
           <th class="p-2.5">Value</th>
@@ -38,9 +38,9 @@ const filtered = computed(() => {
       </thead>
       <tbody>
         <tr v-for="c in filtered" :key="c.name" class="border-b border-default">
-          <td class="p-2.5 font-mono text-[13px] text-default">{{ c.name }}</td>
+          <td class="p-2.5 font-mono text-sm text-default">{{ c.name }}</td>
           <td
-            class="p-2.5 font-mono text-[13px] break-all"
+            class="p-2.5 font-mono text-sm break-all"
             :class="c.value === '<redacted>' ? 'italic text-muted' : 'text-default'"
           >
             {{ c.value }}

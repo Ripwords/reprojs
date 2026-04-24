@@ -10,7 +10,7 @@ useHead({ title: "Integrations" })
 <template>
   <div class="space-y-8">
     <header>
-      <div class="text-xs font-medium uppercase tracking-[0.18em] text-muted">Project</div>
+      <div class="text-sm font-medium uppercase tracking-[0.18em] text-muted">Project</div>
       <h1 class="mt-1 text-3xl font-semibold text-default tracking-tight">Integrations</h1>
       <p class="mt-2 text-sm text-muted max-w-xl">
         Connect external services to mirror reports and enrich triage.

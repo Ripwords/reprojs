@@ -205,7 +205,7 @@ const columns = computed<TableColumn<ProjectMemberDTO>[]>(() => [
             { class: "text-sm font-medium text-default" },
             row.original.name ?? row.original.email,
           ),
-          row.original.name ? h("div", { class: "text-xs text-muted" }, row.original.email) : null,
+          row.original.name ? h("div", { class: "text-sm text-muted" }, row.original.email) : null,
         ]),
       ]),
   },
@@ -292,7 +292,7 @@ const columns = computed<TableColumn<ProjectMemberDTO>[]>(() => [
         :data="membersList"
         :columns="columns"
         :loading="pending"
-        :ui="{ td: 'text-sm', th: 'text-xs font-medium text-muted uppercase' }"
+        :ui="{ td: 'text-sm', th: 'text-sm font-medium text-muted uppercase' }"
       />
     </UCard>
 
@@ -308,7 +308,7 @@ const columns = computed<TableColumn<ProjectMemberDTO>[]>(() => [
         >
           <div>
             <div class="text-sm font-medium">{{ inv.email }}</div>
-            <div class="text-xs text-muted">
+            <div class="text-sm text-muted">
               Invited as {{ inv.role }} · expires
               {{ new Date(inv.expiresAt).toLocaleDateString() }}
             </div>

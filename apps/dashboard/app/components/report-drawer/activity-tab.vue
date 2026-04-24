@@ -72,7 +72,7 @@ function actorInitials(e: ReportEventDTO): string {
             <span>&nbsp;</span>
             <span class="text-muted">{{ summary(e) }}</span>
           </div>
-          <div class="text-xs text-muted mt-0.5">{{ relTime(e.createdAt) }}</div>
+          <div class="text-sm text-muted mt-0.5">{{ relTime(e.createdAt) }}</div>
         </div>
       </li>
     </ul>

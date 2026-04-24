@@ -62,7 +62,7 @@ function onClick(key: TabKey) {
     >
       <span>{{ t.label }}</span>
       <span
-        class="inline-flex items-center justify-center min-w-6 px-1.5 h-5 rounded-md text-[11px] font-semibold tabular-nums transition-colors"
+        class="inline-flex items-center justify-center min-w-6 px-1.5 h-5 rounded-md text-sm font-semibold tabular-nums transition-colors"
         :class="isActive(t.key) ? 'bg-elevated text-default' : 'bg-elevated/60 text-muted'"
       >
         {{ countFor(t.key) }}

@@ -74,8 +74,15 @@
    * inputs, buttons) at 14px, which tests as cramped on standard desktop
    * DPIs.
    *
-   *   xs:   12 → 13   (table meta, tooltips)
-   *   sm:   14 → 15   (primary body, labels, inputs, buttons)
+   * Project rule: `text-xs` is BANNED from components. Anything that used to
+   * sit at 12–13 px has been promoted to `text-sm` (15 px) so the minimum
+   * readable size across the UI is the same. The xs token stays defined only
+   * so @nuxt/ui's internal components that hard-code `text-xs` for dense
+   * chrome (dropdown hints, etc.) still render at our bumped scale instead
+   * of falling back to Tailwind's 12 px.
+   *
+   *   xs:   (reserved for @nuxt/ui internals only) 13 px
+   *   sm:   14 → 15   (primary body, labels, inputs, buttons, meta)
    *   base: 16        (prose, empty-state descriptions)
    *   lg:   18        (card titles)
    */

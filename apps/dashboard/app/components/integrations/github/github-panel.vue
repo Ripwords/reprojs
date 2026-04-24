@@ -181,7 +181,7 @@ async function saveRepo() {
     <!-- Installed + connected -->
     <div v-else class="space-y-5">
       <div>
-        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted mb-2">
+        <div class="text-sm font-semibold uppercase tracking-[0.14em] text-muted mb-2">
           Repository
         </div>
         <RepoPicker v-model="selectedRepo" :project-id="projectId" @update:model-value="saveRepo" />
@@ -200,7 +200,7 @@ async function saveRepo() {
         <USwitch v-model="pushOnEdit" />
         <div>
           <p class="text-sm font-medium text-default">Push edits to GitHub</p>
-          <p class="text-xs text-muted">
+          <p class="text-sm text-muted">
             Sync priority, status, and tag changes back to the GitHub issue automatically.
           </p>
         </div>
@@ -218,7 +218,7 @@ async function saveRepo() {
           >
             Automatically create a GitHub issue for every new report
           </p>
-          <p class="text-xs text-muted">
+          <p class="text-sm text-muted">
             When on, every report submitted via the SDK immediately becomes a linked GitHub issue.
             Leave off for manual &ldquo;Create issue&rdquo; per report.
           </p>
@@ -237,7 +237,7 @@ async function saveRepo() {
       </div>
 
       <div>
-        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-muted mb-2">
+        <div class="text-sm font-semibold uppercase tracking-[0.14em] text-muted mb-2">
           Sync status
         </div>
         <SyncStatus :project-id="projectId" @retried="refresh" />

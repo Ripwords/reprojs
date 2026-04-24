@@ -49,7 +49,7 @@ function shortUrl(url: string): string {
   </div>
   <div v-else class="p-3">
     <table class="w-full text-sm">
-      <thead class="text-left text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+      <thead class="text-left text-sm font-semibold uppercase tracking-[0.08em] text-muted">
         <tr class="border-b border-default">
           <th class="p-2.5">Method</th>
           <th class="p-2.5">URL</th>
@@ -85,7 +85,7 @@ function shortUrl(url: string): string {
             <td class="p-2 text-right text-muted">{{ fmtSize(n.size) }}</td>
           </tr>
           <tr v-if="expanded.has(n.id)" class="border-b border-default bg-elevated/40">
-            <td colspan="5" class="p-3 text-xs space-y-2">
+            <td colspan="5" class="p-3 text-sm space-y-2">
               <div v-if="n.error" class="text-error">Error: {{ n.error }}</div>
               <div v-if="n.requestHeaders && Object.keys(n.requestHeaders).length">
                 <div class="font-semibold text-default mb-1">Request headers</div>

@@ -167,12 +167,12 @@ function relTime(iso: string | Date): string {
             <span class="font-medium text-default truncate">{{ authorLabel(comment) }}</span>
             <span
               v-if="comment.source === 'github'"
-              class="inline-flex items-center gap-1 text-xs text-muted px-1.5 py-0.5 rounded bg-muted/10"
+              class="inline-flex items-center gap-1 text-sm text-muted px-1.5 py-0.5 rounded bg-muted/10"
             >
               <UIcon name="i-simple-icons-github" class="size-3" />
               GitHub
             </span>
-            <span class="text-xs text-muted ml-auto flex-shrink-0">
+            <span class="text-sm text-muted ml-auto flex-shrink-0">
               {{ relTime(comment.createdAt) }}
             </span>
           </div>
@@ -180,7 +180,7 @@ function relTime(iso: string | Date): string {
           <!-- Inline edit mode -->
           <template v-if="editingId === comment.id">
             <UTextarea v-model="editBody" :rows="3" class="w-full mb-2" autofocus />
-            <div v-if="editError" class="text-xs text-error mb-2">{{ editError }}</div>
+            <div v-if="editError" class="text-sm text-error mb-2">{{ editError }}</div>
             <div class="flex gap-2">
               <UButton size="xs" :loading="editLoading" @click="submitEdit(comment.id)">
                 Save
@@ -201,14 +201,14 @@ function relTime(iso: string | Date): string {
             <div v-if="isOwn(comment)" class="flex gap-2 mt-1.5">
               <button
                 type="button"
-                class="text-xs text-muted hover:text-default"
+                class="text-sm text-muted hover:text-default"
                 @click="startEdit(comment)"
               >
                 Edit
               </button>
               <button
                 type="button"
-                class="text-xs text-muted hover:text-error"
+                class="text-sm text-muted hover:text-error"
                 :disabled="deleteLoading === comment.id"
                 @click="deleteComment(comment.id)"
               >
@@ -223,7 +223,7 @@ function relTime(iso: string | Date): string {
     <!-- Composer -->
     <div class="border-t border-default p-4 space-y-2">
       <UTextarea v-model="composerBody" placeholder="Add a comment…" :rows="3" class="w-full" />
-      <div v-if="composerError" class="text-xs text-error">{{ composerError }}</div>
+      <div v-if="composerError" class="text-sm text-error">{{ composerError }}</div>
       <div class="flex justify-end">
         <UButton
           size="sm"

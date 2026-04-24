@@ -182,7 +182,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
     <div class="flex-1 min-w-0 flex flex-col">
       <!-- Breadcrumb + header -->
       <header class="px-6 pt-5 pb-5 border-b border-default">
-        <nav class="flex items-center gap-1.5 text-xs text-muted mb-3 font-medium">
+        <nav class="flex items-center gap-1.5 text-sm text-muted mb-3 font-medium">
           <NuxtLink
             :to="`/projects/${projectId}/reports`"
             class="hover:text-default transition-colors"
@@ -199,11 +199,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
             </h1>
             <div class="mt-1.5 flex items-center gap-2 text-sm text-muted">
               <UIcon name="i-heroicons-globe-alt" class="size-3.5 shrink-0" />
-              <span class="truncate font-mono text-xs">
+              <span class="truncate font-mono text-sm">
                 {{ report.context?.pageUrl ?? report.pageUrl }}
               </span>
               <span class="text-muted/60">·</span>
-              <span class="whitespace-nowrap tabular-nums text-xs">
+              <span class="whitespace-nowrap tabular-nums text-sm">
                 {{ relativeTime(report.receivedAt) }}
               </span>
             </div>
@@ -258,14 +258,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
         <CookiesTab v-else-if="activeTab === 'cookies'" :project-id="projectId" :report="report" />
         <div v-else-if="activeTab === 'system'" class="p-5">
           <UCard :ui="{ body: 'p-4' }">
-            <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{
+            <pre class="text-sm font-mono whitespace-pre-wrap break-all">{{
               JSON.stringify(report.context?.systemInfo ?? {}, null, 2)
             }}</pre>
           </UCard>
         </div>
         <div v-else-if="activeTab === 'raw'" class="p-5">
           <UCard :ui="{ body: 'p-4' }">
-            <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{
+            <pre class="text-sm font-mono whitespace-pre-wrap break-all">{{
               JSON.stringify(report, null, 2)
             }}</pre>
           </UCard>
@@ -288,7 +288,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
         <div class="flex items-center justify-between gap-2 mb-5">
           <div class="flex items-center gap-2">
             <UIcon name="i-heroicons-adjustments-horizontal" class="size-4 text-muted" />
-            <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
+            <h2 class="text-sm font-semibold uppercase tracking-[0.14em] text-muted">Triage</h2>
           </div>
           <UButton
             size="xs"
@@ -315,7 +315,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
       >
         <UIcon name="i-heroicons-chevron-double-left" class="size-4" />
         <UIcon name="i-heroicons-adjustments-horizontal" class="size-4" />
-        <span class="text-xs font-semibold uppercase tracking-[0.14em] [writing-mode:vertical-rl]">
+        <span class="text-sm font-semibold uppercase tracking-[0.14em] [writing-mode:vertical-rl]">
           Triage
         </span>
       </button>

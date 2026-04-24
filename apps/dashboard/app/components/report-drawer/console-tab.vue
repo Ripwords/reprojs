@@ -65,7 +65,7 @@ function toggle(i: number) {
         v-for="(e, i) in filtered"
         :key="i"
         :class="[
-          'rounded-md border border-default px-3 py-2 text-[13px] font-mono cursor-pointer hover:bg-elevated/40 transition',
+          'rounded-md border border-default px-3 py-2 text-sm font-mono cursor-pointer hover:bg-elevated/40 transition',
           e.level === 'error' ? 'border-error/40 bg-error/5' : '',
           e.level === 'warn' ? 'border-warning/40 bg-warning/5' : '',
         ]"
@@ -79,26 +79,26 @@ function toggle(i: number) {
             size="xs"
             class="uppercase flex-shrink-0"
           />
-          <span class="text-muted text-[11px] flex-shrink-0 mt-0.5">{{ fmtTs(e.ts) }}</span>
+          <span class="text-muted text-sm flex-shrink-0 mt-0.5">{{ fmtTs(e.ts) }}</span>
           <span class="whitespace-pre-wrap break-all text-default flex-1 min-w-0">
             {{ e.args.join(" ") }}
           </span>
         </div>
         <pre
           v-if="expanded.has(i) && e.stack"
-          class="mt-2 text-muted text-[11px] whitespace-pre-wrap break-all"
+          class="mt-2 text-muted text-sm whitespace-pre-wrap break-all"
           >{{ e.stack }}</pre
         >
       </li>
     </ul>
 
     <section v-if="logs.breadcrumbs.length > 0" class="pt-2">
-      <h3 class="px-1 mb-2 text-xs font-semibold text-muted uppercase tracking-wide">App events</h3>
+      <h3 class="px-1 mb-2 text-sm font-semibold text-muted uppercase tracking-wide">App events</h3>
       <ul class="space-y-1">
         <li
           v-for="(b, i) in logs.breadcrumbs"
           :key="i"
-          class="rounded-md border border-default px-3 py-2 text-[13px] font-mono"
+          class="rounded-md border border-default px-3 py-2 text-sm font-mono"
         >
           <div class="flex items-start gap-2">
             <UBadge
@@ -108,7 +108,7 @@ function toggle(i: number) {
               size="xs"
               class="uppercase flex-shrink-0"
             />
-            <span class="text-muted text-[11px] flex-shrink-0 mt-0.5">{{ fmtTs(b.ts) }}</span>
+            <span class="text-muted text-sm flex-shrink-0 mt-0.5">{{ fmtTs(b.ts) }}</span>
             <div class="flex-1 min-w-0">
               <strong class="text-default">{{ b.event }}</strong>
               <span v-if="b.data" class="ml-2 text-muted break-all">{{

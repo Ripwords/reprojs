@@ -105,7 +105,7 @@ const hasOAuth = computed(() => providers.value.github || providers.value.google
           class="relative size-12 rounded-xl shadow-md hidden dark:block"
         />
       </div>
-      <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted"> Repro </span>
+      <span class="text-sm font-medium uppercase tracking-[0.18em] text-muted"> Repro </span>
     </div>
 
     <UCard
@@ -186,7 +186,7 @@ const hasOAuth = computed(() => providers.value.github || providers.value.google
       </div>
     </UCard>
 
-    <p class="text-center text-xs text-muted">
+    <p class="text-center text-sm text-muted">
       By continuing you agree to keep your reports to yourself and be nice to your teammates.
     </p>
   </div>

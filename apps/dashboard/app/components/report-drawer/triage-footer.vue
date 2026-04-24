@@ -193,7 +193,7 @@ const open = reactive({
     <section>
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        class="flex w-full items-center justify-between gap-2 mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
         :aria-expanded="open.properties"
         @click="open.properties = !open.properties"
       >
@@ -206,7 +206,7 @@ const open = reactive({
       </button>
       <div v-show="open.properties" class="space-y-3">
         <div class="flex items-center gap-3">
-          <label class="w-20 shrink-0 text-xs font-medium text-muted">Status</label>
+          <label class="w-20 shrink-0 text-sm font-medium text-muted">Status</label>
           <USelectMenu
             v-model="statusModel"
             :items="statusItems"
@@ -217,7 +217,7 @@ const open = reactive({
           />
         </div>
         <div class="flex items-center gap-3">
-          <label class="w-20 shrink-0 text-xs font-medium text-muted">Assignee</label>
+          <label class="w-20 shrink-0 text-sm font-medium text-muted">Assignee</label>
           <template v-if="isLinked">
             <AssigneesPicker
               :project-id="projectId"
@@ -249,7 +249,7 @@ const open = reactive({
           </template>
         </div>
         <div class="flex items-center gap-3">
-          <label class="w-20 shrink-0 text-xs font-medium text-muted">Priority</label>
+          <label class="w-20 shrink-0 text-sm font-medium text-muted">Priority</label>
           <USelectMenu
             v-model="priorityModel"
             :items="priorityItems"
@@ -261,7 +261,7 @@ const open = reactive({
         </div>
         <template v-if="isLinked">
           <div class="flex items-center gap-3">
-            <label class="w-20 shrink-0 text-xs font-medium text-muted">Milestone</label>
+            <label class="w-20 shrink-0 text-sm font-medium text-muted">Milestone</label>
             <MilestonePicker
               :project-id="projectId"
               :model-value="
@@ -288,7 +288,7 @@ const open = reactive({
     <section>
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        class="flex w-full items-center justify-between gap-2 mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
         :aria-expanded="open.tags"
         @click="open.tags = !open.tags"
       >
@@ -314,7 +314,7 @@ const open = reactive({
               v-for="t in report.tags"
               :key="t"
               :class="[
-                'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
+                'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium',
                 'bg-primary/10 text-primary ring-1 ring-primary/20',
                 canEdit ? 'cursor-pointer hover:bg-primary/15 transition-colors' : '',
               ]"
@@ -334,7 +334,7 @@ const open = reactive({
               class="w-28"
               @keydown.enter.prevent="addTag"
             />
-            <span v-if="!canEdit && report.tags.length === 0" class="text-xs text-muted italic">
+            <span v-if="!canEdit && report.tags.length === 0" class="text-sm text-muted italic">
               None
             </span>
           </div>
@@ -351,7 +351,7 @@ const open = reactive({
     <section>
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
+        class="flex w-full items-center justify-between gap-2 mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted hover:text-default transition-colors"
         :aria-expanded="open.github"
         @click="open.github = !open.github"
       >
