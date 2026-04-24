@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.4.1
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.4.0...v0.4.1)
+
+### 🚀 Enhancements
+
+- **dashboard:** Render reporter description in overview tab ([4f621a3](https://github.com/Ripwords/ReproJs/commit/4f621a3))
+
+### 🩹 Fixes
+
+- **github:** Warn when GitHub silently drops assignees ([7c6f178](https://github.com/Ripwords/ReproJs/commit/7c6f178))
+- **docker:** Bundle SDK iife in the published image ([cb9f80c](https://github.com/Ripwords/ReproJs/commit/cb9f80c))
+- **api:** Cache-Control private, no-store on /api/** ([65d5309](https://github.com/Ripwords/ReproJs/commit/65d5309))
+- **github:** Pre-flight check before assigning users to an issue ([c6393f7](https://github.com/Ripwords/ReproJs/commit/c6393f7))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.4.0
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.3.0...v0.4.0)
