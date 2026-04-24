@@ -3,6 +3,7 @@
 import type { ReportSummaryDTO } from "@reprojs/shared"
 import { safeHref } from "~/composables/use-safe-href"
 import { parseBrowser, parseOs } from "~/composables/use-user-agent"
+import { useMarkdown } from "~/composables/use-markdown"
 
 const props = defineProps<{ projectId: string; report: ReportSummaryDTO }>()
 const emit = defineEmits<{ "select-tab": [tab: "console" | "network" | "replay"] }>()
@@ -14,6 +15,14 @@ const os = computed(() => parseOs(sys.value?.userAgent, sys.value?.platform))
 const browser = computed(() => parseBrowser(sys.value?.userAgent))
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleString()
+
+// Reporter description is authored in the SDK widget and may use markdown
+// (code blocks, lists, links). `useMarkdown` is the same DOMPurify-wrapped
+// renderer the comments tab uses — safe to bind via v-html.
+const { renderMarkdown } = useMarkdown()
+const descriptionHtml = computed(() =>
+  props.report.description ? renderMarkdown(props.report.description) : "",
+)
 </script>
 
 <template>
@@ -28,6 +37,20 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString()
           class="max-h-[60vh] max-w-full object-contain block"
         />
       </div>
+    </UCard>
+
+    <!-- Reporter-authored description. Sits above the metadata so the user
+         sees the "what" before the "where/when". Hidden entirely when the
+         SDK caller submitted an empty description (common for widget-only
+         reports where title + screenshot are enough). -->
+    <UCard v-if="report.description">
+      <template #header>
+        <div class="text-sm font-medium text-default">Description</div>
+      </template>
+      <div
+        class="prose prose-sm dark:prose-invert max-w-none text-default text-sm leading-relaxed"
+        v-html="descriptionHtml"
+      />
     </UCard>
 
     <UCard>
