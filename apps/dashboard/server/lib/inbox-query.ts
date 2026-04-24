@@ -16,22 +16,32 @@ export function diffTags(oldTags: readonly string[], newTags: readonly string[])
   return { added, removed }
 }
 
-export type AssigneeFilter = { type: "user"; userId: string } | { type: "null" }
+// Assignees are github logins now — "me" resolves to the session user's
+// linked github login (or drops if they haven't linked). The caller is
+// responsible for looking that login up before invoking this function so
+// the query planner stays sync.
+export type AssigneeFilter = { type: "login"; login: string } | { type: "null" }
 
 export function resolveAssigneeFilter(
   tokens: readonly string[],
-  sessionUserId: string,
+  sessionGithubLogin: string | null,
 ): AssigneeFilter[] {
   const seen = new Set<string>()
   const out: AssigneeFilter[] = []
   for (const t of tokens) {
-    const resolved: AssigneeFilter =
-      t === "me"
-        ? { type: "user", userId: sessionUserId }
-        : t === "unassigned"
-          ? { type: "null" }
-          : { type: "user", userId: t }
-    const key = resolved.type === "null" ? "null" : `u:${resolved.userId}`
+    let resolved: AssigneeFilter | null
+    if (t === "me") {
+      // If the session user hasn't linked a github identity, their "assigned
+      // to me" filter silently matches nothing — same effect as not having
+      // any assigned reports.
+      resolved = sessionGithubLogin ? { type: "login", login: sessionGithubLogin } : null
+    } else if (t === "unassigned") {
+      resolved = { type: "null" }
+    } else {
+      resolved = { type: "login", login: t }
+    }
+    if (!resolved) continue
+    const key = resolved.type === "null" ? "null" : `l:${resolved.login}`
     if (seen.has(key)) continue
     seen.add(key)
     out.push(resolved)

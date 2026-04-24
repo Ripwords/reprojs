@@ -4,6 +4,7 @@ import type { ReportEventDTO } from "@reprojs/shared"
 import { db } from "../../../../../../db"
 import { reportEvents, reports } from "../../../../../../db/schema"
 import { user as userTable } from "../../../../../../db/schema/auth-schema"
+import { userIdentities } from "../../../../../../db/schema/user-identities"
 import { requireProjectRole } from "../../../../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
@@ -35,9 +36,15 @@ export default defineEventHandler(async (event) => {
         actorId: reportEvents.actorId,
         actorName: userTable.name,
         actorEmail: userTable.email,
+        actorGithubLogin: userIdentities.externalHandle,
+        actorGithubAvatar: userIdentities.externalAvatarUrl,
       })
       .from(reportEvents)
       .leftJoin(userTable, eq(userTable.id, reportEvents.actorId))
+      .leftJoin(
+        userIdentities,
+        and(eq(userIdentities.userId, reportEvents.actorId), eq(userIdentities.provider, "github")),
+      )
       .where(eq(reportEvents.reportId, reportId))
       .orderBy(desc(reportEvents.createdAt))
       .limit(limit)
@@ -50,10 +57,15 @@ export default defineEventHandler(async (event) => {
     createdAt: r.createdAt.toISOString(),
     kind: r.kind,
     payload: (r.payload ?? {}) as Record<string, unknown>,
-    actor:
-      r.actorId && r.actorEmail
-        ? { id: r.actorId, name: r.actorName ?? null, email: r.actorEmail }
-        : null,
+    actor: r.actorId
+      ? {
+          id: r.actorId,
+          name: r.actorName ?? null,
+          email: r.actorEmail ?? null,
+          githubLogin: r.actorGithubLogin ?? null,
+          githubAvatarUrl: r.actorGithubAvatar ?? null,
+        }
+      : null,
   }))
 
   return { items, total }

@@ -114,12 +114,24 @@ export type ReportStatus = z.infer<typeof ReportStatus>
 export const ReportPriority = z.enum(["low", "normal", "high", "urgent"])
 export type ReportPriority = z.infer<typeof ReportPriority>
 
-export const ReportAssigneeDTO = z.object({
-  id: z.string().nullable(), // dashboard user id (null for github-only)
+// `ReportActorDTO` describes the *actor* of an event — the dashboard user who
+// performed the triage action. Assignees are a separate concept (they live
+// on GitHub); see `ReportAssigneeDTO` below.
+export const ReportActorDTO = z.object({
+  id: z.string().nullable(),
   name: z.string().nullable(),
   email: z.string().nullable(),
   githubLogin: z.string().nullable(),
   githubAvatarUrl: z.string().nullable(),
+})
+export type ReportActorDTO = z.infer<typeof ReportActorDTO>
+
+// Assignees are mirrored from GitHub — there is no dashboard-user assignee.
+// Only projects with a connected GitHub integration and a linked issue can
+// have assignees; everyone else gets an empty array.
+export const ReportAssigneeDTO = z.object({
+  login: z.string(),
+  avatarUrl: z.string().nullable(),
 })
 export type ReportAssigneeDTO = z.infer<typeof ReportAssigneeDTO>
 
@@ -143,19 +155,22 @@ export type ReportEventKind = z.infer<typeof ReportEventKind>
 export const ReportEventDTO = z.object({
   id: z.uuid(),
   createdAt: z.string(),
-  actor: ReportAssigneeDTO.nullable(),
+  actor: ReportActorDTO.nullable(),
   kind: ReportEventKind,
   payload: z.record(z.string(), z.unknown()),
 })
 export type ReportEventDTO = z.infer<typeof ReportEventDTO>
 
+// `assignees` / `milestone` only apply to reports that are linked to a GitHub
+// issue (project has a connected integration + `githubIssueNumber !== null`).
+// The server returns 409 if those fields are present against a report that
+// can't round-trip them to GitHub.
 export const TriagePatchInput = z
   .object({
     status: ReportStatus.optional(),
-    assigneeIds: z.array(z.string()).optional(),
     priority: ReportPriority.optional(),
     tags: z.array(z.string().min(1).max(40)).max(20).optional(),
-    githubAssigneeLogins: z.array(z.string()).optional(),
+    assignees: z.array(z.string().min(1).max(39)).max(10).optional(),
     milestone: z
       .union([z.object({ number: z.number().int(), title: z.string() }), z.null()])
       .optional(),
@@ -163,10 +178,9 @@ export const TriagePatchInput = z
   .refine(
     (v) =>
       v.status !== undefined ||
-      v.assigneeIds !== undefined ||
       v.priority !== undefined ||
       v.tags !== undefined ||
-      v.githubAssigneeLogins !== undefined ||
+      v.assignees !== undefined ||
       v.milestone !== undefined,
     { message: "At least one field must be present" },
   )
@@ -176,10 +190,10 @@ export const BulkUpdateInput = z
   .object({
     reportIds: z.array(z.uuid()).min(1).max(100),
     status: ReportStatus.optional(),
-    assigneeIds: z.array(z.string()).optional(),
+    assignees: z.array(z.string().min(1).max(39)).max(10).optional(),
   })
-  .refine((v) => v.status !== undefined || v.assigneeIds !== undefined, {
-    message: "At least one of status or assigneeIds must be present",
+  .refine((v) => v.status !== undefined || v.assignees !== undefined, {
+    message: "At least one of status or assignees must be present",
   })
 export type BulkUpdateInput = z.infer<typeof BulkUpdateInput>
 

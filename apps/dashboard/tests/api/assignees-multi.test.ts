@@ -5,6 +5,7 @@ import {
   apiFetch,
   signIn,
   truncateDomain,
+  truncateGithub,
   truncateReports,
   createUser,
   seedProject,
@@ -13,118 +14,106 @@ import { db } from "../../server/db"
 import { reports } from "../../server/db/schema/reports"
 import { reportAssignees } from "../../server/db/schema/report-assignees"
 import { projectMembers } from "../../server/db/schema/project-members"
+import { githubIntegrations } from "../../server/db/schema/github-integrations"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
 setDefaultTimeout(60000)
 
-async function seedProjectWithRoles(args: {
-  ownerEmail: string
-  members: Array<{ email: string; role: "owner" | "developer" | "manager" | "viewer" }>
-}): Promise<{ projectId: string; cookie: string; userIds: Record<string, string> }> {
+// Assignees are GitHub logins now — these tests exercise the `{assignees: []}`
+// contract against a linked report on a connected project. The
+// "not linked / not connected → 409" paths are covered separately below.
+async function seedLinkedProject(
+  ownerEmail: string,
+): Promise<{ projectId: string; cookie: string; ownerId: string }> {
   await truncateDomain()
   await truncateReports()
-  const ownerId = await createUser(args.ownerEmail, "member")
-  const cookie = await signIn(args.ownerEmail)
+  await truncateGithub()
+  const ownerId = await createUser(ownerEmail, "member")
+  const cookie = await signIn(ownerEmail)
   const projectId = await seedProject({
-    name: "multi-assignee-test",
+    name: "assignees-multi-test",
     publicKey: `rp_pk_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
     createdBy: ownerId,
   })
   await db.insert(projectMembers).values({ projectId, userId: ownerId, role: "owner" })
-
-  const userIds: Record<string, string> = { [args.ownerEmail]: ownerId }
-  const memberEntries = await Promise.all(
-    args.members.map(async (m) => {
-      const uid = await createUser(m.email, "member")
-      return { email: m.email, uid, role: m.role }
-    }),
-  )
-  if (memberEntries.length > 0) {
-    await db
-      .insert(projectMembers)
-      .values(memberEntries.map((e) => ({ projectId, userId: e.uid, role: e.role })))
-  }
-  for (const e of memberEntries) {
-    userIds[e.email] = e.uid
-  }
-  return { projectId, cookie, userIds }
+  await db.insert(githubIntegrations).values({
+    projectId,
+    installationId: 42,
+    repoOwner: "acme",
+    repoName: "widgets",
+    status: "connected",
+    pushOnEdit: true,
+    autoCreateOnIntake: true,
+  })
+  return { projectId, cookie, ownerId }
 }
 
-describe("multi-assignee (phase 0)", () => {
+async function seedLinkedReport(projectId: string): Promise<string> {
+  const [r] = await db
+    .insert(reports)
+    .values({
+      projectId,
+      title: "t",
+      description: "d",
+      status: "open",
+      priority: "normal",
+      tags: [],
+      githubIssueNumber: 101,
+      githubIssueUrl: "https://github.com/acme/widgets/issues/101",
+    })
+    .returning()
+  if (!r) throw new Error("no report inserted")
+  return r.id
+}
+
+describe("multi-assignee — github logins", () => {
   beforeEach(async () => {
     await truncateDomain()
     await truncateReports()
+    await truncateGithub()
   })
 
-  test("PATCH with assigneeIds=[a,b] persists both rows", async () => {
-    const { projectId, cookie, userIds } = await seedProjectWithRoles({
-      ownerEmail: "owner@x.com",
-      members: [
-        { email: "a@x.com", role: "developer" },
-        { email: "b@x.com", role: "developer" },
-      ],
-    })
-    const [r] = await db
-      .insert(reports)
-      .values({
-        projectId,
-        title: "t",
-        description: "d",
-        status: "open",
-        priority: "normal",
-        tags: [],
-      })
-      .returning()
-    if (!r) throw new Error("no report inserted")
+  test("PATCH with assignees=[a,b] persists both logins", async () => {
+    const { projectId, cookie } = await seedLinkedProject("owner@x.com")
+    const reportId = await seedLinkedReport(projectId)
 
-    const res = await apiFetch(`/api/projects/${projectId}/reports/${r.id}`, {
+    const res = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
       method: "PATCH",
       headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify({ assigneeIds: [userIds["a@x.com"], userIds["b@x.com"]] }),
+      body: JSON.stringify({ assignees: ["alice", "bob"] }),
     })
     expect(res.status).toBe(200)
 
-    const rows = await db.select().from(reportAssignees).where(eq(reportAssignees.reportId, r.id))
-    expect(rows.map((x) => x.userId).toSorted()).toEqual(
-      [userIds["a@x.com"], userIds["b@x.com"]].toSorted(),
-    )
+    const rows = await db
+      .select()
+      .from(reportAssignees)
+      .where(eq(reportAssignees.reportId, reportId))
+    expect(rows.map((x) => x.githubLogin).toSorted()).toEqual(["alice", "bob"])
   })
 
-  test("setting assigneeIds=[] clears all assignees", async () => {
-    const { projectId, cookie, userIds } = await seedProjectWithRoles({
-      ownerEmail: "owner2@x.com",
-      members: [{ email: "a2@x.com", role: "developer" }],
-    })
-    const [r] = await db
-      .insert(reports)
-      .values({
-        projectId,
-        title: "t",
-        description: "d",
-        status: "open",
-        priority: "normal",
-        tags: [],
-      })
-      .returning()
-    if (!r) throw new Error("no report inserted")
-    await db.insert(reportAssignees).values({ reportId: r.id, userId: userIds["a2@x.com"] })
+  test("setting assignees=[] clears all assignees", async () => {
+    const { projectId, cookie } = await seedLinkedProject("owner2@x.com")
+    const reportId = await seedLinkedReport(projectId)
+    await db.insert(reportAssignees).values({ reportId, githubLogin: "alice" })
 
-    await apiFetch(`/api/projects/${projectId}/reports/${r.id}`, {
+    const res = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
       method: "PATCH",
       headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify({ assigneeIds: [] }),
+      body: JSON.stringify({ assignees: [] }),
     })
+    expect(res.status).toBe(200)
 
-    const rows = await db.select().from(reportAssignees).where(eq(reportAssignees.reportId, r.id))
+    const rows = await db
+      .select()
+      .from(reportAssignees)
+      .where(eq(reportAssignees.reportId, reportId))
     expect(rows).toEqual([])
   })
 
-  test("refuses assigning a viewer", async () => {
-    const { projectId, cookie, userIds } = await seedProjectWithRoles({
-      ownerEmail: "owner3@x.com",
-      members: [{ email: "v@x.com", role: "viewer" }],
-    })
+  test("returns 409 when the report is not linked to a GitHub issue", async () => {
+    const { projectId, cookie } = await seedLinkedProject("owner3@x.com")
+    // Unlinked: no githubIssueNumber.
     const [r] = await db
       .insert(reports)
       .values({
@@ -141,32 +130,54 @@ describe("multi-assignee (phase 0)", () => {
     const res = await apiFetch(`/api/projects/${projectId}/reports/${r.id}`, {
       method: "PATCH",
       headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify({ assigneeIds: [userIds["v@x.com"]] }),
+      body: JSON.stringify({ assignees: ["alice"] }),
     })
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(409)
+  })
+
+  test("returns 409 when the project has no connected GitHub integration", async () => {
+    await truncateDomain()
+    await truncateReports()
+    await truncateGithub()
+    const ownerId = await createUser("owner4@x.com", "member")
+    const cookie = await signIn("owner4@x.com")
+    const projectId = await seedProject({
+      name: "no-github",
+      publicKey: `rp_pk_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
+      createdBy: ownerId,
+    })
+    await db.insert(projectMembers).values({ projectId, userId: ownerId, role: "owner" })
+    // No githubIntegrations row.
+    const [r] = await db
+      .insert(reports)
+      .values({
+        projectId,
+        title: "t",
+        description: "d",
+        status: "open",
+        priority: "normal",
+        tags: [],
+        githubIssueNumber: 5,
+        githubIssueUrl: "https://github.com/acme/x/issues/5",
+      })
+      .returning()
+    if (!r) throw new Error("no report inserted")
+
+    const res = await apiFetch(`/api/projects/${projectId}/reports/${r.id}`, {
+      method: "PATCH",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ assignees: ["alice"] }),
+    })
+    expect(res.status).toBe(409)
   })
 
   test("more than 10 assignees is rejected", async () => {
-    const { projectId, cookie } = await seedProjectWithRoles({
-      ownerEmail: "owner4@x.com",
-      members: [],
-    })
-    const [r] = await db
-      .insert(reports)
-      .values({
-        projectId,
-        title: "t",
-        description: "d",
-        status: "open",
-        priority: "normal",
-        tags: [],
-      })
-      .returning()
-    if (!r) throw new Error("no report inserted")
-    const res = await apiFetch(`/api/projects/${projectId}/reports/${r.id}`, {
+    const { projectId, cookie } = await seedLinkedProject("owner5@x.com")
+    const reportId = await seedLinkedReport(projectId)
+    const res = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
       method: "PATCH",
       headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify({ assigneeIds: Array.from({ length: 11 }, (_, i) => `u-${i}`) }),
+      body: JSON.stringify({ assignees: Array.from({ length: 11 }, (_, i) => `u-${i}`) }),
     })
     expect(res.status).toBe(400)
   })

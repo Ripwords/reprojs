@@ -81,34 +81,12 @@ export async function loadCurrentGithubIssue(
 
 async function loadDesiredAssigneeLogins(reportId: string): Promise<string[]> {
   const rows = await db
-    .select({
-      githubLogin: reportAssignees.githubLogin,
-      userId: reportAssignees.userId,
-    })
+    .select({ githubLogin: reportAssignees.githubLogin })
     .from(reportAssignees)
     .where(eq(reportAssignees.reportId, reportId))
 
-  const githubLogins = rows
-    .map((r) => r.githubLogin)
-    .filter((l): l is string => l !== null && l !== undefined)
-
-  const dashboardUserIds = rows
-    .map((r) => r.userId)
-    .filter((id): id is string => id !== null && id !== undefined)
-
-  const identityLogins: string[] = []
-  if (dashboardUserIds.length > 0) {
-    const { inArray } = await import("drizzle-orm")
-    const identities = await db
-      .select({ externalHandle: userIdentities.externalHandle })
-      .from(userIdentities)
-      .where(inArray(userIdentities.userId, dashboardUserIds))
-    for (const id of identities) {
-      if (id.externalHandle) identityLogins.push(id.externalHandle)
-    }
-  }
-
-  return [...new Set([...githubLogins, ...identityLogins])]
+  const logins = rows.map((r) => r.githubLogin).filter((l): l is string => l !== null)
+  return [...new Set(logins)]
 }
 
 // --- Per-resource reconcilers ---

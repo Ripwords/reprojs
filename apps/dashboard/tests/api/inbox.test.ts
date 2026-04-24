@@ -13,7 +13,14 @@ import {
   truncateReports,
 } from "../helpers"
 import { db } from "../../server/db"
-import { projectMembers, reportAssignees, reportEvents, reports } from "../../server/db/schema"
+import {
+  githubIntegrations,
+  projectMembers,
+  reportAssignees,
+  reportEvents,
+  reports,
+  userIdentities,
+} from "../../server/db/schema"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 
@@ -41,6 +48,8 @@ async function seedReport(
       status: overrides.status ?? "open",
       priority: overrides.priority ?? "normal",
       tags: overrides.tags ?? [],
+      githubIssueNumber: overrides.githubIssueNumber,
+      githubIssueUrl: overrides.githubIssueUrl,
     })
     .returning({ id: reports.id })
   return row?.id
@@ -80,6 +89,17 @@ describe("ticket inbox API", () => {
 
   test("list filters by assignee=me", async () => {
     const owner = await createUser("owner@example.com", "admin")
+    // The "me" filter resolves to the session user's linked github handle —
+    // plant an identity for owner so the filter resolves to a real login.
+    await db.insert(userIdentities).values({
+      userId: owner,
+      provider: "github",
+      externalId: "gh-owner-1",
+      externalHandle: "owner-gh",
+      externalAvatarUrl: null,
+      externalName: null,
+      externalEmail: null,
+    })
     const pid = await seedProject({
       name: "Inbox",
       publicKey: PK,
@@ -87,15 +107,15 @@ describe("ticket inbox API", () => {
       createdBy: owner,
     })
     const r1 = await seedReport(pid)
-    await db.insert(reportAssignees).values({ reportId: r1, userId: owner })
+    await db.insert(reportAssignees).values({ reportId: r1, githubLogin: "owner-gh" })
     await seedReport(pid) // unassigned
     const cookie = await signIn("owner@example.com")
     const { status, body } = await apiFetch<{
-      items: Array<{ assignees: Array<{ id: string | null }> }>
+      items: Array<{ assignees: Array<{ login: string }> }>
     }>(`/api/projects/${pid}/reports?assignee=me`, { headers: { cookie } })
     expect(status).toBe(200)
     expect(body.items.length).toBe(1)
-    expect(body.items[0]?.assignees[0]?.id).toBe(owner)
+    expect(body.items[0]?.assignees[0]?.login).toBe("owner-gh")
   })
 
   test("list filters by tag AND semantics", async () => {
@@ -180,21 +200,32 @@ describe("ticket inbox API", () => {
 
   test("PATCH multiple fields emits one event per changed field", async () => {
     const owner = await createUser("owner@example.com", "admin")
-    const dev = await createUser("dev@example.com", "member")
     const pid = await seedProject({
       name: "Inbox",
       publicKey: PK,
       allowedOrigins: [ORIGIN],
       createdBy: owner,
     })
-    // dev must be a project member with developer role to be a valid assignee
-    await addMember(pid, dev, "developer")
-    const rid = await seedReport(pid)
+    // Link the project + report so the assignee field is accepted (assignees
+    // are GitHub-mirrored and require a linked issue).
+    await db.insert(githubIntegrations).values({
+      projectId: pid,
+      installationId: 99,
+      repoOwner: "acme",
+      repoName: "widgets",
+      status: "connected",
+      pushOnEdit: false,
+      autoCreateOnIntake: false,
+    })
+    const rid = await seedReport(pid, {
+      githubIssueNumber: 42,
+      githubIssueUrl: "https://github.com/acme/widgets/issues/42",
+    })
     const cookie = await signIn("owner@example.com")
     await apiFetch(`/api/projects/${pid}/reports/${rid}`, {
       method: "PATCH",
       headers: { cookie },
-      body: { status: "in_progress", priority: "high", assigneeIds: [dev] },
+      body: { status: "in_progress", priority: "high", assignees: ["alice"] },
     })
     const evs = await db.select().from(reportEvents).where(eq(reportEvents.reportId, rid))
     expect(evs.length).toBe(3)
@@ -268,24 +299,23 @@ describe("ticket inbox API", () => {
     expect(current?.status).toBe("open")
   })
 
-  test("assigning to a viewer is rejected", async () => {
+  test("assigning on an unlinked report returns 409", async () => {
     const owner = await createUser("owner@example.com", "admin")
-    const viewer = await createUser("viewer@example.com", "member")
     const pid = await seedProject({
       name: "Inbox",
       publicKey: PK,
       allowedOrigins: [ORIGIN],
       createdBy: owner,
     })
-    await addMember(pid, viewer, "viewer")
+    // Report has no githubIssueNumber → assignees have nowhere to round-trip.
     const rid = await seedReport(pid)
     const cookie = await signIn("owner@example.com")
     const { status } = await apiFetch(`/api/projects/${pid}/reports/${rid}`, {
       method: "PATCH",
       headers: { cookie },
-      body: { assigneeIds: [viewer] },
+      body: { assignees: ["alice"] },
     })
-    expect(status).toBe(400)
+    expect(status).toBe(409)
   })
 
   test("events feed returns actor-embedded DTOs in reverse-chrono", async () => {

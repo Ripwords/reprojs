@@ -8,7 +8,6 @@ import { and, eq } from "drizzle-orm"
 import type { ReportContext, ReportSummaryDTO } from "@reprojs/shared"
 import { db } from "../../../../../db"
 import { reportAssignees, reportAttachments, reports } from "../../../../../db/schema"
-import { user as userTable } from "../../../../../db/schema/auth-schema"
 import { requireProjectRole } from "../../../../../lib/permissions"
 
 export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
@@ -62,14 +61,10 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
       .limit(1),
     db
       .select({
-        userId: reportAssignees.userId,
-        githubLogin: reportAssignees.githubLogin,
-        githubAvatarUrl: reportAssignees.githubAvatarUrl,
-        name: userTable.name,
-        email: userTable.email,
+        login: reportAssignees.githubLogin,
+        avatarUrl: reportAssignees.githubAvatarUrl,
       })
       .from(reportAssignees)
-      .leftJoin(userTable, eq(userTable.id, reportAssignees.userId))
       .where(eq(reportAssignees.reportId, reportId)),
   ])
 
@@ -98,12 +93,8 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
     githubIssueUrl: row.githubIssueUrl ?? null,
     milestoneNumber: row.milestoneNumber ?? null,
     milestoneTitle: row.milestoneTitle ?? null,
-    assignees: assigneeRows.map((a) => ({
-      id: a.userId,
-      name: a.name ?? null,
-      email: a.email ?? null,
-      githubLogin: a.githubLogin,
-      githubAvatarUrl: a.githubAvatarUrl,
-    })),
+    assignees: assigneeRows
+      .filter((a): a is typeof a & { login: string } => a.login !== null)
+      .map((a) => ({ login: a.login, avatarUrl: a.avatarUrl })),
   }
 })

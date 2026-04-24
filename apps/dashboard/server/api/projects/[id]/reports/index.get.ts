@@ -22,7 +22,7 @@ import {
 } from "@reprojs/shared"
 import { db } from "../../../../db"
 import { reportAssignees, reportAttachments, reports } from "../../../../db/schema"
-import { user as userTable } from "../../../../db/schema/auth-schema"
+import { userIdentities } from "../../../../db/schema/user-identities"
 import { buildSortClause, resolveAssigneeFilter } from "../../../../lib/inbox-query"
 import { requireProjectRole } from "../../../../lib/permissions"
 
@@ -39,7 +39,15 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id")
   if (!id) throw new Error("missing project id")
   const { session } = await requireProjectRole(event, id, "viewer")
-  const sessionUserId = session.userId
+  // Look up the session user's linked github login so the "assigned to me"
+  // facet can filter on `report_assignees.github_login`. If the user hasn't
+  // linked an identity, the "me" token is dropped downstream.
+  const [sessionIdentity] = await db
+    .select({ externalHandle: userIdentities.externalHandle })
+    .from(userIdentities)
+    .where(and(eq(userIdentities.userId, session.userId), eq(userIdentities.provider, "github")))
+    .limit(1)
+  const sessionGithubLogin = sessionIdentity?.externalHandle ?? null
 
   const q = getQuery(event)
   const limit = Math.min(100, Math.max(1, Number(q.limit ?? 50)))
@@ -57,7 +65,7 @@ export default defineEventHandler(async (event) => {
   const sourceTokens = parseCsv(q.source).filter((v) =>
     ["web", "expo", "ios", "android"].includes(v),
   )
-  const assigneeFilters = resolveAssigneeFilter(assigneeTokens, sessionUserId)
+  const assigneeFilters = resolveAssigneeFilter(assigneeTokens, sessionGithubLogin)
 
   const whereParts: ReturnType<typeof eq>[] = [eq(reports.projectId, id)]
   if (statusTokens.length) whereParts.push(inArray(reports.status, statusTokens as ReportStatus[]))
@@ -65,10 +73,10 @@ export default defineEventHandler(async (event) => {
     whereParts.push(inArray(reports.priority, priorityTokens as ReportPriority[]))
   if (tagTokens.length) whereParts.push(arrayContains(reports.tags, tagTokens))
   if (assigneeFilters.length) {
-    const userIds = assigneeFilters.filter((f) => f.type === "user").map((f) => f.userId)
+    const logins = assigneeFilters.filter((f) => f.type === "login").map((f) => f.login)
     const wantUnassigned = assigneeFilters.some((f) => f.type === "null")
     const parts: ReturnType<typeof eq>[] = []
-    if (userIds.length) {
+    if (logins.length) {
       parts.push(
         exists(
           db
@@ -77,7 +85,7 @@ export default defineEventHandler(async (event) => {
             .where(
               and(
                 eq(reportAssignees.reportId, reports.id),
-                inArray(reportAssignees.userId, userIds),
+                inArray(reportAssignees.githubLogin, logins),
               ),
             ),
         ),
@@ -166,19 +174,19 @@ export default defineEventHandler(async (event) => {
         .from(reports)
         .where(whereClause)
         .groupBy(reports.priority),
-      // Assignee facet: distinct reports per assignee user within project scope
+      // Assignee facet: distinct reports per github-login within project scope.
+      // We derive avatar from the max-seen avatar url for that login so a
+      // single stale row doesn't null out the picture for everyone.
       db
         .select({
-          userId: reportAssignees.userId,
-          name: userTable.name,
-          email: userTable.email,
+          login: reportAssignees.githubLogin,
+          avatarUrl: sql<string | null>`max(${reportAssignees.githubAvatarUrl})`,
           c: sql<number>`count(distinct ${reportAssignees.reportId})`,
         })
         .from(reportAssignees)
         .innerJoin(reports, eq(reports.id, reportAssignees.reportId))
-        .leftJoin(userTable, eq(userTable.id, reportAssignees.userId))
         .where(eq(reports.projectId, id))
-        .groupBy(reportAssignees.userId, userTable.name, userTable.email),
+        .groupBy(reportAssignees.githubLogin),
       db
         .select({ name: sql<string>`unnest(${reports.tags})`.as("name"), c: count() })
         .from(reports)
@@ -204,25 +212,22 @@ export default defineEventHandler(async (event) => {
   const reportIds = rows.map((r) => r.id)
   const replaySet = new Set<string>()
 
-  // Load assignees for all returned reports
+  // Load assignees for all returned reports (github-only)
   const assigneeRowsForItems =
     reportIds.length > 0
       ? await db
           .select({
             reportId: reportAssignees.reportId,
-            userId: reportAssignees.userId,
-            githubLogin: reportAssignees.githubLogin,
-            githubAvatarUrl: reportAssignees.githubAvatarUrl,
-            name: userTable.name,
-            email: userTable.email,
+            login: reportAssignees.githubLogin,
+            avatarUrl: reportAssignees.githubAvatarUrl,
           })
           .from(reportAssignees)
-          .leftJoin(userTable, eq(userTable.id, reportAssignees.userId))
           .where(inArray(reportAssignees.reportId, reportIds))
       : []
 
   const assigneesByReport = new Map<string, typeof assigneeRowsForItems>()
   for (const a of assigneeRowsForItems) {
+    if (!a.login) continue
     const arr = assigneesByReport.get(a.reportId) ?? []
     arr.push(a)
     assigneesByReport.set(a.reportId, arr)
@@ -240,13 +245,9 @@ export default defineEventHandler(async (event) => {
 
   const items: ReportSummaryDTO[] = rows.map((r) => {
     const ctx = r.context as ReportContext
-    const assignees = (assigneesByReport.get(r.id) ?? []).map((a) => ({
-      id: a.userId,
-      name: a.name ?? null,
-      email: a.email ?? null,
-      githubLogin: a.githubLogin,
-      githubAvatarUrl: a.githubAvatarUrl,
-    }))
+    const assignees = (assigneesByReport.get(r.id) ?? [])
+      .filter((a): a is typeof a & { login: string } => a.login !== null)
+      .map((a) => ({ login: a.login, avatarUrl: a.avatarUrl }))
     return {
       id: r.id,
       title: r.title,
@@ -294,12 +295,9 @@ export default defineEventHandler(async (event) => {
     facets: {
       status: statusFacet,
       priority: priorityFacet,
-      assignees: assigneeFacetRows.map((r) => ({
-        id: r.userId,
-        name: r.name ?? null,
-        email: r.email ?? null,
-        count: r.c,
-      })),
+      assignees: assigneeFacetRows
+        .filter((r): r is typeof r & { login: string } => r.login !== null)
+        .map((r) => ({ login: r.login, avatarUrl: r.avatarUrl, count: r.c })),
       tags: tagRows.map((r) => ({ name: r.name, count: r.c })),
       source: sourceFacets,
     },

@@ -1,11 +1,16 @@
 // apps/dashboard/server/api/projects/[id]/reports/[reportId]/index.patch.ts
+//
+// Triage patch endpoint. Assignees + milestone are GitHub-mirrored concepts
+// — they are only accepted when the report is linked to a GitHub issue on a
+// connected integration. Otherwise the endpoint returns 409 because those
+// fields have no home to land in (there is no dashboard-local assignee
+// state). Status / priority / tags are always applicable.
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from "h3"
-import { and, eq, inArray, isNotNull } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 import { TriagePatchInput } from "@reprojs/shared"
 import { db } from "../../../../../db"
 import {
   githubIntegrations,
-  projectMembers,
   reportAssignees,
   reportEvents,
   reports,
@@ -13,8 +18,7 @@ import {
 import { buildReportEvents } from "../../../../../lib/report-events"
 import { enqueueSync } from "../../../../../lib/enqueue-sync"
 import { publishReportStream } from "../../../../../lib/report-events-bus"
-import { compareRole, requireProjectRole } from "../../../../../lib/permissions"
-import type { ProjectRoleName } from "../../../../../lib/permissions"
+import { requireProjectRole } from "../../../../../lib/permissions"
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id")
@@ -24,29 +28,6 @@ export default defineEventHandler(async (event) => {
   const actorId = session.userId
 
   const body = await readValidatedBody(event, (b: unknown) => TriagePatchInput.parse(b))
-
-  // Guard: all proposed assignees must be manager-or-above on this project.
-  if (body.assigneeIds !== undefined && body.assigneeIds.length > 0) {
-    if (body.assigneeIds.length > 10) {
-      throw createError({ statusCode: 400, statusMessage: "At most 10 assignees" })
-    }
-    const memberRows = await db
-      .select({ userId: projectMembers.userId, role: projectMembers.role })
-      .from(projectMembers)
-      .where(
-        and(eq(projectMembers.projectId, id), inArray(projectMembers.userId, body.assigneeIds)),
-      )
-    const memberMap = new Map(memberRows.map((m) => [m.userId, m.role]))
-    for (const uid of body.assigneeIds) {
-      const role = memberMap.get(uid)
-      if (!role || !compareRole(role as ProjectRoleName, "manager")) {
-        throw createError({
-          statusCode: 400,
-          statusMessage: `User ${uid} is not a manager, developer, or owner on this project`,
-        })
-      }
-    }
-  }
 
   const result = await db.transaction(async (tx) => {
     const [current] = await tx
@@ -64,6 +45,38 @@ export default defineEventHandler(async (event) => {
       .where(and(eq(reports.id, reportId), eq(reports.projectId, id)))
       .limit(1)
     if (!current) throw createError({ statusCode: 404, statusMessage: "Report not found" })
+
+    // Integration lookup is used for two separate purposes:
+    //   1. Reject GitHub-mirrored mutations (assignees / milestone) when the
+    //      report isn't linked or the integration isn't connected — 409.
+    //   2. Decide whether any PATCH (even a plain priority/tag/status edit)
+    //      should enqueue a push-on-edit sync job.
+    // We fetch the integration row once and branch afterwards.
+    const wantsGithubMirror = body.assignees !== undefined || body.milestone !== undefined
+    let integration: { pushOnEdit: boolean; status: string } | null = null
+    if (wantsGithubMirror || current.githubIssueNumber !== null) {
+      const [gi] = await tx
+        .select({ pushOnEdit: githubIntegrations.pushOnEdit, status: githubIntegrations.status })
+        .from(githubIntegrations)
+        .where(eq(githubIntegrations.projectId, id))
+        .limit(1)
+      integration = gi ?? null
+    }
+    if (wantsGithubMirror) {
+      if (current.githubIssueNumber === null) {
+        throw createError({
+          statusCode: 409,
+          statusMessage:
+            "Report is not linked to a GitHub issue — assignees and milestone are GitHub-only features",
+        })
+      }
+      if (!integration || integration.status !== "connected") {
+        throw createError({
+          statusCode: 409,
+          statusMessage: "Project is not connected to GitHub",
+        })
+      }
+    }
 
     const patch: Partial<typeof reports.$inferInsert> = {}
     const change: Parameters<typeof buildReportEvents>[3] = {}
@@ -94,90 +107,17 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Assignee diff — always run this block even for empty arrays (to support clearing)
-    const assigneeEvents: (typeof reportEvents.$inferInsert)[] = []
-    if (body.assigneeIds !== undefined) {
+    // Assignee diff — github logins only. Empty array = clear all assignees.
+    const mirrorEvents: (typeof reportEvents.$inferInsert)[] = []
+    if (body.assignees !== undefined) {
       const currentRows = await tx
-        .select({ userId: reportAssignees.userId })
-        .from(reportAssignees)
-        .where(eq(reportAssignees.reportId, reportId))
-      const currentIds = currentRows
-        .map((r) => r.userId)
-        .filter((x): x is string => x !== null && x !== undefined)
-      const proposedIds = body.assigneeIds
-      const toRemove = currentIds.filter((uid) => !proposedIds.includes(uid))
-      const toAdd = proposedIds.filter((uid) => !currentIds.includes(uid))
-
-      if (toRemove.length > 0) {
-        await tx
-          .delete(reportAssignees)
-          .where(
-            and(eq(reportAssignees.reportId, reportId), inArray(reportAssignees.userId, toRemove)),
-          )
-      }
-      if (toAdd.length > 0) {
-        await tx
-          .insert(reportAssignees)
-          .values(toAdd.map((uid) => ({ reportId, userId: uid, assignedBy: actorId })))
-      }
-
-      for (const uid of toRemove) {
-        assigneeEvents.push({
-          reportId,
-          projectId: id,
-          actorId,
-          kind: "assignee_removed",
-          payload: { userId: uid },
-        })
-      }
-      for (const uid of toAdd) {
-        assigneeEvents.push({
-          reportId,
-          projectId: id,
-          actorId,
-          kind: "assignee_added",
-          payload: { userId: uid },
-        })
-      }
-    }
-
-    // Milestone diff
-    if ("milestone" in body && body.milestone !== undefined) {
-      const prev = {
-        number: current.milestoneNumber,
-        title: current.milestoneTitle,
-      }
-      const next = body.milestone
-      const changed =
-        (prev.number === null) !== (next === null) ||
-        (prev.number !== null &&
-          next !== null &&
-          (prev.number !== next.number || prev.title !== next.title))
-      if (changed) {
-        patch.milestoneNumber = next?.number ?? null
-        patch.milestoneTitle = next?.title ?? null
-        assigneeEvents.push({
-          reportId,
-          projectId: id,
-          actorId,
-          kind: "milestone_changed",
-          payload: { from: prev, to: next },
-        })
-      }
-    }
-
-    // GitHub-only assignees diff
-    if (body.githubAssigneeLogins !== undefined) {
-      const currentGhRows = await tx
         .select({ login: reportAssignees.githubLogin })
         .from(reportAssignees)
-        .where(and(eq(reportAssignees.reportId, reportId), isNotNull(reportAssignees.githubLogin)))
-      const currentLogins = currentGhRows
-        .map((r) => r.login)
-        .filter((x): x is string => x !== null && x !== undefined)
-      const proposedLogins = body.githubAssigneeLogins
-      const toRemove = currentLogins.filter((l) => !proposedLogins.includes(l))
-      const toAdd = proposedLogins.filter((l) => !currentLogins.includes(l))
+        .where(eq(reportAssignees.reportId, reportId))
+      const currentLogins = currentRows.map((r) => r.login).filter((x): x is string => x !== null)
+      const proposed = body.assignees
+      const toRemove = currentLogins.filter((l) => !proposed.includes(l))
+      const toAdd = proposed.filter((l) => !currentLogins.includes(l))
 
       if (toRemove.length > 0) {
         await tx
@@ -194,8 +134,9 @@ export default defineEventHandler(async (event) => {
           .insert(reportAssignees)
           .values(toAdd.map((login) => ({ reportId, githubLogin: login, assignedBy: actorId })))
       }
+
       for (const login of toRemove) {
-        assigneeEvents.push({
+        mirrorEvents.push({
           reportId,
           projectId: id,
           actorId,
@@ -204,7 +145,7 @@ export default defineEventHandler(async (event) => {
         })
       }
       for (const login of toAdd) {
-        assigneeEvents.push({
+        mirrorEvents.push({
           reportId,
           projectId: id,
           actorId,
@@ -214,10 +155,34 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const hasReportPatch = Object.keys(patch).length > 0
-    const hasEvents = Object.keys(change).length > 0 || assigneeEvents.length > 0
+    if ("milestone" in body && body.milestone !== undefined) {
+      const prev = {
+        number: current.milestoneNumber,
+        title: current.milestoneTitle,
+      }
+      const next = body.milestone
+      const changed =
+        (prev.number === null) !== (next === null) ||
+        (prev.number !== null &&
+          next !== null &&
+          (prev.number !== next.number || prev.title !== next.title))
+      if (changed) {
+        patch.milestoneNumber = next?.number ?? null
+        patch.milestoneTitle = next?.title ?? null
+        mirrorEvents.push({
+          reportId,
+          projectId: id,
+          actorId,
+          kind: "milestone_changed",
+          payload: { from: prev, to: next },
+        })
+      }
+    }
 
-    if (!hasReportPatch && assigneeEvents.length === 0) {
+    const hasReportPatch = Object.keys(patch).length > 0
+    const hasEvents = Object.keys(change).length > 0 || mirrorEvents.length > 0
+
+    if (!hasReportPatch && mirrorEvents.length === 0) {
       // No-op — don't bump updated_at or emit events.
       return { ok: true, updated: false }
     }
@@ -228,8 +193,8 @@ export default defineEventHandler(async (event) => {
         .update(reports)
         .set(patch)
         .where(and(eq(reports.id, reportId), eq(reports.projectId, id)))
-    } else if (assigneeEvents.length > 0) {
-      // Bump updatedAt even when only assignees changed
+    } else if (mirrorEvents.length > 0) {
+      // Bump updatedAt even when only assignees/milestone changed
       await tx
         .update(reports)
         .set({ updatedAt: new Date() })
@@ -237,23 +202,19 @@ export default defineEventHandler(async (event) => {
     }
 
     const reportChangeEvents = buildReportEvents(reportId, id, actorId, change)
-    const allEvents = [...reportChangeEvents, ...assigneeEvents]
+    const allEvents = [...reportChangeEvents, ...mirrorEvents]
     if (allEvents.length > 0) await tx.insert(reportEvents).values(allEvents)
 
-    // Determine whether to enqueue a GitHub sync job — but defer the actual
-    // enqueue + SSE publish until AFTER the transaction commits. Previously
-    // both ran inside the tx against the global `db` client, so a later
-    // rollback of this transaction would leave a phantom sync job (and an
-    // SSE notification for changes that didn't actually land) behind.
-    let shouldEnqueueGithubSync = false
-    if (hasEvents && current.githubIssueNumber !== null) {
-      const [gi] = await tx
-        .select({ pushOnEdit: githubIntegrations.pushOnEdit, status: githubIntegrations.status })
-        .from(githubIntegrations)
-        .where(eq(githubIntegrations.projectId, id))
-        .limit(1)
-      shouldEnqueueGithubSync = gi?.status === "connected" && gi.pushOnEdit === true
-    }
+    // Enqueue a GitHub sync job when we have something to push AND the
+    // integration is connected with push-on-edit enabled. Deferred until
+    // AFTER the transaction commits so a later rollback doesn't leave a
+    // phantom sync job (and a spurious triage SSE notification for changes
+    // that never landed) behind.
+    const shouldEnqueueGithubSync =
+      hasEvents &&
+      current.githubIssueNumber !== null &&
+      integration?.status === "connected" &&
+      integration.pushOnEdit === true
 
     return { ok: true, updated: true, hasEvents, shouldEnqueueGithubSync }
   })

@@ -23,31 +23,34 @@ describe("diffTags", () => {
 })
 
 describe("resolveAssigneeFilter", () => {
-  test("'me' returns { type: 'user', userId: session }", () => {
-    expect(resolveAssigneeFilter(["me"], "user-1")).toEqual([{ type: "user", userId: "user-1" }])
+  test("'me' resolves to the session user's linked github login", () => {
+    expect(resolveAssigneeFilter(["me"], "alice")).toEqual([{ type: "login", login: "alice" }])
+  })
+  test("'me' is dropped when the session user has no linked github identity", () => {
+    expect(resolveAssigneeFilter(["me"], null)).toEqual([])
   })
   test("'unassigned' returns { type: 'null' }", () => {
-    expect(resolveAssigneeFilter(["unassigned"], "user-1")).toEqual([{ type: "null" }])
+    expect(resolveAssigneeFilter(["unassigned"], "alice")).toEqual([{ type: "null" }])
   })
-  test("plain user ids pass through", () => {
-    expect(resolveAssigneeFilter(["user-2", "user-3"], "user-1")).toEqual([
-      { type: "user", userId: "user-2" },
-      { type: "user", userId: "user-3" },
+  test("plain logins pass through", () => {
+    expect(resolveAssigneeFilter(["bob", "carol"], "alice")).toEqual([
+      { type: "login", login: "bob" },
+      { type: "login", login: "carol" },
     ])
   })
   test("mixed tokens preserve order", () => {
-    expect(resolveAssigneeFilter(["me", "unassigned", "user-2"], "user-1")).toEqual([
-      { type: "user", userId: "user-1" },
+    expect(resolveAssigneeFilter(["me", "unassigned", "bob"], "alice")).toEqual([
+      { type: "login", login: "alice" },
       { type: "null" },
-      { type: "user", userId: "user-2" },
+      { type: "login", login: "bob" },
     ])
   })
   test("empty array returns empty", () => {
-    expect(resolveAssigneeFilter([], "user-1")).toEqual([])
+    expect(resolveAssigneeFilter([], "alice")).toEqual([])
   })
   test("dedupes identical tokens", () => {
-    expect(resolveAssigneeFilter(["me", "me"], "user-1")).toEqual([
-      { type: "user", userId: "user-1" },
+    expect(resolveAssigneeFilter(["me", "me"], "alice")).toEqual([
+      { type: "login", login: "alice" },
     ])
   })
 })

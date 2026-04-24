@@ -26,7 +26,11 @@ const ORIGIN = "http://localhost:4000"
  * The permission boundary under test is authenticated-session-only, so the
  * intake path isn't on the critical path here.
  */
-async function seedReport(projectId: string, title: string): Promise<string> {
+async function seedReport(
+  projectId: string,
+  title: string,
+  overrides: { githubIssueNumber?: number; githubIssueUrl?: string } = {},
+): Promise<string> {
   const [row] = await db
     .insert(reports)
     .values({
@@ -39,6 +43,8 @@ async function seedReport(projectId: string, title: string): Promise<string> {
         viewport: { w: 1000, h: 800 },
         timestamp: new Date().toISOString(),
       },
+      githubIssueNumber: overrides.githubIssueNumber,
+      githubIssueUrl: overrides.githubIssueUrl,
     })
     .returning({ id: reports.id })
   if (!row) throw new Error("seedReport: insert returned no row")
@@ -109,7 +115,7 @@ describe("manager role — allowed actions", () => {
     expect(status).toBe(200)
   })
 
-  test("manager can be assigned to a report (assignee guard allows non-viewers)", async () => {
+  test("manager can assign a github login on a linked report", async () => {
     const adminId = await createUser("admin@example.com", "admin")
     const projectId = await seedProject({
       name: "Demo",
@@ -117,17 +123,27 @@ describe("manager role — allowed actions", () => {
       allowedOrigins: [ORIGIN],
       createdBy: adminId,
     })
-    const reportId = await seedReport(projectId, "assign me")
-    const { userId: managerId, cookie } = await seedMemberAtRole(
-      "manager@example.com",
+    // Assignees are github-mirrored — the report must be linked and the
+    // project must have a connected integration.
+    await db.insert(githubIntegrations).values({
       projectId,
-      "manager",
-    )
+      installationId: 77,
+      repoOwner: "acme",
+      repoName: "widgets",
+      status: "connected",
+      pushOnEdit: false,
+      autoCreateOnIntake: false,
+    })
+    const reportId = await seedReport(projectId, "assign me", {
+      githubIssueNumber: 9,
+      githubIssueUrl: "https://github.com/acme/widgets/issues/9",
+    })
+    const { cookie } = await seedMemberAtRole("manager@example.com", projectId, "manager")
 
     const { status } = await apiFetch(`/api/projects/${projectId}/reports/${reportId}`, {
       method: "PATCH",
       headers: { cookie },
-      body: JSON.stringify({ assigneeIds: [managerId] }),
+      body: JSON.stringify({ assignees: ["alice"] }),
     })
     expect(status).toBe(200)
   })
