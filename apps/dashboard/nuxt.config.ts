@@ -82,6 +82,18 @@ export default defineNuxtConfig({
     // NODE_ENV=test from the parent shell is lost. A custom env var survives
     // the Nuxt init sequence unchanged.
     rateLimiter: process.env.DISABLE_NUXT_SECURITY_RATE_LIMIT === "1" ? false : undefined,
+    // CSP: nuxt-security's default img-src is ['\'self\'', 'data:'] which
+    // blocks GitHub user avatars (avatars.githubusercontent.com/u/<id>?v=4)
+    // rendered in the assignees picker and comment author rows. Extend
+    // img-src — not override — so we keep 'self' + data: and add the
+    // GitHub CDN host. Allow https: broadly as well so user-supplied avatar
+    // URLs from other identity providers (when we add Jira/Linear) don't
+    // each require a code change.
+    headers: {
+      contentSecurityPolicy: {
+        "img-src": ["'self'", "data:", "https:"],
+      },
+    },
   },
   routeRules: {
     // better-auth owns request/response shape for every /api/auth/* call —
