@@ -20,7 +20,7 @@ const DB_CREDS = {
 }
 
 describe("resolveGithubAppCredentials", () => {
-  test("prefers env when all core env vars are set", () => {
+  test("prefers env when all five required env vars are set", () => {
     const out = resolveGithubAppCredentials({ env: ENV_CREDS, dbRow: DB_CREDS })
     expect(out).toEqual({
       appId: "111",
@@ -58,6 +58,27 @@ describe("resolveGithubAppCredentials", () => {
     })
     expect(out?.source).toBe("db")
     expect(out?.appId).toBe("222")
+  })
+
+  test("falls back to DB when OAuth client_id is missing from env", () => {
+    // Webhook triplet without the OAuth pair is a common CI shape — we must
+    // NOT return source=env here, otherwise the user-identity OAuth flow
+    // produces a GitHub authorize URL with an empty client_id.
+    const out = resolveGithubAppCredentials({
+      env: { ...ENV_CREDS, GITHUB_APP_CLIENT_ID: "" },
+      dbRow: DB_CREDS,
+    })
+    expect(out?.source).toBe("db")
+    expect(out?.clientId).toBe("Iv1.db")
+  })
+
+  test("falls back to DB when OAuth client_secret is missing from env", () => {
+    const out = resolveGithubAppCredentials({
+      env: { ...ENV_CREDS, GITHUB_APP_CLIENT_SECRET: "" },
+      dbRow: DB_CREDS,
+    })
+    expect(out?.source).toBe("db")
+    expect(out?.clientSecret).toBe("cs_db")
   })
 
   test("returns null when neither env nor DB has creds", () => {

@@ -131,14 +131,23 @@ describe("GET /api/me/identities/github/callback", () => {
     const [me] = await db.select().from(user).where(eq(user.email, "cb@example.com"))
 
     const { signIdentityState } = await import("../../server/lib/identity-oauth-state")
-    // The dev server loads `apps/dashboard/.env` at startup (via `bun --env-file=...`
-    // in `bun run dev`). Read that same file directly so the state we sign is
-    // verifiable by the running server — the test process's own env snapshot
-    // may differ from the server's.
-    const serverEnv = Bun.file(new URL("../../.env", import.meta.url))
-    const serverEnvText = await serverEnv.text()
-    const serverSecret =
-      serverEnvText.match(/^BETTER_AUTH_SECRET=(.+)$/m)?.[1] ?? process.env.BETTER_AUTH_SECRET!
+    // Local dev: the dev server loads `apps/dashboard/.env` at startup (via
+    // `bun --env-file=...` in `bun run dev`), so the test process may see a
+    // DIFFERENT BETTER_AUTH_SECRET than the running server — read the file
+    // directly so the state we sign is verifiable by the dev server.
+    //
+    // CI: no `.env` file exists; `BETTER_AUTH_SECRET` is set via the workflow
+    // `env:` block and both processes see the same value. The try/catch
+    // degrades gracefully to `process.env` when the file is absent.
+    let serverSecret: string | undefined
+    try {
+      const serverEnvText = await Bun.file(new URL("../../.env", import.meta.url)).text()
+      serverSecret = serverEnvText.match(/^BETTER_AUTH_SECRET=(.+)$/m)?.[1]
+    } catch {
+      // no .env file (CI) — fall through
+    }
+    serverSecret ??= process.env.BETTER_AUTH_SECRET
+    if (!serverSecret) throw new Error("BETTER_AUTH_SECRET not available for test state signing")
     const state = signIdentityState({
       userId: me.id,
       secret: serverSecret,

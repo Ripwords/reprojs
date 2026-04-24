@@ -44,8 +44,19 @@ export function resolveGithubAppCredentials(input: {
   dbRow: DbCredsShape | null
 }): GithubAppCredentials | null {
   const e = input.env
+  // The user-identity OAuth flow (POST /api/me/identities/github/start) needs
+  // clientId + clientSecret on top of the webhook/install triplet. Only treat
+  // env as authoritative when ALL five are present — otherwise fall through to
+  // the DB row, which the manifest-install flow always populates fully.
+  // Without this guard, CI environments that happen to set the webhook triplet
+  // but not the OAuth pair would shadow a perfectly valid DB row and surface
+  // an empty client_id in the GitHub authorize URL.
   const envComplete = Boolean(
-    e.GITHUB_APP_ID && e.GITHUB_APP_PRIVATE_KEY && e.GITHUB_APP_WEBHOOK_SECRET,
+    e.GITHUB_APP_ID &&
+    e.GITHUB_APP_PRIVATE_KEY &&
+    e.GITHUB_APP_WEBHOOK_SECRET &&
+    e.GITHUB_APP_CLIENT_ID &&
+    e.GITHUB_APP_CLIENT_SECRET,
   )
   if (envComplete) {
     return {
