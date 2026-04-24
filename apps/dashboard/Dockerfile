@@ -40,7 +40,14 @@ FROM deps AS build
 WORKDIR /repo
 
 COPY . .
-RUN bun --filter dashboard build
+# Dashboard Nuxt server + the framework-agnostic SDK IIFE bundle. The IIFE
+# is served by /sdk/repro.iife.js at runtime so embedders can <script>-load
+# the widget directly from the dashboard origin without also deploying
+# packages/core as an npm dependency. Both builds are independent; running
+# them sequentially keeps the Dockerfile readable and the layer cache
+# simple (shared lockfile + node_modules above).
+RUN bun --filter dashboard build \
+ && bun run sdk:build
 
 # ─────────────────────────────────────────────────────────────────
 # Stage 3: runtime — slim image with Nuxt output + migration tooling
@@ -61,6 +68,14 @@ COPY --from=build --chown=repro:repro /repo/apps/dashboard/server/db ./server/db
 
 # Email templates read via fs.readFile at runtime — Nuxt doesn't bundle them.
 COPY --from=build --chown=repro:repro /repo/apps/dashboard/server/emails ./server/emails
+
+# SDK IIFE bundle — served by the dashboard at `/sdk/repro.iife.js` so host
+# pages can embed the widget via a single <script> tag without needing the
+# npm package on the client side. The `SDK_PATH` env var below points the
+# route handler directly at this file; without it, the handler's dev-time
+# relative path (../../packages/core/dist/...) resolves outside /app and
+# 503s at runtime.
+COPY --from=build --chown=repro:repro /repo/packages/core/dist/repro.iife.js ./sdk/repro.iife.js
 
 # Pre-create the local-disk attachments root owned by `repro`. Docker seeds a
 # newly-initialized named volume with the image directory's ownership, so
@@ -87,6 +102,8 @@ USER repro
 ENV NODE_ENV=production
 ENV NITRO_HOST=0.0.0.0
 ENV NITRO_PORT=3000
+# Point the /sdk/repro.iife.js route at the bundle we copied above.
+ENV SDK_PATH=/app/sdk/repro.iife.js
 EXPOSE 3000
 
 # Default: start the Nuxt server. Override in compose for the migrator service:
