@@ -45,7 +45,7 @@ export interface GithubAppManifest {
    * `installation_repositories` are auto-delivered to every GitHub App and
    * must NOT be listed.
    */
-  default_events: Array<"issues" | "issue_comment" | "label" | "milestone" | "member">
+  default_events: Array<"issues" | "sub_issues" | "issue_comment" | "label" | "milestone">
 }
 
 function isLocalhost(base: string): boolean {
@@ -101,10 +101,10 @@ export function buildGithubAppManifest(input: {
       // when the App's clientId is reused for better-auth GitHub OAuth.
       emails: "read",
     },
-    // Phase 0-3 webhook branches depend on every event subscribed here.
-    // `issue_comment` drives two-way comment sync; `label`/`milestone`/`member`
-    // drive picker-cache invalidation; `issues` carries status, assignee,
-    // milestone, title, and label events on the issue itself.
-    default_events: ["issues", "issue_comment", "label", "milestone", "member"],
+    // `issues` carries status, assignee, milestone, title, and label events on
+    // the issue itself; `issue_comment` drives two-way comment sync;
+    // `label` / `milestone` invalidate picker caches on remote changes;
+    // `sub_issues` covers GitHub's parent/child issue relationship events.
+    default_events: ["issues", "sub_issues", "issue_comment", "label", "milestone"],
   }
 }

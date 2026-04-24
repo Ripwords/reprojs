@@ -46,7 +46,13 @@ describe("buildGithubAppManifest", () => {
     // installation + installation_repositories are auto-delivered — excluded
     // here (listing them causes GitHub to reject the manifest).
     const m = buildGithubAppManifest({ baseUrl: "https://x.test" })
-    expect(m.default_events).toEqual(["issues", "issue_comment", "label", "milestone", "member"])
+    expect(m.default_events).toEqual([
+      "issues",
+      "sub_issues",
+      "issue_comment",
+      "label",
+      "milestone",
+    ])
   })
 
   test("setup_on_update true so admins get redirected back after editing installation", () => {
