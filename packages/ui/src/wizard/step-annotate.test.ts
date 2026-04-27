@@ -70,6 +70,8 @@ function mountStep(): HTMLElement {
   render(
     h(StepAnnotate, {
       bg: makeBg(),
+      steps: ["Annotate", "Details", "Review"],
+      currentStep: 0,
       onSkip: () => {},
       onNext: () => {},
       onCancel: () => {},

@@ -1,9 +1,10 @@
-// packages/ui/src/reporter.tsx
 import { h } from "preact"
-import { useEffect, useState } from "preact/hooks"
-import { reset } from "./annotation/store"
+import { useEffect, useMemo, useRef, useState } from "preact/hooks"
+import { reset, shapes } from "./annotation/store"
 import { StepAnnotate } from "./wizard/step-annotate"
-import { StepDescribe } from "./wizard/step-describe"
+import { StepDetails } from "./wizard/step-details"
+import { StepReview, type SummaryLine } from "./wizard/step-review"
+import { PrimaryButton, SecondaryButton, WizardHeader } from "./wizard/controls"
 
 export interface ReporterSubmitResult {
   ok: boolean
@@ -23,11 +24,21 @@ interface ReporterProps {
   openedAt: number
 }
 
+const STEPS = ["Annotate", "Details", "Review"] as const
+type StepName = "annotate" | "details" | "review"
+const STEP_INDEX: Record<StepName, number> = { annotate: 0, details: 1, review: 2 }
+
 export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterProps) {
   const [bg, setBg] = useState<HTMLImageElement | null>(null)
   const [annotatedBlob, setAnnotatedBlob] = useState<Blob | null>(null)
-  const [step, setStep] = useState<"annotate" | "describe">("annotate")
   const [rawScreenshot, setRawScreenshot] = useState<Blob | null>(null)
+  const [step, setStep] = useState<StepName>("annotate")
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const hpRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let revoked = false
@@ -41,19 +52,12 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
     ;(async () => {
       const blob = await onCapture()
       if (!blob) {
-        // The user dismissed the screen-capture prompt. Treat that as a
-        // cancel of the whole bug-report flow: close the wizard and return
-        // to the page. This used to drop into the describe step with a
-        // null screenshot, which surprised users who'd explicitly cancelled.
         if (!revoked) onClose()
         return
       }
       setRawScreenshot(blob)
       url = URL.createObjectURL(blob)
       const img = new Image()
-      // Revoke once the <img> has the bytes in memory (or has given up) so
-      // the blob is freed eagerly. The cleanup below is a safety net for
-      // the wizard-cancelled-mid-load path.
       img.addEventListener("load", () => {
         if (!revoked) setBg(img)
         revokeOnce()
@@ -75,36 +79,54 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
     }
   }, [])
 
-  function handleCancel() {
-    onClose()
-  }
-
-  function handleNext(blob: Blob) {
+  function handleNextFromAnnotate(blob: Blob) {
     setAnnotatedBlob(blob)
-    setStep("describe")
+    setStep("details")
   }
-
-  function handleSkip() {
+  function handleSkipFromAnnotate() {
     setAnnotatedBlob(rawScreenshot)
-    setStep("describe")
+    setStep("details")
   }
-
   function handleBack() {
-    setStep("annotate")
+    if (step === "review") setStep("details")
+    else if (step === "details") setStep("annotate")
+  }
+  function handleContinueFromDetails() {
+    setStep("review")
   }
 
-  async function handleSubmit(payload: {
-    title: string
-    description: string
-    dwellMs: number
-    honeypot: string
-  }) {
-    const result = await onSubmit({ ...payload, screenshot: annotatedBlob })
-    if (result.ok) {
+  async function handleSend() {
+    if (!title.trim() || submitting || success) return
+    setSubmitting(true)
+    setSubmitError(null)
+    const res = await onSubmit({
+      title: title.trim(),
+      description: description.trim(),
+      screenshot: annotatedBlob,
+      dwellMs: Math.max(0, Math.round(performance.now() - openedAt)),
+      honeypot: hpRef.current?.value ?? "",
+    })
+    setSubmitting(false)
+    if (res.ok) {
+      setSuccess(true)
       setTimeout(onClose, 1500)
+    } else {
+      setSubmitError(res.message ?? "Something went wrong.")
     }
-    return result
   }
+
+  const summary = useMemo<SummaryLine[]>(() => {
+    const lines: SummaryLine[] = [{ label: "Title & description" }]
+    if (annotatedBlob) {
+      lines.push({
+        label: shapes.value.length > 0 ? "Annotated screenshot" : "Screenshot",
+        hint: shapes.value.length > 0 ? String(shapes.value.length) : undefined,
+      })
+    }
+    lines.push({ label: "Console, network & breadcrumbs" })
+    lines.push({ label: "Environment info" })
+    return lines
+  }, [annotatedBlob])
 
   if (!bg) {
     return h("div", { class: "ft-wizard-loading" }, "Capturing…")
@@ -113,18 +135,73 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
   if (step === "annotate") {
     return h(StepAnnotate, {
       bg,
-      onSkip: handleSkip,
-      onNext: handleNext,
-      onCancel: handleCancel,
+      steps: STEPS,
+      currentStep: STEP_INDEX.annotate,
+      onSkip: handleSkipFromAnnotate,
+      onNext: handleNextFromAnnotate,
+      onCancel: onClose,
     })
   }
 
-  return h(StepDescribe, {
-    annotatedBlob,
-    onBack: handleBack,
-    onCancel: handleCancel,
-    openedAt,
-    onSubmit: async ({ title, description, dwellMs, honeypot }) =>
-      handleSubmit({ title, description, dwellMs, honeypot }),
-  })
+  const headerProps = {
+    eyebrow: "Repro",
+    title: "Report a bug",
+    steps: STEPS,
+    current: STEP_INDEX[step],
+    onClose,
+  }
+
+  const body =
+    step === "details"
+      ? h(StepDetails, {
+          title,
+          description,
+          onTitleChange: setTitle,
+          onDescriptionChange: setDescription,
+        })
+      : h(StepReview, { summary, error: success ? null : submitError })
+
+  const primary =
+    step === "details"
+      ? h(PrimaryButton, {
+          label: "Continue",
+          onClick: handleContinueFromDetails,
+          disabled: !title.trim(),
+        })
+      : h(PrimaryButton, {
+          label: success ? "Sent" : "Send report",
+          onClick: handleSend,
+          disabled: !title.trim() || success,
+          loading: submitting,
+        })
+
+  return h(
+    "div",
+    { class: "ft-wizard" },
+    h(WizardHeader, headerProps),
+    body,
+    h(
+      "footer",
+      { class: "ft-wizard-footer" },
+      h(SecondaryButton, { label: "Back", onClick: handleBack, disabled: submitting }),
+      h("input", {
+        ref: hpRef,
+        name: "website",
+        type: "text",
+        tabIndex: -1,
+        autoComplete: "off",
+        "aria-hidden": "true",
+        style: {
+          position: "absolute",
+          left: "-9999px",
+          top: "-9999px",
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "none",
+        },
+      }),
+      primary,
+    ),
+  )
 }
