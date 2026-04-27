@@ -13,6 +13,16 @@ import { enqueueSync } from "../../lib/enqueue-sync"
 import { env } from "../../lib/env"
 import { getAnonKeyLimiter, getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
 import { getStorage } from "../../lib/storage"
+import { sanitizeFilename } from "../../lib/sanitize-filename"
+import { rollbackPuts } from "../../lib/storage/rollback"
+
+const DENIED_USER_FILE_MIMES = new Set([
+  "application/x-msdownload",
+  "application/x-sh",
+  "text/x-shellscript",
+  "application/x-executable",
+])
+const DENIED_USER_FILE_EXTS = [".exe", ".bat", ".cmd", ".com", ".scr", ".sh", ".ps1", ".vbs"]
 
 export default defineEventHandler(async (event) => {
   // Preflight reflects Origin so browsers can proceed with the real POST.
@@ -305,6 +315,70 @@ export default defineEventHandler(async (event) => {
       )
     }
     await Promise.all(writes)
+  }
+
+  // ── User-supplied additional attachments (kind = "user-file") ────────────
+  // Multipart parts are named attachment[0], attachment[1], … so a single
+  // report can carry multiple files without colliding on a fixed part name.
+  const userParts = parts.flatMap((p) => {
+    const m = p.name?.match(/^attachment\[(\d+)\]$/)
+    if (!m || !p.data || p.data.length === 0) return []
+    return [{ idx: Number(m[1]), part: p }]
+  })
+
+  if (userParts.length > 0) {
+    if (userParts.length > env.INTAKE_USER_FILES_MAX_COUNT) {
+      throw createError({
+        statusCode: 413,
+        statusMessage: `Too many attachments (max ${env.INTAKE_USER_FILES_MAX_COUNT})`,
+      })
+    }
+    let totalUserBytes = 0
+    for (const { part } of userParts) {
+      if (part.data.length > env.INTAKE_USER_FILE_MAX_BYTES) {
+        throw createError({ statusCode: 413, statusMessage: "Attachment too large" })
+      }
+      const mime = part.type ?? "application/octet-stream"
+      const lower = (part.filename ?? "").toLowerCase()
+      if (
+        DENIED_USER_FILE_MIMES.has(mime) ||
+        DENIED_USER_FILE_EXTS.some((ext) => lower.endsWith(ext))
+      ) {
+        throw createError({
+          statusCode: 415,
+          statusMessage: `Attachment type not allowed: ${part.filename ?? "unnamed"}`,
+        })
+      }
+      totalUserBytes += part.data.length
+    }
+    if (totalUserBytes > env.INTAKE_USER_FILES_TOTAL_MAX_BYTES) {
+      throw createError({ statusCode: 413, statusMessage: "Attachments exceed total budget" })
+    }
+
+    const storage = await getStorage()
+    const writtenKeys: string[] = []
+    try {
+      await Promise.all(
+        userParts.map(async ({ idx, part }) => {
+          const safeName = sanitizeFilename(part.filename ?? "", idx)
+          const mime = part.type ?? "application/octet-stream"
+          const key = `${report.id}/user/${idx}-${safeName}`
+          await storage.put(key, new Uint8Array(part.data), mime)
+          writtenKeys.push(key)
+          await db.insert(reportAttachments).values({
+            reportId: report.id,
+            kind: "user-file",
+            storageKey: key,
+            contentType: mime,
+            sizeBytes: part.data.length,
+            filename: safeName,
+          })
+        }),
+      )
+    } catch (err) {
+      await rollbackPuts(storage, writtenKeys)
+      throw err
+    }
   }
 
   // Auto-create GitHub issue on intake when the toggle is on.
