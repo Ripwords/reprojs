@@ -29,8 +29,9 @@ export default defineEventHandler(async (event) => {
   // Signed-token fast path: used by GitHub-embedded screenshot URLs, no session.
   const tokenRaw = q.token
   const expiresRaw = q.expires
-  if (typeof tokenRaw === "string" && typeof expiresRaw === "string") {
-    const expiresAt = Number.parseInt(expiresRaw, 10)
+  const usedToken = typeof tokenRaw === "string" && typeof expiresRaw === "string"
+  if (usedToken) {
+    const expiresAt = Number.parseInt(expiresRaw as string, 10)
     if (!Number.isFinite(expiresAt)) {
       throw createError({ statusCode: 401, statusMessage: "Invalid token" })
     }
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event) => {
       reportId,
       kind,
       expiresAt,
-      token: tokenRaw,
+      token: tokenRaw as string,
     })
     if (!ok) {
       throw createError({ statusCode: 401, statusMessage: "Invalid or expired token" })
@@ -51,7 +52,14 @@ export default defineEventHandler(async (event) => {
 
   // ?id=<uuid> path: fetch any attachment row directly by primary key.
   // Used for user-file attachments which may have any content type.
+  // Tokens are scoped by (project, report, kind, expiry) — they MUST NOT be
+  // combined with ?id=<uuid> to fetch arbitrary attachments by primary key,
+  // or a token minted for one kind could be replayed against any attachment
+  // in the same report.
   if (typeof idRaw === "string") {
+    if (usedToken) {
+      throw createError({ statusCode: 401, statusMessage: "Token cannot be used with ?id=" })
+    }
     const [row] = await db
       .select({
         storageKey: reportAttachments.storageKey,
@@ -90,11 +98,11 @@ export default defineEventHandler(async (event) => {
     setHeader(event, "Content-Security-Policy", "default-src 'none'; img-src 'self' data:; sandbox")
     setHeader(event, "Cache-Control", "private, max-age=3600")
     if (row.filename) {
-      setHeader(
-        event,
-        "Content-Disposition",
-        `inline; filename="${row.filename.replace(/"/g, '\\"')}"`,
-      )
+      // Strip CR/LF in addition to escaping double-quotes; defense-in-depth
+      // against header injection. sanitizeFilename already strips control
+      // bytes at intake time, but never trust two layers down.
+      const safeName = row.filename.replace(/[\r\n"]/g, "")
+      setHeader(event, "Content-Disposition", `inline; filename="${safeName}"`)
     }
     setResponseStatus(event, 200)
     return Buffer.from(bytes)
