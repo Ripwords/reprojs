@@ -17,6 +17,7 @@ export interface MountOptions {
     title: string
     description: string
     screenshot: Blob | null
+    attachments: import("@reprojs/sdk-utils").Attachment[]
     dwellMs: number
     honeypot: string
   }) => Promise<ReporterSubmitResult>

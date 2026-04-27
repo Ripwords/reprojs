@@ -42,8 +42,12 @@ describe("StepDetails", () => {
       h(StepDetails, {
         title: "",
         description: "",
+        attachments: [],
+        attachmentErrors: [],
         onTitleChange: () => {},
         onDescriptionChange: () => {},
+        onAttachmentsAdd: () => {},
+        onAttachmentRemove: () => {},
       }),
       root as unknown as Element,
     )
@@ -62,10 +66,14 @@ describe("StepDetails", () => {
       h(StepDetails, {
         title: "",
         description: "",
+        attachments: [],
+        attachmentErrors: [],
         onTitleChange: (v: string) => {
           captured = v
         },
         onDescriptionChange: () => {},
+        onAttachmentsAdd: () => {},
+        onAttachmentRemove: () => {},
       }),
       root as unknown as Element,
     )

@@ -58,7 +58,7 @@ export function init(options: InitOptions): FeedbackHandle {
     // next bug report still has a hot buffer to draw from.
     onOpen: () => _collectors?.pauseReplay(),
     onClose: () => _collectors?.resumeReplay(),
-    onSubmit: async ({ title, description, screenshot, dwellMs, honeypot }) => {
+    onSubmit: async ({ title, description, screenshot, attachments, dwellMs, honeypot }) => {
       if (!_config || !_collectors) return { ok: false, message: "Not initialized" }
       const snap = _collectors.snapshotAll()
       const context = gatherContext(_reporter, _config.metadata, {
@@ -81,6 +81,7 @@ export function init(options: InitOptions): FeedbackHandle {
         context: final.context,
         metadata: _config.metadata,
         screenshot: final.screenshot,
+        attachments,
         logs: final.logs,
         replayBytes: replay.bytes,
         dwellMs,

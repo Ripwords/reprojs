@@ -1,6 +1,7 @@
 import { h } from "preact"
 import { useEffect, useMemo, useRef, useState } from "preact/hooks"
 import { reset, shapes } from "./annotation/store"
+import { DEFAULT_ATTACHMENT_LIMITS, validateAttachments, type Attachment } from "@reprojs/sdk-utils"
 import { StepAnnotate } from "./wizard/step-annotate"
 import { StepDetails } from "./wizard/step-details"
 import { StepReview, type SummaryLine } from "./wizard/step-review"
@@ -18,6 +19,7 @@ interface ReporterProps {
     title: string
     description: string
     screenshot: Blob | null
+    attachments: Attachment[]
     dwellMs: number
     honeypot: string
   }) => Promise<ReporterSubmitResult>
@@ -39,6 +41,20 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const hpRef = useRef<HTMLInputElement>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [attachmentErrors, setAttachmentErrors] = useState<string[]>([])
+  const attachmentsRef = useRef<Attachment[]>([])
+  useEffect(() => {
+    attachmentsRef.current = attachments
+  }, [attachments])
+
+  useEffect(() => {
+    return () => {
+      for (const a of attachmentsRef.current) {
+        if (a.previewUrl) URL.revokeObjectURL(a.previewUrl)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let revoked = false
@@ -95,6 +111,45 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
     setStep("review")
   }
 
+  function handleAttachmentsAdd(files: File[]) {
+    const result = validateAttachments(files, attachments, DEFAULT_ATTACHMENT_LIMITS)
+    if (result.accepted.length > 0) {
+      const withPreviews = result.accepted.map((a) => ({
+        ...a,
+        previewUrl: a.isImage ? URL.createObjectURL(a.blob) : undefined,
+      }))
+      setAttachments((prev) => [...prev, ...withPreviews])
+    }
+    if (result.rejected.length > 0) {
+      setAttachmentErrors(
+        result.rejected.map(
+          (r) =>
+            `${r.filename}: ${
+              r.reason === "too-large"
+                ? "too large"
+                : r.reason === "denied-mime"
+                  ? "file type not allowed"
+                  : r.reason === "count-exceeded"
+                    ? "too many files (max 5)"
+                    : r.reason === "total-exceeded"
+                      ? "total budget exceeded"
+                      : "couldn't read file"
+            }`,
+        ),
+      )
+    } else {
+      setAttachmentErrors([])
+    }
+  }
+
+  function handleAttachmentRemove(id: string) {
+    setAttachments((prev) => {
+      const target = prev.find((a) => a.id === id)
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl)
+      return prev.filter((a) => a.id !== id)
+    })
+  }
+
   async function handleSend() {
     if (!title.trim() || submitting || success) return
     setSubmitting(true)
@@ -103,6 +158,7 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
       title: title.trim(),
       description: description.trim(),
       screenshot: annotatedBlob,
+      attachments,
       dwellMs: Math.max(0, Math.round(performance.now() - openedAt)),
       honeypot: hpRef.current?.value ?? "",
     })
@@ -125,8 +181,11 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
     }
     lines.push({ label: "Console, network & breadcrumbs" })
     lines.push({ label: "Environment info" })
+    if (attachments.length > 0) {
+      lines.push({ label: "Additional attachments", hint: String(attachments.length) })
+    }
     return lines
-  }, [annotatedBlob])
+  }, [annotatedBlob, attachments.length])
 
   if (!bg) {
     return h("div", { class: "ft-wizard-loading" }, "Capturing…")
@@ -156,8 +215,12 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
       ? h(StepDetails, {
           title,
           description,
+          attachments,
+          attachmentErrors,
           onTitleChange: setTitle,
           onDescriptionChange: setDescription,
+          onAttachmentsAdd: handleAttachmentsAdd,
+          onAttachmentRemove: handleAttachmentRemove,
         })
       : h(StepReview, { summary, error: success ? null : submitError })
 
