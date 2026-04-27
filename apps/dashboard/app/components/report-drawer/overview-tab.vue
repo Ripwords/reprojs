@@ -1,12 +1,18 @@
 <!-- apps/dashboard/app/components/report-drawer/overview-tab.vue -->
 <script setup lang="ts">
-import type { ReportSummaryDTO } from "@reprojs/shared"
+import type { ReportDetailDTO } from "@reprojs/shared"
 import { safeHref } from "~/composables/use-safe-href"
 import { parseBrowser, parseOs } from "~/composables/use-user-agent"
 import { useMarkdown } from "~/composables/use-markdown"
 
-const props = defineProps<{ projectId: string; report: ReportSummaryDTO }>()
-const emit = defineEmits<{ "select-tab": [tab: "console" | "network" | "replay"] }>()
+const props = defineProps<{ projectId: string; report: ReportDetailDTO }>()
+const emit = defineEmits<{
+  "select-tab": [tab: "console" | "network" | "replay" | "attachments"]
+}>()
+
+const userFileCount = computed(
+  () => (props.report.attachments ?? []).filter((a) => a.kind === "user-file").length,
+)
 
 const ctx = computed(() => props.report.context)
 const sys = computed(() => ctx.value?.systemInfo)
@@ -38,6 +44,18 @@ const descriptionHtml = computed(() =>
         />
       </div>
     </UCard>
+
+    <!-- User-uploaded file chip. Only visible when the reporter attached extra
+         files. Clicking navigates to the Attachments tab. -->
+    <button
+      v-if="userFileCount > 0"
+      type="button"
+      class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+      @click="emit('select-tab', 'attachments')"
+    >
+      <UIcon name="i-heroicons-paper-clip" class="size-3.5" />
+      {{ userFileCount }} additional {{ userFileCount === 1 ? "file" : "files" }}
+    </button>
 
     <!-- Reporter-authored description. Sits above the metadata so the user
          sees the "what" before the "where/when". Hidden entirely when the
