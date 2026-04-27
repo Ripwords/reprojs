@@ -4,8 +4,8 @@ import { ReproContext, type ReproInternalContext } from "./context"
 import { normalizeConfig, type ReproConfig, type ReproConfigInput } from "./config"
 import { createConsoleCollector } from "./collectors/console"
 import { createNetworkCollector } from "./collectors/network"
-import { createBreadcrumbsCollector } from "@reprojs/sdk-utils"
-import { createQueueStorage } from "./queue/storage"
+import { createBreadcrumbsCollector, type Attachment } from "@reprojs/sdk-utils"
+import { createQueueStorage, type QueueItemAttachment } from "./queue/storage"
 import { createQueueFlusher } from "./queue/flush"
 import { createConnectivityListener } from "./queue/netinfo"
 import { createIntakeClient } from "./intake-client"
@@ -147,6 +147,7 @@ function ActiveProvider({ config, children }: { config: ReproConfig; children: R
     description: string
     annotatedUri: string | null
     rawUri: string | null
+    attachments: Attachment[]
   }) {
     const consoleEntries = config.collectors.console ? consoleRef.current.snapshot() : []
     const networkEntries = config.collectors.network.enabled ? networkRef.current.snapshot() : []
@@ -199,12 +200,22 @@ function ActiveProvider({ config, children }: { config: ReproConfig; children: R
       createdAt: now,
       payload: {
         input,
-        // The intake endpoint only reads a "screenshot" multipart part — any other
-        // name is silently dropped. Submit the annotated flatten as kind=screenshot
-        // when available, otherwise fall back to the raw capture.
+        // Build the queue attachment list: screenshot first (if captured),
+        // then any user-supplied files from the picker.
         attachments: (() => {
-          const uri = res.annotatedUri ?? res.rawUri
-          return uri ? [{ kind: "screenshot" as const, uri, bytes: 0 }] : []
+          const screenshotUri = res.annotatedUri ?? res.rawUri
+          const screenshotEntries: QueueItemAttachment[] = screenshotUri
+            ? [{ kind: "screenshot" as const, uri: screenshotUri, bytes: 0 }]
+            : []
+          const userFileEntries: QueueItemAttachment[] = res.attachments.map((a) => ({
+            kind: "user-file" as const,
+            // previewUrl carries the file:// uri from expo-document-picker.
+            uri: a.previewUrl ?? a.id,
+            bytes: a.size,
+            filename: a.filename,
+            contentType: a.mime,
+          }))
+          return [...screenshotEntries, ...userFileEntries]
         })(),
         logs: logsJson,
       },
