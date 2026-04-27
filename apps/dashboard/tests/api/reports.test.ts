@@ -1,8 +1,8 @@
 import { setup } from "../nuxt-setup"
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test"
-import type { ReportSummaryDTO } from "@reprojs/shared"
+import type { ReportDetailDTO, ReportSummaryDTO } from "@reprojs/shared"
 import { db } from "../../server/db"
-import { reports } from "../../server/db/schema"
+import { reportAttachments, reports } from "../../server/db/schema"
 import {
   apiFetch,
   createUser,
@@ -286,6 +286,71 @@ describe("source filter and facets", () => {
     expect(status).toBe(200)
     expect(body.total).toBe(1)
     expect(body.items.every((i) => i.source === "expo" && i.devicePlatform === "ios")).toBe(true)
+  })
+})
+
+describe("report detail endpoint", () => {
+  afterEach(async () => {
+    await truncateReports()
+    await truncateDomain()
+  })
+
+  test("GET /reports/:id includes user-file attachments with filename", async () => {
+    const admin = await createUser("admin@example.com", "admin")
+    const projectId = await seedProject({
+      name: "Demo",
+      publicKey: PK,
+      allowedOrigins: [ORIGIN],
+      createdBy: admin,
+    })
+
+    // Insert a report row directly (no screenshot needed — we just want the detail shape)
+    const [report] = await db
+      .insert(reports)
+      .values({
+        projectId,
+        title: "User file report",
+        context: {
+          source: "web",
+          pageUrl: "http://localhost:4000/p",
+          userAgent: "UA",
+          viewport: { w: 1000, h: 800 },
+          timestamp: new Date().toISOString(),
+        },
+        origin: ORIGIN,
+        ip: "127.0.0.1",
+        source: "web",
+      })
+      .returning()
+
+    if (!report) throw new Error("report insert failed")
+
+    // Insert a user-file attachment directly (no storage backend needed for metadata test)
+    await db.insert(reportAttachments).values({
+      reportId: report.id,
+      kind: "user-file",
+      storageKey: "projects/test/reports/test/user/screenshot.png",
+      contentType: "image/png",
+      sizeBytes: 4096,
+      filename: "screenshot.png",
+    })
+
+    const cookie = await signIn("admin@example.com")
+    const { status, body } = await apiFetch<ReportDetailDTO>(
+      `/api/projects/${projectId}/reports/${report.id}`,
+      { headers: { cookie } },
+    )
+
+    expect(status).toBe(200)
+    expect(body.attachments).toBeDefined()
+    expect(body.attachments).toHaveLength(1)
+    const att = body.attachments[0]
+    if (!att) throw new Error("attachment missing")
+    expect(att.kind).toBe("user-file")
+    expect(att.filename).toBe("screenshot.png")
+    expect(att.contentType).toBe("image/png")
+    expect(att.sizeBytes).toBe(4096)
+    expect(att.url).toContain(`/api/projects/${projectId}/reports/${report.id}/attachment?id=`)
   })
 })
 
