@@ -78,6 +78,9 @@ const Schema = z.object({
   INTAKE_RATE_PER_IP: intString(20),
   INTAKE_RATE_PER_KEY_ANON: intString(10),
   INTAKE_MAX_BYTES: intString(5_242_880),
+  INTAKE_USER_FILE_MAX_BYTES: intString(10 * 1024 * 1024),
+  INTAKE_USER_FILES_TOTAL_MAX_BYTES: intString(25 * 1024 * 1024),
+  INTAKE_USER_FILES_MAX_COUNT: intString(5),
   INTAKE_REQUIRE_DWELL: boolString.default(true),
   INTAKE_MIN_DWELL_MS: intString(1_500),
 
