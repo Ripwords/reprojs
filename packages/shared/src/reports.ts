@@ -210,7 +210,13 @@ export const ReportIntakeInput = z.object({
 })
 export type ReportIntakeInput = z.infer<typeof ReportIntakeInput>
 
-export const AttachmentKind = z.enum(["screenshot", "annotated-screenshot", "replay", "logs"])
+export const AttachmentKind = z.enum([
+  "screenshot",
+  "annotated-screenshot",
+  "replay",
+  "logs",
+  "user-file",
+])
 export type AttachmentKind = z.infer<typeof AttachmentKind>
 
 export const AttachmentDTO = z.object({
@@ -219,6 +225,7 @@ export const AttachmentDTO = z.object({
   url: z.string(),
   contentType: z.string(),
   sizeBytes: z.number().int().nonnegative(),
+  filename: z.string().nullable(),
 })
 export type AttachmentDTO = z.infer<typeof AttachmentDTO>
 

@@ -6,6 +6,8 @@ import {
   SystemInfo,
   ReportIntakeInput,
   ReportSummaryDTO,
+  AttachmentKind,
+  AttachmentDTO,
 } from "./index"
 
 test("ReportSource accepts web and expo", () => {
@@ -146,4 +148,27 @@ test("ReportSummaryDTO requires source and allows nullable devicePlatform", () =
 
   const missing = ReportSummaryDTO.safeParse({ ...base })
   expect(missing.success).toBe(false)
+})
+
+test("AttachmentKind accepts user-file", () => {
+  expect(AttachmentKind.safeParse("user-file").success).toBe(true)
+  expect(AttachmentKind.safeParse("screenshot").success).toBe(true)
+  expect(AttachmentKind.safeParse("unknown-kind").success).toBe(false)
+})
+
+test("AttachmentDTO.filename accepts string and null", () => {
+  const base = {
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    kind: "user-file" as const,
+    url: "/api/projects/p/reports/r/attachment?id=550e8400-e29b-41d4-a716-446655440000",
+    contentType: "application/pdf",
+    sizeBytes: 12345,
+  }
+
+  const withFilename = AttachmentDTO.parse({ ...base, filename: "report.pdf" })
+  expect(withFilename.filename).toBe("report.pdf")
+  expect(withFilename.kind).toBe("user-file")
+
+  const withNull = AttachmentDTO.parse({ ...base, filename: null })
+  expect(withNull.filename).toBeNull()
 })
