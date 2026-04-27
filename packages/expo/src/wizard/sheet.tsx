@@ -17,6 +17,8 @@ import { useAnnotationShapes } from "../annotation/use-shapes"
 import { CloseIcon } from "../annotation/icons"
 import { PrimaryButton, SecondaryButton, StepIndicator } from "./controls"
 import { theme } from "./theme"
+import { pickFiles } from "../capture/file-picker"
+import { DEFAULT_ATTACHMENT_LIMITS, validateAttachments, type Attachment } from "@reprojs/sdk-utils"
 
 export interface WizardArgs {
   initialTitle?: string
@@ -27,6 +29,7 @@ export interface WizardArgs {
     description: string
     annotatedUri: string | null
     rawUri: string | null
+    attachments: Attachment[]
   }) => Promise<void>
   onClose: () => void
 }
@@ -48,6 +51,8 @@ export function WizardSheet({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [annotateSize, setAnnotateSize] = useState({ w: 0, h: 0 })
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [attachmentErrors, setAttachmentErrors] = useState<string[]>([])
   const store = useRef(createAnnotationStore()).current
   const flattenRef = useRef<FlattenHandle | null>(null)
 
@@ -57,6 +62,35 @@ export function WizardSheet({
   useEffect(() => {
     setStep("form")
   }, [screenshot])
+
+  async function handleAttachmentsAdd() {
+    const picked = await pickFiles({ multiple: true })
+    if (picked.length === 0) return
+    // Convert picker output → File[] for validateAttachments. Each picked
+    // Attachment already has size/mime/filename; we mirror them onto a stub
+    // File so the validator's File contract type-checks. Override size since
+    // the picker already told us the real value.
+    const asFiles: File[] = picked.map((a) => {
+      const f = new File([new Uint8Array(0)], a.filename, { type: a.mime })
+      Object.defineProperty(f, "size", { value: a.size, configurable: true })
+      return f
+    })
+    const result = validateAttachments(asFiles, attachments, DEFAULT_ATTACHMENT_LIMITS)
+    // Reattach picker uri/blob to the validated Attachments (validateAttachments
+    // wraps the File reference in `blob`, which on RN is a stub — replace with
+    // the picker's previewUrl + blob).
+    const accepted = result.accepted.map((a) => {
+      const original = picked.find((p) => p.filename === a.filename)
+      if (!original) return a
+      return { ...a, blob: original.blob, previewUrl: original.previewUrl }
+    })
+    setAttachments((prev) => [...prev, ...accepted])
+    setAttachmentErrors(result.rejected.map((r) => `${r.filename}: ${r.reason.replace("-", " ")}`))
+  }
+
+  function handleAttachmentRemove(id: string) {
+    setAttachments((prev) => prev.filter((a) => a.id !== id))
+  }
 
   async function handleSubmit() {
     setSubmitting(true)
@@ -82,6 +116,7 @@ export function WizardSheet({
         description,
         annotatedUri: annotated,
         rawUri: screenshot?.uri ?? null,
+        attachments,
       })
     } catch (e) {
       setError((e as Error).message)
@@ -122,8 +157,11 @@ export function WizardSheet({
     }
     lines.push({ label: "Console, network & breadcrumbs" })
     lines.push({ label: "Device & environment info" })
+    if (attachments.length > 0) {
+      lines.push({ label: "Additional attachments", hint: String(attachments.length) })
+    }
     return lines
-  }, [title, screenshot, shapes.length])
+  }, [title, screenshot, shapes.length, attachments.length])
 
   return (
     <Modal visible animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
@@ -191,8 +229,12 @@ export function WizardSheet({
             <StepForm
               title={title}
               description={description}
+              attachments={attachments}
+              attachmentErrors={attachmentErrors}
               onTitleChange={setTitle}
               onDescriptionChange={setDescription}
+              onAttachmentsAdd={handleAttachmentsAdd}
+              onAttachmentRemove={handleAttachmentRemove}
             />
           )}
           {step === "annotate" && (
