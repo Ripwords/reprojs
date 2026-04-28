@@ -34,8 +34,17 @@ services:
     restart: unless-stopped
 
   # ────────────────────────────────────────────────────────────────
-  # Migrator — runs drizzle-kit migrate, exits 0. The dashboard won't
-  # start until this service has completed successfully.
+  # Migrator — runs drizzle-kit migrate, exits 0. Kept for operators who
+  # want explicit migration control or are running a multi-replica
+  # deploy. The dashboard service ALSO runs migrations on its own startup
+  # (see its command below), so this service is now belt-and-suspenders.
+  #
+  # Why both: with restart: "no", a successful migrator container caches
+  # as Exited(0); on `docker compose up -d` after pulling a new image,
+  # compose may reuse the cached container without re-running drizzle-
+  # kit migrate against the new image's migrations. The dashboard's own
+  # startup migration is idempotent and guarantees the schema matches
+  # the running code on every restart.
   # ────────────────────────────────────────────────────────────────
   migrator:
     image: ripwords/reprojs-dashboard:${REPRO_VERSION:-latest}
@@ -107,12 +116,20 @@ services:
       # Used when STORAGE_DRIVER=local (the default). Ignored when
       # STORAGE_DRIVER=s3 — attachments go to your S3 bucket instead.
       - attachments_data:/data/attachments
+    # Always run drizzle-kit migrate before starting the server. Idempotent —
+    # exits in milliseconds when no new migrations exist. Guarantees that
+    # an upgraded image cannot end up serving against a stale schema, even
+    # if the separate `migrator` service didn't re-run on this `up`.
+    command: ["sh", "-c", "bunx drizzle-kit migrate && exec bun .output/server/index.mjs"]
     healthcheck:
       test: ["CMD", "bun", "/app/healthcheck.mjs"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      # Bumped from 30s — first boot of an upgraded image now also runs
+      # migrations during the start window, so give the healthcheck a
+      # little more room before failing.
+      start_period: 60s
     restart: unless-stopped
 
 volumes:
