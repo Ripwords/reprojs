@@ -1,5 +1,71 @@
 # Changelog
 
+## v0.5.0
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.4.2...v0.5.0)
+
+### 🚀 Enhancements
+
+- **sdk-utils:** Add canonical theme tokens shared by web and expo SDKs ([989d8e3](https://github.com/Ripwords/ReproJs/commit/989d8e3))
+- **sdk-utils:** Add Attachment shape and validateAttachments helper ([a6c8159](https://github.com/Ripwords/ReproJs/commit/a6c8159))
+- **ui:** Add themeToCssVars helper that emits flame/mist tokens as CSS vars ([1a2e692](https://github.com/Ripwords/ReproJs/commit/1a2e692))
+- **ui:** Inject flame/mist CSS vars into shadow root at mount ([91a883b](https://github.com/Ripwords/ReproJs/commit/91a883b))
+- **ui:** Add PrimaryButton, SecondaryButton, FieldLabel, StepIndicator, WizardHeader ([61404b5](https://github.com/Ripwords/ReproJs/commit/61404b5))
+- **ui:** Add StepDetails (replaces step-describe in 3-step wizard) ([1077c55](https://github.com/Ripwords/ReproJs/commit/1077c55))
+- **ui:** Add StepReview with 'Included in this report' summary ([da15040](https://github.com/Ripwords/ReproJs/commit/da15040))
+- **ui:** Replace 2-step wizard with annotate → details → review flow ([25c916f](https://github.com/Ripwords/ReproJs/commit/25c916f))
+- **db:** Add report_attachments.filename and user-file kind ([9fd59b1](https://github.com/Ripwords/ReproJs/commit/9fd59b1))
+- **env:** Add user-file intake size budgets ([01c0f9e](https://github.com/Ripwords/ReproJs/commit/01c0f9e))
+- **server:** Add sanitizeFilename + rollbackPuts helpers ([f4bc566](https://github.com/Ripwords/ReproJs/commit/f4bc566))
+- **intake:** Accept attachment[N] parts as user-file attachments ([bceae0b](https://github.com/Ripwords/ReproJs/commit/bceae0b))
+- **ui:** Add AttachmentList with hybrid thumbnail + chip rendering ([b8070d6](https://github.com/Ripwords/ReproJs/commit/b8070d6))
+- **sdk-web:** Add user attachments end-to-end ([46af0bb](https://github.com/Ripwords/ReproJs/commit/46af0bb))
+- **shared:** Add user-file kind and filename field to AttachmentDTO ([dd715e5](https://github.com/Ripwords/ReproJs/commit/dd715e5))
+- **dashboard:** Include user-file filename in report detail response ([4242d52](https://github.com/Ripwords/ReproJs/commit/4242d52))
+- **dashboard:** Add AttachmentsTab for user-file attachments ([f046de2](https://github.com/Ripwords/ReproJs/commit/f046de2))
+- **dashboard:** Expose user-file attachments tab in report drawer ([125760a](https://github.com/Ripwords/ReproJs/commit/125760a))
+- **expo:** Add pickFiles wrapper over expo-document-picker ([d664505](https://github.com/Ripwords/ReproJs/commit/d664505))
+- **expo:** Add AttachmentList for the mobile wizard ([b2162d3](https://github.com/Ripwords/ReproJs/commit/b2162d3))
+- **expo:** Add attachments to the wizard's Details step ([9e64cea](https://github.com/Ripwords/ReproJs/commit/9e64cea))
+- **expo:** Submit user-file attachments as attachment[N] multipart parts ([716d4b6](https://github.com/Ripwords/ReproJs/commit/716d4b6))
+- **ui:** Side-by-side details layout + paste-to-attach screenshots ([4452729](https://github.com/Ripwords/ReproJs/commit/4452729))
+- **intake:** Virus-scan user attachments via ClamAV sidecar ([53f97a3](https://github.com/Ripwords/ReproJs/commit/53f97a3))
+- **ui:** Inflight toast + clamav scan visibility ([23b9349](https://github.com/Ripwords/ReproJs/commit/23b9349))
+- **dashboard:** Show clamav scan report on user-file attachments ([368d63b](https://github.com/Ripwords/ReproJs/commit/368d63b))
+- **expo:** Pick attachments from Photos / Files / Clipboard ([0cc0bf5](https://github.com/Ripwords/ReproJs/commit/0cc0bf5))
+- **extension:** Retheme popup + options to flame/mist tokens ([2708f72](https://github.com/Ripwords/ReproJs/commit/2708f72))
+- **deploy:** Add clamav sidecar to production compose.yaml ([3690065](https://github.com/Ripwords/ReproJs/commit/3690065))
+
+### 🩹 Fixes
+
+- **dashboard:** Reject ?id= when authed via signed token ([2485200](https://github.com/Ripwords/ReproJs/commit/2485200))
+- **docker:** Pin clamav sidecar to linux/amd64 ([7971214](https://github.com/Ripwords/ReproJs/commit/7971214))
+- **expo:** Make clipboard paste actually work ([641faad](https://github.com/Ripwords/ReproJs/commit/641faad))
+- **intake:** Scan user-files BEFORE inserting the report row ([67f0dbf](https://github.com/Ripwords/ReproJs/commit/67f0dbf))
+- **ci:** Isolate SDK tests per-package to prevent globalThis pollution ([d829cc2](https://github.com/Ripwords/ReproJs/commit/d829cc2))
+- **build:** Bump expo:build heap to 6GB ([dadcb27](https://github.com/Ripwords/ReproJs/commit/dadcb27))
+
+### 💅 Refactors
+
+- **ui:** Switch styles to CSS custom properties from sdk-utils tokens ([ede8899](https://github.com/Ripwords/ReproJs/commit/ede8899))
+- **expo:** Re-export shared theme tokens from sdk-utils ([9ddc528](https://github.com/Ripwords/ReproJs/commit/9ddc528))
+
+### 📖 Documentation
+
+- **specs:** Add SDK wizard redesign + user attachments design ([d8a9b2e](https://github.com/Ripwords/ReproJs/commit/d8a9b2e))
+- **plans:** Add SDK wizard redesign + user attachments implementation plan ([6327f12](https://github.com/Ripwords/ReproJs/commit/6327f12))
+
+### 🏡 Chore
+
+- Refresh bun.lock after clamav + expo peer-dep churn ([50c4cec](https://github.com/Ripwords/ReproJs/commit/50c4cec))
+- **release:** Sdk-v0.4.0 ([5868b7e](https://github.com/Ripwords/ReproJs/commit/5868b7e))
+- **release:** Expo-v0.2.0 ([df0f75e](https://github.com/Ripwords/ReproJs/commit/df0f75e))
+- **release:** Extension-v0.1.2 ([693a0a3](https://github.com/Ripwords/ReproJs/commit/693a0a3))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.4.2
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.4.1...v0.4.2)
