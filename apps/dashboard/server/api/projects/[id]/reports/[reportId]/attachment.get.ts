@@ -102,7 +102,12 @@ export default defineEventHandler(async (event) => {
       // against header injection. sanitizeFilename already strips control
       // bytes at intake time, but never trust two layers down.
       const safeName = row.filename.replace(/[\r\n"]/g, "")
-      setHeader(event, "Content-Disposition", `inline; filename="${safeName}"`)
+      // user-file kinds force `attachment` so a malicious file that somehow
+      // slipped past the mime/ext denylist + virus scan still cannot render
+      // inline in the browser. Other kinds (screenshot/replay/logs) are
+      // already rendered via known-safe content types and stay inline.
+      const disposition = row.kind === "user-file" ? "attachment" : "inline"
+      setHeader(event, "Content-Disposition", `${disposition}; filename="${safeName}"`)
     }
     setResponseStatus(event, 200)
     return Buffer.from(bytes)

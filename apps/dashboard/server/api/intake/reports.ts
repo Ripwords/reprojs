@@ -13,6 +13,7 @@ import { enqueueSync } from "../../lib/enqueue-sync"
 import { env } from "../../lib/env"
 import { getAnonKeyLimiter, getIpLimiter, getKeyLimiter } from "../../lib/rate-limit"
 import { getStorage } from "../../lib/storage"
+import { scanBytes } from "../../lib/clamav"
 import { sanitizeFilename } from "../../lib/sanitize-filename"
 import { rollbackPuts } from "../../lib/storage/rollback"
 
@@ -353,6 +354,34 @@ export default defineEventHandler(async (event) => {
     }
     if (totalUserBytes > env.INTAKE_USER_FILES_TOTAL_MAX_BYTES) {
       throw createError({ statusCode: 413, statusMessage: "Attachments exceed total budget" })
+    }
+
+    // Virus-scan each user-file before persisting. Runs sequentially because
+    // ClamAV's clamd is single-threaded per connection and scanning in
+    // parallel against a shared socket can interleave verdicts. With a 5-file
+    // cap and warm signature cache, sequential scanning is < 2s in practice.
+    // Skipped when INTAKE_USER_FILE_SCAN_ENABLED=false (the default).
+    if (env.INTAKE_USER_FILE_SCAN_ENABLED) {
+      for (const { part } of userParts) {
+        let scan: Awaited<ReturnType<typeof scanBytes>>
+        try {
+          scan = await scanBytes(new Uint8Array(part.data))
+        } catch (err) {
+          // Fail-closed: if the scanner is enabled but unreachable, surface a
+          // 503 rather than letting unscanned bytes through.
+          console.error("[intake] virus scanner unavailable", err)
+          throw createError({
+            statusCode: 503,
+            statusMessage: "Attachment scanner unavailable, please retry",
+          })
+        }
+        if (!scan.clean) {
+          throw createError({
+            statusCode: 422,
+            statusMessage: `Attachment rejected by virus scanner: ${part.filename ?? "unnamed"} (${scan.reason ?? "infected"})`,
+          })
+        }
+      }
     }
 
     const storage = await getStorage()

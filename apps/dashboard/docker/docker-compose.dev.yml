@@ -24,5 +24,24 @@ services:
       timeout: 5s
       retries: 10
 
+  # Optional virus scanner for user-supplied attachments. The dashboard only
+  # talks to it when INTAKE_USER_FILE_SCAN_ENABLED=true (off by default), so
+  # operators who don't want this can leave it stopped. First boot pulls the
+  # signature DB (~500 MB); freshclam updates it daily afterwards.
+  clamav:
+    image: clamav/clamav:stable
+    ports:
+      - "127.0.0.1:3310:3310"
+    volumes:
+      - repro_clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
 volumes:
   repro_data:
+  repro_clamav_db:

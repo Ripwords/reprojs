@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, setDefaultTimeout, test } from 
 import { eq } from "drizzle-orm"
 import { db } from "../../server/db"
 import { reportAttachments } from "../../server/db/schema"
-import { createUser, seedProject, truncateReports } from "../helpers"
+import { createUser, seedProject, truncateDomain, truncateReports } from "../helpers"
 
 await setup({ server: true, port: 3000, host: "localhost" })
 setDefaultTimeout(15000)
@@ -57,6 +57,9 @@ async function postReportWithFiles(
 
 describe("POST /api/intake/reports — user attachments", () => {
   beforeAll(async () => {
+    // Hard-reset users/projects so re-runs against a non-truncated DB don't
+    // collide on the admin email's unique constraint.
+    await truncateDomain()
     const admin = await createUser("attch-admin@example.com", "admin")
     await seedProject({
       name: "Attachment Test Project",
@@ -135,6 +138,12 @@ describe("POST /api/intake/reports — user attachments", () => {
     expect(userFile?.filename).toBe("etcpasswd")
     expect(userFile?.storageKey.endsWith("/user/0-etcpasswd")).toBe(true)
   })
+
+  // Note: virus-scan behavior (clean / infected / fail-closed / disabled) is
+  // covered by the unit-tests in `apps/dashboard/server/lib/clamav.test.ts`.
+  // It cannot be driven from this integration suite because the helper hits
+  // a separately-running `bun run dev` server: env mutations and
+  // _setClientForTesting() calls in the test process don't reach it.
 
   test("intake without attachment[N] parts behaves identically to today (regression guard)", async () => {
     const { res, reportId } = await postReportWithFiles([])
