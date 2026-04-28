@@ -1,26 +1,39 @@
+/*
+ * Tokens mirror @reprojs/sdk-utils/src/theme/tokens.ts so the extension
+ * popup, the web SDK widget, the Expo wizard, and the dashboard all share
+ * the flame (primary) + mist (neutral) scales. Keep in sync with that
+ * file when colors change.
+ */
 :root {
   --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
 
-  --ink: #09090b;
-  --ink-2: #3f3f46;
-  --ink-3: #71717a;
-  --line: #e4e4e7;
-  --line-strong: #a1a1aa;
-  --surface: #fafafa;
+  /* mist scale (text + neutral surfaces) */
+  --ink: #25343f;
+  --ink-2: #4a5763;
+  --ink-3: #6c7a87;
+  --line: #dde2e5;
+  --line-strong: #c7cfd5;
+  --surface: #f5f7f8;
   --panel: #ffffff;
-  --panel-alt: #f4f4f5;
+  --panel-alt: #edf0f1;
 
-  --accent: #047857;
-  --accent-2: #059669;
-  --accent-wash: #ecfdf5;
+  /* flame scale (primary accent) */
+  --accent: #ff9b51;
+  --accent-2: #f27a1f;
+  --accent-wash: #fff2e6;
+  --accent-edge: #ffc78a;
+  --accent-deep: #7c3a08;
 
+  /* burnt-amber for "permission pending" — distinct enough from flame
+     to read as a different state, not a brighter version of the active. */
   --warn: #b45309;
-  --warn-wash: #fffbeb;
+  --warn-wash: #fff7ed;
   --warn-edge: #fcd34d;
 
   --danger: #b91c1c;
   --danger-wash: #fef2f2;
+  --danger-edge: #fecaca;
 
   --r-sm: 4px;
   --r-md: 6px;
@@ -404,7 +417,7 @@ a:visited {
 .error-bar {
   padding: 8px 12px;
   background: var(--danger-wash);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--danger-edge);
   border-left-width: 3px;
   color: var(--danger);
   font-size: 12px;
@@ -415,9 +428,9 @@ a:visited {
 .hint-bar {
   padding: 10px 12px;
   background: var(--accent-wash);
-  border: 1px solid #a7f3d0;
+  border: 1px solid var(--accent-edge);
   border-left-width: 3px;
-  color: #064e3b;
+  color: var(--accent-deep);
   font-size: 12px;
   line-height: 1.5;
   border-radius: var(--r-sm);

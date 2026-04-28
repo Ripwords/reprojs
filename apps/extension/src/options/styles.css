@@ -2,9 +2,13 @@ body.options {
   width: auto;
   min-height: 100vh;
   padding: 56px 24px 80px;
+  /* Soft flame wash on the upper-left, cool mist haze on the upper-right —
+     the same warm/cool tension the wizard uses, just scaled up for the
+     full-page options surface. */
   background:
-    radial-gradient(ellipse 600px 400px at 20% -10%, #ecfdf5 0%, transparent 60%),
-    radial-gradient(ellipse 500px 300px at 80% 0%, #fafafa 0%, transparent 70%), var(--surface);
+    radial-gradient(ellipse 600px 400px at 20% -10%, var(--accent-wash) 0%, transparent 60%),
+    radial-gradient(ellipse 500px 300px at 80% 0%, var(--panel-alt) 0%, transparent 70%),
+    var(--surface);
 }
 
 .opt-shell {
