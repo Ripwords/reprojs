@@ -163,6 +163,10 @@ test("AttachmentDTO.filename accepts string and null", () => {
     url: "/api/projects/p/reports/r/attachment?id=550e8400-e29b-41d4-a716-446655440000",
     contentType: "application/pdf",
     sizeBytes: 12345,
+    scannedAt: null,
+    scanStatus: null,
+    scanEngine: null,
+    scanDurationMs: null,
   }
 
   const withFilename = AttachmentDTO.parse({ ...base, filename: "report.pdf" })
@@ -171,4 +175,22 @@ test("AttachmentDTO.filename accepts string and null", () => {
 
   const withNull = AttachmentDTO.parse({ ...base, filename: null })
   expect(withNull.filename).toBeNull()
+})
+
+test("AttachmentDTO.scan* fields accept clean-scan metadata", () => {
+  const parsed = AttachmentDTO.parse({
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    kind: "user-file" as const,
+    url: "/x",
+    contentType: "application/pdf",
+    sizeBytes: 12345,
+    filename: "report.pdf",
+    scannedAt: "2026-04-28T10:00:00.000Z",
+    scanStatus: "clean",
+    scanEngine: "ClamAV",
+    scanDurationMs: 23,
+  })
+  expect(parsed.scanStatus).toBe("clean")
+  expect(parsed.scanEngine).toBe("ClamAV")
+  expect(parsed.scanDurationMs).toBe(23)
 })

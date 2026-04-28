@@ -9,7 +9,13 @@ interface ScanClient {
 export interface ScanResult {
   clean: boolean
   reason?: string
+  /** Wall-clock scan duration in milliseconds. 0 when scanning was disabled. */
+  durationMs: number
+  /** Human-readable engine identifier persisted with the row. */
+  engine: string
 }
+
+const ENGINE = "ClamAV"
 
 let _client: ScanClient | null = null
 let _initInProgress: Promise<ScanClient> | null = null
@@ -52,7 +58,7 @@ async function getClient(): Promise<ScanClient> {
  * { clean: false, reason } only on a confirmed signature hit.
  */
 export async function scanBytes(bytes: Uint8Array): Promise<ScanResult> {
-  if (!env.INTAKE_USER_FILE_SCAN_ENABLED) return { clean: true }
+  if (!env.INTAKE_USER_FILE_SCAN_ENABLED) return { clean: true, durationMs: 0, engine: ENGINE }
   let client: ScanClient
   try {
     client = await getClient()
@@ -71,10 +77,10 @@ export async function scanBytes(bytes: Uint8Array): Promise<ScanResult> {
     if (isInfected) {
       const reason = viruses?.[0] ?? "infected"
       console.warn(`[clamav] scan verdict=infected:${reason} duration=${duration}ms`)
-      return { clean: false, reason }
+      return { clean: false, reason, durationMs: duration, engine: ENGINE }
     }
     console.info(`[clamav] scan verdict=clean duration=${duration}ms`)
-    return { clean: true }
+    return { clean: true, durationMs: duration, engine: ENGINE }
   } catch (err) {
     const duration = Date.now() - start
     console.error(`[clamav] scan error duration=${duration}ms`, err)

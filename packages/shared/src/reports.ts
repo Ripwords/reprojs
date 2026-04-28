@@ -226,6 +226,12 @@ export const AttachmentDTO = z.object({
   contentType: z.string(),
   sizeBytes: z.number().int().nonnegative(),
   filename: z.string().nullable(),
+  // Virus-scan provenance for user-file attachments. NULL on legacy rows or
+  // when scanning was disabled at intake time.
+  scannedAt: z.string().nullable(),
+  scanStatus: z.string().nullable(),
+  scanEngine: z.string().nullable(),
+  scanDurationMs: z.number().int().nullable(),
 })
 export type AttachmentDTO = z.infer<typeof AttachmentDTO>
 

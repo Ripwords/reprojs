@@ -92,6 +92,14 @@ export const reportAttachments = pgTable(
     contentType: text("content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     filename: text("filename"),
+    // Virus-scan provenance for user-supplied attachments. NULL for rows
+    // ingested before the scan path existed, or when scanning was disabled
+    // at intake time. Currently only "clean" rows reach storage — infected
+    // attachments fail the intake POST with 422 before persistence.
+    scannedAt: timestamp("scanned_at"),
+    scanStatus: text("scan_status"),
+    scanEngine: text("scan_engine"),
+    scanDurationMs: integer("scan_duration_ms"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({

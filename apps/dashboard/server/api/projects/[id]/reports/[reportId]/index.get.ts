@@ -73,6 +73,10 @@ export default defineEventHandler(async (event): Promise<ReportDetailDTO> => {
         contentType: reportAttachments.contentType,
         sizeBytes: reportAttachments.sizeBytes,
         filename: reportAttachments.filename,
+        scannedAt: reportAttachments.scannedAt,
+        scanStatus: reportAttachments.scanStatus,
+        scanEngine: reportAttachments.scanEngine,
+        scanDurationMs: reportAttachments.scanDurationMs,
       })
       .from(reportAttachments)
       .where(eq(reportAttachments.reportId, reportId)),
@@ -113,6 +117,10 @@ export default defineEventHandler(async (event): Promise<ReportDetailDTO> => {
       contentType: a.contentType,
       sizeBytes: a.sizeBytes,
       filename: a.filename ?? null,
+      scannedAt: a.scannedAt?.toISOString() ?? null,
+      scanStatus: a.scanStatus ?? null,
+      scanEngine: a.scanEngine ?? null,
+      scanDurationMs: a.scanDurationMs ?? null,
     })),
   }
 })

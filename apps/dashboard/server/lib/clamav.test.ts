@@ -24,7 +24,9 @@ describe("scanBytes", () => {
     // Inject a client that would mark anything infected — proves we skipped it.
     _setClientForTesting(fakeClient({ isInfected: true, viruses: ["FAIL"] }))
     const result = await scanBytes(new Uint8Array([1, 2, 3]))
-    expect(result).toEqual({ clean: true })
+    expect(result.clean).toBe(true)
+    expect(result.engine).toBe("ClamAV")
+    expect(result.durationMs).toBe(0)
   })
 
   test("returns clean when scanner reports no infection", async () => {
@@ -32,7 +34,9 @@ describe("scanBytes", () => {
     _reloadEnvForTesting()
     _setClientForTesting(fakeClient({ isInfected: false }))
     const result = await scanBytes(new Uint8Array([1, 2, 3]))
-    expect(result).toEqual({ clean: true })
+    expect(result.clean).toBe(true)
+    expect(result.engine).toBe("ClamAV")
+    expect(result.durationMs).toBeGreaterThanOrEqual(0)
   })
 
   test("returns clean=false with the first virus name when scanner finds one", async () => {
@@ -42,7 +46,9 @@ describe("scanBytes", () => {
       fakeClient({ isInfected: true, viruses: ["Eicar-Test-Signature", "Other"] }),
     )
     const result = await scanBytes(new Uint8Array([1, 2, 3]))
-    expect(result).toEqual({ clean: false, reason: "Eicar-Test-Signature" })
+    expect(result.clean).toBe(false)
+    expect(result.reason).toBe("Eicar-Test-Signature")
+    expect(result.engine).toBe("ClamAV")
   })
 
   test("falls back to a generic reason when viruses array is empty", async () => {
@@ -50,7 +56,8 @@ describe("scanBytes", () => {
     _reloadEnvForTesting()
     _setClientForTesting(fakeClient({ isInfected: true, viruses: [] }))
     const result = await scanBytes(new Uint8Array([1, 2, 3]))
-    expect(result).toEqual({ clean: false, reason: "infected" })
+    expect(result.clean).toBe(false)
+    expect(result.reason).toBe("infected")
   })
 
   test("throws (fail-closed) when scanner errors", async () => {

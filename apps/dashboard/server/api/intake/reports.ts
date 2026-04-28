@@ -361,8 +361,15 @@ export default defineEventHandler(async (event) => {
     // parallel against a shared socket can interleave verdicts. With a 5-file
     // cap and warm signature cache, sequential scanning is < 2s in practice.
     // Skipped when INTAKE_USER_FILE_SCAN_ENABLED=false (the default).
+    interface ScanMeta {
+      scannedAt: Date
+      scanStatus: string
+      scanEngine: string
+      scanDurationMs: number
+    }
+    const scanMetaByIdx = new Map<number, ScanMeta>()
     if (env.INTAKE_USER_FILE_SCAN_ENABLED) {
-      for (const { part } of userParts) {
+      for (const { idx, part } of userParts) {
         let scan: Awaited<ReturnType<typeof scanBytes>>
         try {
           scan = await scanBytes(new Uint8Array(part.data))
@@ -381,6 +388,12 @@ export default defineEventHandler(async (event) => {
             statusMessage: `Attachment rejected by virus scanner: ${part.filename ?? "unnamed"} (${scan.reason ?? "infected"})`,
           })
         }
+        scanMetaByIdx.set(idx, {
+          scannedAt: new Date(),
+          scanStatus: "clean",
+          scanEngine: scan.engine,
+          scanDurationMs: scan.durationMs,
+        })
       }
     }
 
@@ -394,6 +407,7 @@ export default defineEventHandler(async (event) => {
           const key = `${report.id}/user/${idx}-${safeName}`
           await storage.put(key, new Uint8Array(part.data), mime)
           writtenKeys.push(key)
+          const meta = scanMetaByIdx.get(idx)
           await db.insert(reportAttachments).values({
             reportId: report.id,
             kind: "user-file",
@@ -401,6 +415,10 @@ export default defineEventHandler(async (event) => {
             contentType: mime,
             sizeBytes: part.data.length,
             filename: safeName,
+            scannedAt: meta?.scannedAt ?? null,
+            scanStatus: meta?.scanStatus ?? null,
+            scanEngine: meta?.scanEngine ?? null,
+            scanDurationMs: meta?.scanDurationMs ?? null,
           })
         }),
       )
