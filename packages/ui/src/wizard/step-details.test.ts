@@ -44,6 +44,7 @@ describe("StepDetails", () => {
         description: "",
         attachments: [],
         attachmentErrors: [],
+        annotatedBlob: null,
         onTitleChange: () => {},
         onDescriptionChange: () => {},
         onAttachmentsAdd: () => {},
@@ -68,6 +69,7 @@ describe("StepDetails", () => {
         description: "",
         attachments: [],
         attachmentErrors: [],
+        annotatedBlob: null,
         onTitleChange: (v: string) => {
           captured = v
         },

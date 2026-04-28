@@ -120,18 +120,75 @@
   background: var(--ft-color-surface-soft);
 }
 
-/* Details + Review share a centered column layout */
+/* Review uses a centered column. */
 .ft-wizard-step {
   flex: 1;
   overflow: auto;
   padding: 24px;
 }
 .ft-wizard-step-inner {
-  max-width: 520px;
+  max-width: 640px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* Details uses a 2-column layout: annotated screenshot on the left,
+   form fields on the right. The screenshot column carries the visual
+   weight on wide viewports so the form column doesn't float in empty
+   space. Below 900px we stack the columns. */
+.ft-wizard-details-grid {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 480px);
+  gap: 32px;
+  align-items: start;
+}
+.ft-wizard-details-preview {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.ft-wizard-details-preview img {
+  max-width: 100%;
+  max-height: calc(100vh - 220px);
+  border: 1px solid var(--ft-color-border);
+  border-radius: var(--ft-radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  background: var(--ft-color-surface-soft);
+}
+.ft-wizard-details-preview-empty {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 1px dashed var(--ft-color-border);
+  border-radius: var(--ft-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ft-color-text-faint);
+  font-size: 13px;
+  background: var(--ft-color-surface-soft);
+}
+.ft-wizard-details-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .ft-wizard-details-grid {
+    grid-template-columns: 1fr;
+  }
+  .ft-wizard-details-preview {
+    position: static;
+  }
+  .ft-wizard-details-preview img {
+    max-height: 40vh;
+  }
 }
 
 .ft-wizard-footer {
@@ -516,25 +573,50 @@
   justify-content: center;
   cursor: pointer;
 }
-.ft-attach-add {
-  display: inline-flex;
+.ft-attach-dropzone {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
   background: var(--ft-color-bg);
   border: 1px dashed var(--ft-color-border);
   border-radius: var(--ft-radius-md);
   color: var(--ft-color-text-muted);
   font-size: 13px;
   cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 120ms,
+    background 120ms,
+    color 120ms;
+  font-family: inherit;
+  width: 100%;
 }
-.ft-attach-add:hover:not(:disabled) {
+.ft-attach-dropzone:hover:not(:disabled),
+.ft-attach-dropzone:focus-visible {
   color: var(--ft-color-text);
-  border-color: var(--ft-color-border-strong);
+  border-color: var(--ft-color-primary);
+  background: var(--ft-color-primary-soft);
+  outline: none;
 }
-.ft-attach-add:disabled {
+.ft-attach-dropzone[data-dragover="true"] {
+  color: var(--ft-color-text);
+  border-color: var(--ft-color-primary);
+  background: var(--ft-color-primary-soft);
+}
+.ft-attach-dropzone:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.ft-attach-dropzone-shortcut {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--ft-color-surface);
+  color: var(--ft-color-text);
+  border: 1px solid var(--ft-color-border);
 }
 .ft-attach-status {
   font-size: 12px;

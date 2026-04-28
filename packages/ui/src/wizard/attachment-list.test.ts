@@ -19,20 +19,6 @@ function setupDom() {
   return win
 }
 
-// Walk DOM tree to find first element with the given tag name.
-// Avoids attribute-selector querySelector which fails in happy-dom.
-function walkForTag(node: Element, tag: string): Element | null {
-  if (node.tagName?.toLowerCase() === tag) return node
-  for (let i = 0; i < node.childNodes.length; i++) {
-    const child = node.childNodes[i]
-    if (child && (child as Element).tagName) {
-      const found = walkForTag(child as Element, tag)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 // Walk DOM tree to find first element with the given class.
 function walkForClass(node: Element, cls: string): Element | null {
   const classes = node.className?.split?.(" ") ?? []
@@ -61,7 +47,7 @@ function makeAttachment(overrides: Partial<Attachment> = {}): Attachment {
 }
 
 describe("AttachmentList", () => {
-  test("renders an Add files button when not at cap", () => {
+  test("renders the dropzone when not at cap, hinting at click + paste", () => {
     const win = setupDom()
     const root = win.document.createElement("div")
     win.document.body.appendChild(root as unknown as Node)
@@ -74,12 +60,14 @@ describe("AttachmentList", () => {
       }),
       root as unknown as Element,
     )
-    const btn = walkForTag(root as unknown as Element, "button")
-    expect(btn).toBeTruthy()
-    expect(btn?.textContent).toContain("Add files")
+    const dropzone = walkForClass(root as unknown as Element, "ft-attach-dropzone")
+    expect(dropzone).toBeTruthy()
+    expect((dropzone as HTMLButtonElement).disabled).toBe(false)
+    expect(dropzone?.textContent).toContain("Click to add files")
+    expect(dropzone?.textContent).toContain("paste")
   })
 
-  test("disables add button at maxCount and shows count text", () => {
+  test("disables dropzone at maxCount and shows count text", () => {
     const win = setupDom()
     const root = win.document.createElement("div")
     win.document.body.appendChild(root as unknown as Node)
@@ -100,11 +88,10 @@ describe("AttachmentList", () => {
       }),
       root as unknown as Element,
     )
-    // Find the add button (not remove buttons) — it's the one with class ft-attach-add
-    const addBtn = walkForClass(root as unknown as Element, "ft-attach-add")
-    expect(addBtn).toBeTruthy()
-    expect((addBtn as HTMLButtonElement).disabled).toBe(true)
-    expect(addBtn?.textContent).toContain("5 of 5")
+    const dropzone = walkForClass(root as unknown as Element, "ft-attach-dropzone")
+    expect(dropzone).toBeTruthy()
+    expect((dropzone as HTMLButtonElement).disabled).toBe(true)
+    expect(dropzone?.textContent).toContain("5 of 5")
   })
 
   test("calls onRemove with attachment id when remove button is clicked", () => {

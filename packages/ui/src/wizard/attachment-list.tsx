@@ -1,5 +1,5 @@
 import { h } from "preact"
-import { useEffect, useRef } from "preact/hooks"
+import { useEffect, useRef, useState } from "preact/hooks"
 import type { Attachment, AttachmentLimits } from "@reprojs/sdk-utils"
 
 interface Props {
@@ -16,10 +16,17 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function isMacLike(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+}
+
 export function AttachmentList({ attachments, limits, errors, onAdd, onRemove }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
   const totalBytes = attachments.reduce((n, a) => n + a.size, 0)
   const atCap = attachments.length >= limits.maxCount
+  const shortcut = isMacLike() ? "⌘V" : "Ctrl+V"
 
   // Revoke object URLs on unmount.
   useEffect(() => {
@@ -29,6 +36,7 @@ export function AttachmentList({ attachments, limits, errors, onAdd, onRemove }:
   }, [])
 
   function openPicker() {
+    if (atCap) return
     fileInputRef.current?.click()
   }
 
@@ -37,6 +45,22 @@ export function AttachmentList({ attachments, limits, errors, onAdd, onRemove }:
     const files = target.files ? Array.from(target.files) : []
     if (files.length > 0) onAdd(files)
     target.value = ""
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault()
+    if (atCap) return
+    if (!dragOver) setDragOver(true)
+  }
+  function handleDragLeave() {
+    setDragOver(false)
+  }
+  function handleDrop(e: DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    if (atCap) return
+    const files = e.dataTransfer ? Array.from(e.dataTransfer.files) : []
+    if (files.length > 0) onAdd(files)
   }
 
   return h(
@@ -70,23 +94,35 @@ export function AttachmentList({ attachments, limits, errors, onAdd, onRemove }:
         )
       : null,
     h(
+      "button",
+      {
+        type: "button",
+        class: "ft-attach-dropzone",
+        disabled: atCap,
+        "data-dragover": dragOver ? "true" : "false",
+        onClick: openPicker,
+        onDragOver: handleDragOver,
+        onDragEnter: handleDragOver,
+        onDragLeave: handleDragLeave,
+        onDrop: handleDrop,
+      },
+      atCap
+        ? h(
+            "span",
+            null,
+            `${attachments.length} of ${limits.maxCount} attached — remove one to add more`,
+          )
+        : h(
+            "span",
+            null,
+            "Click to add files, drop them here, or paste ",
+            h("span", { class: "ft-attach-dropzone-shortcut" }, shortcut),
+          ),
+    ),
+    h(
       "div",
-      { style: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" } },
-      h(
-        "button",
-        {
-          type: "button",
-          class: "ft-attach-add",
-          disabled: atCap,
-          onClick: openPicker,
-        },
-        atCap ? `${attachments.length} of ${limits.maxCount}` : "+ Add files",
-      ),
-      h(
-        "div",
-        { class: "ft-attach-status" },
-        `${attachments.length} / ${limits.maxCount} · ${formatBytes(totalBytes)}`,
-      ),
+      { class: "ft-attach-status" },
+      `${attachments.length} / ${limits.maxCount} · ${formatBytes(totalBytes)}`,
     ),
     h("input", {
       ref: fileInputRef,

@@ -150,6 +150,36 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
     })
   }
 
+  // Paste-to-attach: while the user is on the Details step, intercept paste
+  // events that carry image data (e.g. a screenshot copied to clipboard) and
+  // route them into the attachment list. Plain-text pastes (into the title /
+  // description fields) carry no image items, so they pass through unchanged.
+  useEffect(() => {
+    if (step !== "details") return undefined
+    function onPaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const images: File[] = []
+      for (const item of items) {
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          const f = item.getAsFile()
+          if (!f) continue
+          // Clipboard images often arrive as `image.png` with no useful name.
+          // Stamp a unique name so multiple pastes don't appear identical and
+          // so the server's storage key is distinguishable.
+          const ext = (item.type.split("/")[1] ?? "png").toLowerCase()
+          const renamed = new File([f], `pasted-${Date.now()}.${ext}`, { type: item.type })
+          images.push(renamed)
+        }
+      }
+      if (images.length === 0) return
+      e.preventDefault()
+      handleAttachmentsAdd(images)
+    }
+    document.addEventListener("paste", onPaste)
+    return () => document.removeEventListener("paste", onPaste)
+  }, [step, attachments])
+
   async function handleSend() {
     if (!title.trim() || submitting || success) return
     setSubmitting(true)
@@ -217,6 +247,7 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
           description,
           attachments,
           attachmentErrors,
+          annotatedBlob,
           onTitleChange: setTitle,
           onDescriptionChange: setDescription,
           onAttachmentsAdd: handleAttachmentsAdd,
