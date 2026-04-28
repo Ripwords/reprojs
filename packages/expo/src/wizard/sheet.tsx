@@ -17,7 +17,7 @@ import { useAnnotationShapes } from "../annotation/use-shapes"
 import { CloseIcon } from "../annotation/icons"
 import { PrimaryButton, SecondaryButton, StepIndicator } from "./controls"
 import { theme } from "./theme"
-import { pickFromClipboard, pickFromFiles, pickFromPhotos } from "../capture/file-picker"
+import { pickFromFiles, pickFromPhotos } from "../capture/file-picker"
 import { SourcePicker, type AttachmentSource } from "./source-picker"
 import { DEFAULT_ATTACHMENT_LIMITS, validateAttachments, type Attachment } from "@reprojs/sdk-utils"
 
@@ -74,20 +74,7 @@ export function WizardSheet({
     let picked: Attachment[] = []
     if (source === "files") picked = await pickFromFiles({ multiple: true })
     else if (source === "photos") picked = await pickFromPhotos({ multiple: true })
-    else if (source === "clipboard") picked = await pickFromClipboard()
-
-    if (picked.length === 0) {
-      // Surface a visible error for the clipboard path specifically — the
-      // failure modes (empty clipboard, denied paste prompt, missing peer
-      // dep) all look the same from here, so a single nudge beats silent
-      // dismiss. Files/Photos cancel paths intentionally stay silent.
-      if (source === "clipboard") {
-        setAttachmentErrors([
-          "No image on the clipboard, or paste permission was denied. Copy an image and try again.",
-        ])
-      }
-      return
-    }
+    if (picked.length === 0) return
 
     // Validate using a duck-typed candidate shape — RN's Blob polyfill
     // rejects ArrayBuffer parts, so we cannot synthesise File objects

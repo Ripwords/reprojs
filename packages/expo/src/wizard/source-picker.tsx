@@ -2,7 +2,7 @@ import React from "react"
 import { Modal, Pressable, Text, View } from "react-native"
 import { theme } from "./theme"
 
-export type AttachmentSource = "files" | "photos" | "clipboard"
+export type AttachmentSource = "files" | "photos"
 
 interface Props {
   visible: boolean
@@ -20,25 +20,13 @@ interface Row {
 const ROWS: Row[] = [
   { source: "photos", icon: "🖼", label: "Photos", detail: "Pick from your photo library" },
   { source: "files", icon: "📄", label: "Files", detail: "Documents, PDFs, screenshots" },
-  {
-    source: "clipboard",
-    icon: "📋",
-    label: "Paste image",
-    detail: "Use the image on your clipboard",
-  },
 ]
 
 /**
  * Bottom-sheet style action picker shown when the user taps the
- * Attachments dropzone in the Expo wizard. Three sources: Photos,
- * Files, Clipboard. All rows are always tappable — `Clipboard.hasImageAsync()`
- * disagrees with the user's intent often enough (Continuity Clipboard,
- * pre-iOS-permission state, custom UTIs) that pre-gating produced more
- * confusion than the empty-clipboard case it was meant to prevent. The
- * caller surfaces a clear error if pickFromClipboard returns nothing.
- *
- * Uses `Modal` directly rather than ActionSheetIOS so the same UI lands
- * on iOS and Android without a new peer dep.
+ * Attachments dropzone in the Expo wizard. Two sources: Photos and
+ * Files. Uses `Modal` directly rather than ActionSheetIOS so the same
+ * UI lands on iOS and Android without a new peer dep.
  */
 export function SourcePicker({ visible, onSelect, onCancel }: Props) {
   return (

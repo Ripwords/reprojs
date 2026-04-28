@@ -14,11 +14,6 @@ type LaunchImageLibraryAsync = (opts?: {
   selectionLimit?: number
 }) => Promise<ImagePickerResult>
 
-type GetImageAsync = (opts?: { format?: "png" | "jpeg" }) => Promise<{
-  data: string
-  size: { width: number; height: number }
-} | null>
-
 function makeAttachmentId(prefix: string, i: number): string {
   return `${prefix}-${Date.now()}-${i}`
 }
@@ -104,89 +99,9 @@ export async function pickFromPhotos({ multiple = true }: { multiple?: boolean }
   })
 }
 
-/**
- * Read a single image off the system clipboard. Returns an empty array
- * when the clipboard has no image, when expo-clipboard or expo-file-system
- * are unavailable, or when the user denied access. We write the base64
- * payload to expo-file-system's cache directory and pass the resulting
- * `file://` URI through `previewUrl`, matching the contract used by the
- * other pickers — RN's Blob polyfill rejects ArrayBuffer/Uint8Array
- * inputs, so we must NOT construct `new Blob([bytes])`.
- */
-export async function pickFromClipboard(): Promise<Attachment[]> {
-  // Skip the hasImageAsync pre-check. It disagrees with reality often
-  // enough on real devices (Continuity Clipboard, custom UTIs) that
-  // gating the path with it produced false negatives. getImageAsync is
-  // already the authoritative answer — just call it.
-  let getImage: GetImageAsync | undefined
-  try {
-    const mod = await import("expo-clipboard")
-    getImage = mod.getImageAsync
-  } catch (err) {
-    console.warn("[repro] pickFromClipboard: expo-clipboard not installed", err)
-    return []
-  }
-  if (!getImage) {
-    console.warn("[repro] pickFromClipboard: getImageAsync export missing")
-    return []
-  }
-
-  let result: { data: string; size: { width: number; height: number } } | null = null
-  try {
-    result = await getImage({ format: "png" })
-  } catch (err) {
-    console.warn("[repro] pickFromClipboard: getImageAsync threw", err)
-    return []
-  }
-  if (!result?.data) {
-    console.info("[repro] pickFromClipboard: clipboard has no image (or paste denied)")
-    return []
-  }
-
-  // Clipboard data may arrive as raw base64 (iOS) or as a full data: URI
-  // (Android). Strip any prefix so we hand the file system pure base64.
-  const base64 = result.data.replace(/^data:[^;]+;base64,/, "")
-  const sizeBytes = Math.floor((base64.length * 3) / 4)
-
-  let cacheDirectory: string | null = null
-  let writeAsStringAsync:
-    | ((uri: string, contents: string, opts?: { encoding?: "utf8" | "base64" }) => Promise<void>)
-    | undefined
-  try {
-    const fs = await import("expo-file-system")
-    cacheDirectory = fs.cacheDirectory
-    writeAsStringAsync = fs.writeAsStringAsync
-  } catch (err) {
-    console.warn("[repro] pickFromClipboard: expo-file-system not installed", err)
-    return []
-  }
-  if (!cacheDirectory || !writeAsStringAsync) {
-    console.warn("[repro] pickFromClipboard: cacheDirectory unavailable")
-    return []
-  }
-
-  const filename = `pasted-${Date.now()}.png`
-  const uri = `${cacheDirectory}${filename}`
-  try {
-    await writeAsStringAsync(uri, base64, { encoding: "base64" })
-  } catch (err) {
-    console.warn("[repro] pickFromClipboard: writeAsStringAsync failed", err)
-    return []
-  }
-
-  const mime = "image/png"
-  return [
-    {
-      id: makeAttachmentId("clip", 0),
-      // Empty placeholder blob — same pattern as pickFromFiles /
-      // pickFromPhotos. The real bytes live at `previewUrl` and are
-      // streamed by RN's FormData {uri, name, type} shorthand at submit.
-      blob: new Blob([], { type: mime }),
-      filename,
-      mime,
-      size: sizeBytes,
-      isImage: true,
-      previewUrl: uri,
-    },
-  ]
-}
+// Clipboard paste was prototyped here but removed from the Expo SDK: on
+// iOS the system paste prompt is surprising in a bug-report flow, and the
+// failure modes (Continuity Clipboard, custom UTIs, denial) made it more
+// confusing than useful. File + Photos picker covers the realistic asks.
+// The web SDK keeps clipboard paste because the desktop Ctrl/⌘-V model is
+// unambiguous.

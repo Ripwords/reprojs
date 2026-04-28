@@ -55,26 +55,3 @@ declare module "expo-image-picker" {
     granted: boolean
   }>
 }
-
-declare module "expo-clipboard" {
-  export function hasImageAsync(): Promise<boolean>
-  export function getImageAsync(opts?: { format?: "png" | "jpeg" }): Promise<{
-    data: string
-    size: { width: number; height: number }
-  } | null>
-}
-
-declare module "expo-file-system" {
-  export const cacheDirectory: string | null
-  export const documentDirectory: string | null
-  export function writeAsStringAsync(
-    fileUri: string,
-    contents: string,
-    options?: { encoding?: "utf8" | "base64" },
-  ): Promise<void>
-  export function getInfoAsync(fileUri: string): Promise<{
-    exists: boolean
-    size?: number
-    uri: string
-  }>
-}
