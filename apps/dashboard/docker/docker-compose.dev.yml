@@ -29,6 +29,13 @@ services:
   # operators who don't want this can leave it stopped. First boot pulls the
   # signature DB (~500 MB); freshclam updates it daily afterwards.
   #
+  # NOTE: this dev compose exposes 3310 on 127.0.0.1 ON PURPOSE — `bun run
+  # dev` runs the dashboard on the host, not inside docker, so the host
+  # needs a path to clamd on the bridge network. The production compose.yaml
+  # at the repo root does NOT expose this port because the dashboard there
+  # runs in a container alongside clamav and reaches it as `clamav:3310`
+  # over the internal compose network.
+  #
   # platform: linux/amd64 is pinned because the official clamav/clamav:stable
   # tag's arm64 manifest is intermittently absent (Docker Hub rebuilds drop
   # arm64 occasionally). amd64 + Rosetta works reliably on Apple Silicon and

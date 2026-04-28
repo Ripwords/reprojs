@@ -48,6 +48,39 @@ services:
     restart: "no"
 
   # ────────────────────────────────────────────────────────────────
+  # Optional virus scanner for user-supplied attachments.
+  #
+  # Disabled in code by default — the dashboard only contacts clamd when
+  # INTAKE_USER_FILE_SCAN_ENABLED=true is set in .env. If you don't want
+  # this, you can leave the env flag at false and `docker compose up`
+  # without the --profile flag will still bring it up but idle (it costs
+  # ~1GB RAM + ~500MB on disk for the signature DB), or run `docker
+  # compose --profile no-scanner up` to skip the service entirely.
+  #
+  # No `ports:` block intentionally — clamd is reachable to the dashboard
+  # over the internal compose network at clamav:3310. Exposing 3310 to
+  # the host would let anyone on the host probe the scanner; not what
+  # you want for a self-host.
+  # ────────────────────────────────────────────────────────────────
+  clamav:
+    image: clamav/clamav:stable
+    # The official image's arm64 manifest is intermittently absent on
+    # Docker Hub. amd64 + emulation works on every host (including Apple
+    # Silicon under Rosetta) and the throughput cost on a sidecar that
+    # only runs at intake time is negligible. Drop this line on a native
+    # arm64 host if you want to skip emulation.
+    platform: linux/amd64
+    volumes:
+      - clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    restart: unless-stopped
+
+  # ────────────────────────────────────────────────────────────────
   # Dashboard — the Nuxt server
   # ────────────────────────────────────────────────────────────────
   dashboard:
@@ -65,6 +98,11 @@ services:
       # Internal connection string: the one in .env (if any) is overridden so
       # the container always talks to the postgres service above.
       DATABASE_URL: postgres://${POSTGRES_USER:-repro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-repro}
+      # The clamav service name on the compose network. Hardcoded here so
+      # `.env` doesn't need a docker-specific override — it just sets
+      # INTAKE_USER_FILE_SCAN_ENABLED=true|false.
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
     volumes:
       # Used when STORAGE_DRIVER=local (the default). Ignored when
       # STORAGE_DRIVER=s3 — attachments go to your S3 bucket instead.
@@ -80,3 +118,4 @@ services:
 volumes:
   postgres_data:
   attachments_data:
+  clamav_db:
