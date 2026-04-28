@@ -197,6 +197,91 @@ export default defineEventHandler(async (event) => {
 
   const screenshotPart = parts.find((p) => p.name === "screenshot")
 
+  // ── User-file validation + virus scan (BEFORE the report row is inserted) ─
+  // We do this up here so a virus-flagged or oversized attachment fails the
+  // entire intake — no report row, no screenshot/replay/logs persisted. If
+  // we ran the scan after the report INSERT, a 422 here would leave the
+  // dashboard with a half-report that lacks the user-file but still has the
+  // screenshot + logs, which is not what "rejected" should mean.
+  const userParts = parts.flatMap((p) => {
+    const m = p.name?.match(/^attachment\[(\d+)\]$/)
+    if (!m || !p.data || p.data.length === 0) return []
+    return [{ idx: Number(m[1]), part: p }]
+  })
+
+  interface ScanMeta {
+    scannedAt: Date
+    scanStatus: string
+    scanEngine: string
+    scanDurationMs: number
+  }
+  const scanMetaByIdx = new Map<number, ScanMeta>()
+
+  if (userParts.length > 0) {
+    if (userParts.length > env.INTAKE_USER_FILES_MAX_COUNT) {
+      throw createError({
+        statusCode: 413,
+        statusMessage: `Too many attachments (max ${env.INTAKE_USER_FILES_MAX_COUNT})`,
+      })
+    }
+    let totalUserBytes = 0
+    for (const { part } of userParts) {
+      if (part.data.length > env.INTAKE_USER_FILE_MAX_BYTES) {
+        throw createError({ statusCode: 413, statusMessage: "Attachment too large" })
+      }
+      const mime = part.type ?? "application/octet-stream"
+      const lower = (part.filename ?? "").toLowerCase()
+      if (
+        DENIED_USER_FILE_MIMES.has(mime) ||
+        DENIED_USER_FILE_EXTS.some((ext) => lower.endsWith(ext))
+      ) {
+        throw createError({
+          statusCode: 415,
+          statusMessage: `Attachment type not allowed: ${part.filename ?? "unnamed"}`,
+        })
+      }
+      totalUserBytes += part.data.length
+    }
+    if (totalUserBytes > env.INTAKE_USER_FILES_TOTAL_MAX_BYTES) {
+      throw createError({ statusCode: 413, statusMessage: "Attachments exceed total budget" })
+    }
+
+    // Virus-scan each user-file. Sequential because clamd is single-threaded
+    // per connection and parallel scans against a shared socket can interleave
+    // verdicts. With a 5-file cap and warm signature cache, sequential
+    // scanning is < 2s in practice. Skipped when scanning is disabled.
+    if (env.INTAKE_USER_FILE_SCAN_ENABLED) {
+      for (const { idx, part } of userParts) {
+        let scan: Awaited<ReturnType<typeof scanBytes>>
+        try {
+          scan = await scanBytes(new Uint8Array(part.data))
+        } catch (err) {
+          // Fail-closed: if the scanner is enabled but unreachable, surface a
+          // 503 rather than letting unscanned bytes through.
+          console.error("[intake] virus scanner unavailable", err)
+          throw createError({
+            statusCode: 503,
+            statusMessage: "Attachment scanner unavailable, please retry",
+          })
+        }
+        if (!scan.clean) {
+          // No DB writes have happened yet — throwing here means the entire
+          // report submission fails with no persistent side effects.
+          throw createError({
+            statusCode: 422,
+            statusMessage: `Attachment rejected by virus scanner: ${part.filename ?? "unnamed"} (${scan.reason ?? "infected"})`,
+          })
+        }
+        scanMetaByIdx.set(idx, {
+          scannedAt: new Date(),
+          scanStatus: "clean",
+          scanEngine: scan.engine,
+          scanDurationMs: scan.durationMs,
+        })
+      }
+    }
+  }
+
   // SEC2: Daily ceiling — hard cap on reports per project per rolling 24h
   // window. Previously the COUNT and INSERT ran in separate statements which
   // allowed concurrent requests to all observe count = cap-1 and each commit
@@ -318,85 +403,11 @@ export default defineEventHandler(async (event) => {
     await Promise.all(writes)
   }
 
-  // ── User-supplied additional attachments (kind = "user-file") ────────────
-  // Multipart parts are named attachment[0], attachment[1], … so a single
-  // report can carry multiple files without colliding on a fixed part name.
-  const userParts = parts.flatMap((p) => {
-    const m = p.name?.match(/^attachment\[(\d+)\]$/)
-    if (!m || !p.data || p.data.length === 0) return []
-    return [{ idx: Number(m[1]), part: p }]
-  })
-
+  // ── Persist user-file attachments (kind = "user-file") ────────────────────
+  // All validation + virus-scanning ran above, BEFORE the report row was
+  // inserted, so by the time we get here every part is known-clean and
+  // within size/count budgets. Storage put + DB insert is all that's left.
   if (userParts.length > 0) {
-    if (userParts.length > env.INTAKE_USER_FILES_MAX_COUNT) {
-      throw createError({
-        statusCode: 413,
-        statusMessage: `Too many attachments (max ${env.INTAKE_USER_FILES_MAX_COUNT})`,
-      })
-    }
-    let totalUserBytes = 0
-    for (const { part } of userParts) {
-      if (part.data.length > env.INTAKE_USER_FILE_MAX_BYTES) {
-        throw createError({ statusCode: 413, statusMessage: "Attachment too large" })
-      }
-      const mime = part.type ?? "application/octet-stream"
-      const lower = (part.filename ?? "").toLowerCase()
-      if (
-        DENIED_USER_FILE_MIMES.has(mime) ||
-        DENIED_USER_FILE_EXTS.some((ext) => lower.endsWith(ext))
-      ) {
-        throw createError({
-          statusCode: 415,
-          statusMessage: `Attachment type not allowed: ${part.filename ?? "unnamed"}`,
-        })
-      }
-      totalUserBytes += part.data.length
-    }
-    if (totalUserBytes > env.INTAKE_USER_FILES_TOTAL_MAX_BYTES) {
-      throw createError({ statusCode: 413, statusMessage: "Attachments exceed total budget" })
-    }
-
-    // Virus-scan each user-file before persisting. Runs sequentially because
-    // ClamAV's clamd is single-threaded per connection and scanning in
-    // parallel against a shared socket can interleave verdicts. With a 5-file
-    // cap and warm signature cache, sequential scanning is < 2s in practice.
-    // Skipped when INTAKE_USER_FILE_SCAN_ENABLED=false (the default).
-    interface ScanMeta {
-      scannedAt: Date
-      scanStatus: string
-      scanEngine: string
-      scanDurationMs: number
-    }
-    const scanMetaByIdx = new Map<number, ScanMeta>()
-    if (env.INTAKE_USER_FILE_SCAN_ENABLED) {
-      for (const { idx, part } of userParts) {
-        let scan: Awaited<ReturnType<typeof scanBytes>>
-        try {
-          scan = await scanBytes(new Uint8Array(part.data))
-        } catch (err) {
-          // Fail-closed: if the scanner is enabled but unreachable, surface a
-          // 503 rather than letting unscanned bytes through.
-          console.error("[intake] virus scanner unavailable", err)
-          throw createError({
-            statusCode: 503,
-            statusMessage: "Attachment scanner unavailable, please retry",
-          })
-        }
-        if (!scan.clean) {
-          throw createError({
-            statusCode: 422,
-            statusMessage: `Attachment rejected by virus scanner: ${part.filename ?? "unnamed"} (${scan.reason ?? "infected"})`,
-          })
-        }
-        scanMetaByIdx.set(idx, {
-          scannedAt: new Date(),
-          scanStatus: "clean",
-          scanEngine: scan.engine,
-          scanDurationMs: scan.durationMs,
-        })
-      }
-    }
-
     const storage = await getStorage()
     const writtenKeys: string[] = []
     try {
