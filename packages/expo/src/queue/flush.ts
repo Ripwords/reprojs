@@ -27,9 +27,10 @@ export function createQueueFlusher(opts: {
             attachments: item.payload.attachments.map((a) => ({
               ...a,
               contentType:
-                a.kind === "annotated-screenshot" || a.kind === "screenshot"
+                a.contentType ??
+                (a.kind === "annotated-screenshot" || a.kind === "screenshot"
                   ? "image/png"
-                  : "application/json",
+                  : "application/octet-stream"),
             })),
             logs: item.payload.logs,
           })

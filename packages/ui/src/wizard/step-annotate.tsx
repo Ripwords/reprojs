@@ -1,4 +1,3 @@
-// packages/ui/src/wizard/step-annotate.tsx
 import { h } from "preact"
 import { useEffect } from "preact/hooks"
 import { Canvas } from "../annotation/canvas"
@@ -8,15 +7,18 @@ import { clear, redo, shapes, tool, undo, viewport } from "../annotation/store"
 import { ToolPicker } from "../annotation/tool-picker"
 import type { Tool } from "@reprojs/sdk-utils"
 import { fitTransform } from "../annotation/viewport"
+import { PrimaryButton, SecondaryButton, WizardHeader } from "./controls"
 
 interface Props {
   bg: HTMLImageElement
+  steps: readonly string[]
+  currentStep: number
   onSkip: () => void
   onNext: (annotatedBlob: Blob) => void
   onCancel: () => void
 }
 
-export function StepAnnotate({ bg, onSkip, onNext, onCancel }: Props) {
+export function StepAnnotate({ bg, steps, currentStep, onSkip, onNext, onCancel }: Props) {
   useEffect(() => {
     const dispatch = (action: Action) => {
       switch (action) {
@@ -63,16 +65,13 @@ export function StepAnnotate({ bg, onSkip, onNext, onCancel }: Props) {
   return h(
     "div",
     { class: "ft-wizard" },
-    h(
-      "header",
-      { class: "ft-wizard-header" },
-      h("h2", null, "Report a bug"),
-      h(
-        "button",
-        { type: "button", class: "ft-close", onClick: handleClose, "aria-label": "Close" },
-        "✕",
-      ),
-    ),
+    h(WizardHeader, {
+      eyebrow: "Repro",
+      title: "Report a bug",
+      steps,
+      current: currentStep,
+      onClose: handleClose,
+    }),
     h("div", { class: "ft-wizard-body ft-wizard-annotate" }, h(Canvas, { bg })),
     h(
       "footer",
@@ -80,9 +79,9 @@ export function StepAnnotate({ bg, onSkip, onNext, onCancel }: Props) {
       h(ToolPicker, null),
       h(
         "div",
-        { class: "ft-wizard-next" },
-        h("button", { type: "button", class: "ft-btn", onClick: onSkip }, "Skip"),
-        h("button", { type: "button", class: "ft-btn primary", onClick: handleNext }, "Next →"),
+        { style: { display: "flex", gap: "8px" } },
+        h(SecondaryButton, { label: "Skip", onClick: onSkip }),
+        h(PrimaryButton, { label: "Continue", onClick: handleNext }),
       ),
     ),
   )

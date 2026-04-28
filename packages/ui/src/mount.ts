@@ -5,6 +5,7 @@ import { Launcher } from "./launcher"
 import { Reporter, type ReporterSubmitResult } from "./reporter"
 import { createShadowHost, injectStyles, unmountShadowHost } from "./shadow"
 import cssText from "./styles-inline"
+import { themeToCssVars } from "./wizard/theme-css"
 
 export interface MountOptions {
   config: {
@@ -16,6 +17,7 @@ export interface MountOptions {
     title: string
     description: string
     screenshot: Blob | null
+    attachments: import("@reprojs/sdk-utils").Attachment[]
     dwellMs: number
     honeypot: string
   }) => Promise<ReporterSubmitResult>
@@ -97,6 +99,7 @@ export function mount(opts: MountOptions) {
   _onOpen = opts.onOpen
   _onClose = opts.onClose
   _root = createShadowHost()
+  injectStyles(_root, themeToCssVars())
   injectStyles(_root, cssText)
   _container = document.createElement("div")
   _root.appendChild(_container)

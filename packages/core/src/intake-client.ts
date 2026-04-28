@@ -1,4 +1,5 @@
 import type { IntakeResponse, LogsAttachment, ReportContext } from "@reprojs/shared"
+import type { Attachment } from "@reprojs/sdk-utils"
 import type { ResolvedConfig } from "./config"
 
 export interface IntakeInput {
@@ -7,6 +8,7 @@ export interface IntakeInput {
   context: ReportContext
   metadata?: Record<string, string | number | boolean>
   screenshot: Blob | null
+  attachments?: Attachment[]
   logs?: LogsAttachment | null
   /** Raw gzipped replay bytes (application/gzip); omitted when replay disabled or unavailable. */
   replayBytes?: Uint8Array | null
@@ -62,6 +64,14 @@ export async function postReport(
     const copy = new Uint8Array(input.replayBytes.byteLength)
     copy.set(input.replayBytes)
     body.set("replay", new Blob([copy], { type: "application/gzip" }), "replay.json.gz")
+  }
+
+  if (input.attachments && input.attachments.length > 0) {
+    input.attachments.forEach((att, i) => {
+      const file =
+        att.blob instanceof File ? att.blob : new File([att.blob], att.filename, { type: att.mime })
+      body.set(`attachment[${i}]`, file, att.filename)
+    })
   }
 
   try {

@@ -7,6 +7,9 @@ export interface QueueItemAttachment {
   kind: AttachmentKind
   uri: string
   bytes: number
+  filename?: string
+  /** MIME type. Required for user-file entries; undefined for screenshot/replay. */
+  contentType?: string
 }
 
 export interface QueueItem {

@@ -86,17 +86,26 @@ export const reportAttachments = pgTable(
       .notNull()
       .references(() => reports.id, { onDelete: "cascade" }),
     kind: text("kind", {
-      enum: ["screenshot", "annotated-screenshot", "replay", "logs"],
+      enum: ["screenshot", "annotated-screenshot", "replay", "logs", "user-file"],
     }).notNull(),
     storageKey: text("storage_key").notNull(),
     contentType: text("content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
+    filename: text("filename"),
+    // Virus-scan provenance for user-supplied attachments. NULL for rows
+    // ingested before the scan path existed, or when scanning was disabled
+    // at intake time. Currently only "clean" rows reach storage — infected
+    // attachments fail the intake POST with 422 before persistence.
+    scannedAt: timestamp("scanned_at"),
+    scanStatus: text("scan_status"),
+    scanEngine: text("scan_engine"),
+    scanDurationMs: integer("scan_duration_ms"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
     kindCheck: check(
       "report_attachments_kind_check",
-      sql`${table.kind} IN ('screenshot', 'annotated-screenshot', 'replay', 'logs')`,
+      sql`${table.kind} IN ('screenshot', 'annotated-screenshot', 'replay', 'logs', 'user-file')`,
     ),
     reportIdx: index("report_attachments_report_idx").on(table.reportId),
   }),

@@ -31,7 +31,7 @@
     "fmt:check": "oxfmt --check .",
     "check": "oxfmt --check . && oxlint",
     "test": "bun test",
-    "test:sdk": "bun test packages/",
+    "test:sdk": "bash ./scripts/test-sdk.sh",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",

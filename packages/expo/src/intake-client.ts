@@ -38,10 +38,20 @@ export function createIntakeClient(opts: {
       if (logs) {
         form.append("logs", logs)
       }
+      let userFileIdx = 0
       for (const a of attachments) {
         // File parts use RN's `{ uri, name, type }` shorthand — supported natively.
-        const part = { uri: a.uri, name: `${a.kind}.bin`, type: a.contentType } as unknown as Blob
-        form.append(a.kind, part)
+        const part = {
+          uri: a.uri,
+          name: a.filename ?? `${a.kind}.bin`,
+          type: a.contentType,
+        } as unknown as Blob
+        if (a.kind === "user-file") {
+          form.append(`attachment[${userFileIdx}]`, part)
+          userFileIdx += 1
+        } else {
+          form.append(a.kind, part)
+        }
       }
       const res = await f(`${opts.intakeUrl}/reports`, {
         method: "POST",

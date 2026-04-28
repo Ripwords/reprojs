@@ -8,10 +8,11 @@
   browser back button.
 -->
 <script setup lang="ts">
-import type { LogsAttachment, ReportSummaryDTO } from "@reprojs/shared"
+import type { LogsAttachment, ReportDetailDTO } from "@reprojs/shared"
 import AppErrorState from "~/components/common/app-error-state.vue"
 import AppLoadingSkeleton from "~/components/common/app-loading-skeleton.vue"
 import ActivityTab from "~/components/report-drawer/activity-tab.vue"
+import AttachmentsTab from "~/components/report-drawer/attachments-tab.vue"
 import CommentsTab from "~/components/report-drawer/comments-tab.vue"
 import ConsoleTab from "~/components/report-drawer/console-tab.vue"
 import CookiesTab from "~/components/report-drawer/cookies-tab.vue"
@@ -33,7 +34,7 @@ const {
   pending,
   refresh,
   error,
-} = useApi<ReportSummaryDTO>(() => `/api/projects/${projectId.value}/reports/${reportId.value}`, {
+} = useApi<ReportDetailDTO>(() => `/api/projects/${projectId.value}/reports/${reportId.value}`, {
   key: computed(() => `report-${projectId.value}-${reportId.value}`),
   watch: [projectId, reportId],
 })
@@ -57,6 +58,7 @@ type TabId =
   | "activity"
   | "comments"
   | "cookies"
+  | "attachments"
   | "system"
   | "raw"
 const activeTab = ref<TabId>("overview")
@@ -84,6 +86,9 @@ const consoleHasData = computed(
 )
 const networkHasData = computed(() => logs.value !== null && logs.value.network.length > 0)
 const cookiesHasData = computed(() => (report.value?.context?.cookies?.length ?? 0) > 0)
+const userFileCount = computed(
+  () => (report.value?.attachments ?? []).filter((a) => a.kind === "user-file").length,
+)
 
 const tabs = computed(() => {
   const base: { id: string; label: string; hasData?: boolean }[] = [
@@ -98,6 +103,9 @@ const tabs = computed(() => {
   base.push({ id: "comments", label: "Comments" })
   if (report.value?.source !== "expo") {
     base.push({ id: "cookies", label: "Cookies", hasData: cookiesHasData.value })
+  }
+  if (userFileCount.value > 0) {
+    base.push({ id: "attachments", label: "Attachments", hasData: true })
   }
   base.push({ id: "system", label: "System" })
   base.push({ id: "raw", label: "Raw" })
@@ -256,6 +264,10 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
           :report-id="report.id"
         />
         <CookiesTab v-else-if="activeTab === 'cookies'" :project-id="projectId" :report="report" />
+        <AttachmentsTab
+          v-else-if="activeTab === 'attachments'"
+          :attachments="report.attachments ?? []"
+        />
         <div v-else-if="activeTab === 'system'" class="p-5">
           <UCard :ui="{ body: 'p-4' }">
             <pre class="text-sm font-mono whitespace-pre-wrap break-all">{{

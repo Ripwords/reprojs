@@ -78,6 +78,19 @@ const Schema = z.object({
   INTAKE_RATE_PER_IP: intString(20),
   INTAKE_RATE_PER_KEY_ANON: intString(10),
   INTAKE_MAX_BYTES: intString(5_242_880),
+  INTAKE_USER_FILE_MAX_BYTES: intString(10 * 1024 * 1024),
+  INTAKE_USER_FILES_TOTAL_MAX_BYTES: intString(25 * 1024 * 1024),
+  INTAKE_USER_FILES_MAX_COUNT: intString(5),
+
+  // Virus scanning for user-supplied attachments. When ENABLED is false
+  // (the default) the scan path is skipped entirely so self-hosters who
+  // don't run a ClamAV sidecar aren't impacted. When true, intake fails
+  // closed: a scanner outage rejects uploads rather than silently letting
+  // unscanned files through.
+  INTAKE_USER_FILE_SCAN_ENABLED: boolString.default(false),
+  CLAMAV_HOST: z.string().default("localhost"),
+  CLAMAV_PORT: intString(3310),
+  CLAMAV_TIMEOUT_MS: intString(30_000),
   INTAKE_REQUIRE_DWELL: boolString.default(true),
   INTAKE_MIN_DWELL_MS: intString(1_500),
 

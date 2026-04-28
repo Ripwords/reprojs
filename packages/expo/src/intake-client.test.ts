@@ -54,3 +54,39 @@ test("surfaces 5xx errors to the caller", async () => {
     }),
   ).rejects.toMatchObject({ status: 503 })
 })
+
+test("submits user-file attachments as attachment[N] parts", async () => {
+  const calls: { body: FormData }[] = []
+  const fakeFetch = (async (_url: string, init?: RequestInit) => {
+    calls.push({ body: init?.body as FormData })
+    return new Response(JSON.stringify({ id: "x" }), { status: 201 })
+  }) as typeof fetch
+  const client = createIntakeClient({ intakeUrl: "https://x", fetchImpl: fakeFetch })
+  await client.submit({
+    idempotencyKey: "k",
+    input: {
+      projectKey: "p",
+      title: "t",
+      context: { source: "expo" },
+    } as never,
+    attachments: [
+      {
+        kind: "user-file",
+        uri: "file:///a.png",
+        bytes: 10,
+        contentType: "image/png",
+        filename: "a.png",
+      },
+      {
+        kind: "user-file",
+        uri: "file:///b.pdf",
+        bytes: 20,
+        contentType: "application/pdf",
+        filename: "b.pdf",
+      },
+    ],
+  })
+  const body = calls[0]?.body
+  expect(body?.has("attachment[0]")).toBe(true)
+  expect(body?.has("attachment[1]")).toBe(true)
+})

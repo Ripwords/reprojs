@@ -1,16 +1,16 @@
 // apps/dashboard/server/api/projects/[id]/reports/[reportId]/index.get.ts
 //
-// Single-report detail endpoint. Shape matches one item from the list endpoint
-// (index.get.ts) so the inbox row and the dedicated report page share a single
-// DTO contract.
+// Single-report detail endpoint. Returns ReportDetailDTO (a superset of
+// ReportSummaryDTO) which includes the full attachments array so the report
+// page can render image thumbnails and downloadable file chips.
 import { createError, defineEventHandler, getRouterParam } from "h3"
 import { and, eq } from "drizzle-orm"
-import type { ReportContext, ReportSummaryDTO } from "@reprojs/shared"
+import type { ReportContext, ReportDetailDTO } from "@reprojs/shared"
 import { db } from "../../../../../db"
 import { reportAssignees, reportAttachments, reports } from "../../../../../db/schema"
 import { requireProjectRole } from "../../../../../lib/permissions"
 
-export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
+export default defineEventHandler(async (event): Promise<ReportDetailDTO> => {
   const projectId = getRouterParam(event, "id")
   const reportId = getRouterParam(event, "reportId")
   if (!projectId || !reportId) {
@@ -44,9 +44,9 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
     throw createError({ statusCode: 404, statusMessage: "Report not found" })
   }
 
-  // Parallel: screenshot thumbnail + replay existence + assignees.
+  // Parallel: screenshot thumbnail + replay existence + assignees + all attachments.
   // Mirrors how the list endpoint computes `thumbnailUrl` and `hasReplay`.
-  const [screenshotRows, replayRows, assigneeRows] = await Promise.all([
+  const [screenshotRows, replayRows, assigneeRows, attachmentRows] = await Promise.all([
     db
       .select({ id: reportAttachments.id })
       .from(reportAttachments)
@@ -66,6 +66,20 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
       })
       .from(reportAssignees)
       .where(eq(reportAssignees.reportId, reportId)),
+    db
+      .select({
+        id: reportAttachments.id,
+        kind: reportAttachments.kind,
+        contentType: reportAttachments.contentType,
+        sizeBytes: reportAttachments.sizeBytes,
+        filename: reportAttachments.filename,
+        scannedAt: reportAttachments.scannedAt,
+        scanStatus: reportAttachments.scanStatus,
+        scanEngine: reportAttachments.scanEngine,
+        scanDurationMs: reportAttachments.scanDurationMs,
+      })
+      .from(reportAttachments)
+      .where(eq(reportAttachments.reportId, reportId)),
   ])
 
   const ctx = row.context as ReportContext
@@ -96,5 +110,17 @@ export default defineEventHandler(async (event): Promise<ReportSummaryDTO> => {
     assignees: assigneeRows
       .filter((a): a is typeof a & { login: string } => a.login !== null)
       .map((a) => ({ login: a.login, avatarUrl: a.avatarUrl })),
+    attachments: attachmentRows.map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      url: `/api/projects/${projectId}/reports/${reportId}/attachment?id=${a.id}`,
+      contentType: a.contentType,
+      sizeBytes: a.sizeBytes,
+      filename: a.filename ?? null,
+      scannedAt: a.scannedAt?.toISOString() ?? null,
+      scanStatus: a.scanStatus ?? null,
+      scanEngine: a.scanEngine ?? null,
+      scanDurationMs: a.scanDurationMs ?? null,
+    })),
   }
 })
