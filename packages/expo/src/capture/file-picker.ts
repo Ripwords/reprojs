@@ -14,7 +14,6 @@ type LaunchImageLibraryAsync = (opts?: {
   selectionLimit?: number
 }) => Promise<ImagePickerResult>
 
-type HasImageAsync = () => Promise<boolean>
 type GetImageAsync = (opts?: { format?: "png" | "jpeg" }) => Promise<{
   data: string
   size: { width: number; height: number }
@@ -115,22 +114,34 @@ export async function pickFromPhotos({ multiple = true }: { multiple?: boolean }
  * inputs, so we must NOT construct `new Blob([bytes])`.
  */
 export async function pickFromClipboard(): Promise<Attachment[]> {
-  let hasImage: HasImageAsync | undefined
+  // Skip the hasImageAsync pre-check. It disagrees with reality often
+  // enough on real devices (Continuity Clipboard, custom UTIs) that
+  // gating the path with it produced false negatives. getImageAsync is
+  // already the authoritative answer — just call it.
   let getImage: GetImageAsync | undefined
   try {
     const mod = await import("expo-clipboard")
-    hasImage = mod.hasImageAsync
     getImage = mod.getImageAsync
-  } catch {
+  } catch (err) {
+    console.warn("[repro] pickFromClipboard: expo-clipboard not installed", err)
     return []
   }
-  if (!hasImage || !getImage) return []
+  if (!getImage) {
+    console.warn("[repro] pickFromClipboard: getImageAsync export missing")
+    return []
+  }
 
-  const present = await hasImage()
-  if (!present) return []
-
-  const result = await getImage({ format: "png" })
-  if (!result?.data) return []
+  let result: { data: string; size: { width: number; height: number } } | null = null
+  try {
+    result = await getImage({ format: "png" })
+  } catch (err) {
+    console.warn("[repro] pickFromClipboard: getImageAsync threw", err)
+    return []
+  }
+  if (!result?.data) {
+    console.info("[repro] pickFromClipboard: clipboard has no image (or paste denied)")
+    return []
+  }
 
   // Clipboard data may arrive as raw base64 (iOS) or as a full data: URI
   // (Android). Strip any prefix so we hand the file system pure base64.
@@ -145,14 +156,23 @@ export async function pickFromClipboard(): Promise<Attachment[]> {
     const fs = await import("expo-file-system")
     cacheDirectory = fs.cacheDirectory
     writeAsStringAsync = fs.writeAsStringAsync
-  } catch {
+  } catch (err) {
+    console.warn("[repro] pickFromClipboard: expo-file-system not installed", err)
     return []
   }
-  if (!cacheDirectory || !writeAsStringAsync) return []
+  if (!cacheDirectory || !writeAsStringAsync) {
+    console.warn("[repro] pickFromClipboard: cacheDirectory unavailable")
+    return []
+  }
 
   const filename = `pasted-${Date.now()}.png`
   const uri = `${cacheDirectory}${filename}`
-  await writeAsStringAsync(uri, base64, { encoding: "base64" })
+  try {
+    await writeAsStringAsync(uri, base64, { encoding: "base64" })
+  } catch (err) {
+    console.warn("[repro] pickFromClipboard: writeAsStringAsync failed", err)
+    return []
+  }
 
   const mime = "image/png"
   return [

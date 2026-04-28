@@ -55,7 +55,6 @@ export function WizardSheet({
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [attachmentErrors, setAttachmentErrors] = useState<string[]>([])
   const [sourcePickerVisible, setSourcePickerVisible] = useState(false)
-  const [hasClipboardImage, setHasClipboardImage] = useState(false)
   const store = useRef(createAnnotationStore()).current
   const flattenRef = useRef<FlattenHandle | null>(null)
 
@@ -66,18 +65,7 @@ export function WizardSheet({
     setStep("form")
   }, [screenshot])
 
-  async function handleAttachmentsAdd() {
-    // Probe the clipboard so we can disable that row in the picker when
-    // there's no image to paste — better than letting the user tap and
-    // get nothing.
-    let clipboardHasImage = false
-    try {
-      const mod = await import("expo-clipboard")
-      clipboardHasImage = await mod.hasImageAsync()
-    } catch {
-      clipboardHasImage = false
-    }
-    setHasClipboardImage(clipboardHasImage)
+  function handleAttachmentsAdd() {
     setSourcePickerVisible(true)
   }
 
@@ -87,7 +75,19 @@ export function WizardSheet({
     if (source === "files") picked = await pickFromFiles({ multiple: true })
     else if (source === "photos") picked = await pickFromPhotos({ multiple: true })
     else if (source === "clipboard") picked = await pickFromClipboard()
-    if (picked.length === 0) return
+
+    if (picked.length === 0) {
+      // Surface a visible error for the clipboard path specifically — the
+      // failure modes (empty clipboard, denied paste prompt, missing peer
+      // dep) all look the same from here, so a single nudge beats silent
+      // dismiss. Files/Photos cancel paths intentionally stay silent.
+      if (source === "clipboard") {
+        setAttachmentErrors([
+          "No image on the clipboard, or paste permission was denied. Copy an image and try again.",
+        ])
+      }
+      return
+    }
 
     // Validate using a duck-typed candidate shape — RN's Blob polyfill
     // rejects ArrayBuffer parts, so we cannot synthesise File objects
@@ -312,7 +312,6 @@ export function WizardSheet({
       </SafeAreaView>
       <SourcePicker
         visible={sourcePickerVisible}
-        hasClipboardImage={hasClipboardImage}
         onSelect={handleSourceSelected}
         onCancel={() => setSourcePickerVisible(false)}
       />
