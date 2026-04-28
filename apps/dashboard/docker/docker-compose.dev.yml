@@ -28,8 +28,15 @@ services:
   # talks to it when INTAKE_USER_FILE_SCAN_ENABLED=true (off by default), so
   # operators who don't want this can leave it stopped. First boot pulls the
   # signature DB (~500 MB); freshclam updates it daily afterwards.
+  #
+  # platform: linux/amd64 is pinned because the official clamav/clamav:stable
+  # tag's arm64 manifest is intermittently absent (Docker Hub rebuilds drop
+  # arm64 occasionally). amd64 + Rosetta works reliably on Apple Silicon and
+  # the throughput cost on a sidecar that only runs on intake is negligible.
+  # Native arm64 hosts can drop the platform line.
   clamav:
     image: clamav/clamav:stable
+    platform: linux/amd64
     ports:
       - "127.0.0.1:3310:3310"
     volumes:
