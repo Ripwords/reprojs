@@ -63,11 +63,21 @@ export async function scanBytes(bytes: Uint8Array): Promise<ScanResult> {
     )
   }
   const stream = Readable.from(Buffer.from(bytes))
+  const start = Date.now()
+  console.info(`[clamav] scan start size=${bytes.byteLength}`)
   try {
     const { isInfected, viruses } = await client.scanStream(stream)
-    if (isInfected) return { clean: false, reason: viruses?.[0] ?? "infected" }
+    const duration = Date.now() - start
+    if (isInfected) {
+      const reason = viruses?.[0] ?? "infected"
+      console.warn(`[clamav] scan verdict=infected:${reason} duration=${duration}ms`)
+      return { clean: false, reason }
+    }
+    console.info(`[clamav] scan verdict=clean duration=${duration}ms`)
     return { clean: true }
   } catch (err) {
+    const duration = Date.now() - start
+    console.error(`[clamav] scan error duration=${duration}ms`, err)
     // Reset the cached client so the next call re-inits — handles transient
     // socket drops cleanly when clamd restarts.
     _client = null

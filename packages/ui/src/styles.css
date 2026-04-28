@@ -400,6 +400,74 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* === Submit toast === */
+.ft-toast {
+  position: absolute;
+  top: 100px;
+  right: 24px;
+  background: var(--ft-color-bg);
+  border: 1px solid var(--ft-color-border);
+  border-radius: var(--ft-radius-md);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.18);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+  max-width: 320px;
+  z-index: 2;
+  animation: ft-toast-in 200ms ease-out;
+}
+@keyframes ft-toast-in {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.ft-toast-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ft-color-text);
+  line-height: 1.3;
+}
+.ft-toast-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.ft-toast-progress {
+  height: 4px;
+  background: var(--ft-color-surface);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.ft-toast-progress::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 35%;
+  background: var(--ft-color-primary);
+  border-radius: 2px;
+  animation: ft-toast-stripe 1.2s ease-in-out infinite;
+}
+@keyframes ft-toast-stripe {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(286%);
+  }
+}
+
 /* === Inline messages === */
 .ft-msg {
   font-size: 12px;

@@ -438,8 +438,10 @@ export default defineEventHandler(async (event) => {
   }
 
   event.node.res.statusCode = 201
+  event.node.res.setHeader("Repro-Scan-Enabled", env.INTAKE_USER_FILE_SCAN_ENABLED ? "1" : "0")
   return {
     id: report.id,
+    scanEnabled: env.INTAKE_USER_FILE_SCAN_ENABLED,
     ...(replayPart ? { replayStored, replayDisabled } : {}),
   }
 })

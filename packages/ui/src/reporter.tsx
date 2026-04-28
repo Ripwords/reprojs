@@ -5,6 +5,7 @@ import { DEFAULT_ATTACHMENT_LIMITS, validateAttachments, type Attachment } from 
 import { StepAnnotate } from "./wizard/step-annotate"
 import { StepDetails } from "./wizard/step-details"
 import { StepReview, type SummaryLine } from "./wizard/step-review"
+import { SubmitToast } from "./wizard/submit-toast"
 import { PrimaryButton, SecondaryButton, WizardHeader } from "./wizard/controls"
 
 export interface ReporterSubmitResult {
@@ -274,6 +275,7 @@ export function Reporter({ onClose, onCapture, onSubmit, openedAt }: ReporterPro
     { class: "ft-wizard" },
     h(WizardHeader, headerProps),
     body,
+    h(SubmitToast, { visible: submitting, attachmentCount: attachments.length }),
     h(
       "footer",
       { class: "ft-wizard-footer" },
