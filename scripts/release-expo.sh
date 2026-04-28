@@ -23,6 +23,8 @@ set -euo pipefail
 
 # shellcheck source=lib/ci-gate.sh
 . "$(dirname "$0")/lib/ci-gate.sh"
+# shellcheck source=lib/scope-changelog.sh
+. "$(dirname "$0")/lib/scope-changelog.sh"
 
 BUMP="${1:-patch}"
 case "$BUMP" in
@@ -84,8 +86,15 @@ echo "→ bumping @reprojs/expo $CURRENT_VERSION → $NEW_VERSION via changeloge
     --no-github
 )
 
+echo "→ filtering CHANGELOG to commits that touched @reprojs/expo paths..."
+filter_changelog_by_paths \
+  packages/expo/CHANGELOG.md \
+  "$LAST_EXPO_TAG" \
+  packages/expo packages/sdk-utils packages/shared packages/recorder
+amend_release_commit_and_retag "$TAG"
+
 echo ""
-echo "✓ tagged $TAG locally with CHANGELOG entry."
+echo "✓ tagged $TAG locally with scoped CHANGELOG entry."
 echo ""
 echo "Next: push to trigger publish-expo.yml"
 echo "  git push --follow-tags"

@@ -21,6 +21,8 @@ set -euo pipefail
 
 # shellcheck source=lib/ci-gate.sh
 . "$(dirname "$0")/lib/ci-gate.sh"
+# shellcheck source=lib/scope-changelog.sh
+. "$(dirname "$0")/lib/scope-changelog.sh"
 
 BUMP="${1:-patch}"
 case "$BUMP" in
@@ -89,8 +91,20 @@ echo "→ bumping @reprojs/core $CURRENT_VERSION → $NEW_VERSION via changeloge
     --no-github
 )
 
+# changelogen has no path filter — without this, packages/core/CHANGELOG.md
+# inherits every commit since the last sdk-v* tag, including dashboard-only
+# and unrelated work. Filter to only commits that touched the paths bundled
+# into @reprojs/core. Then amend the release commit + move the tag forward
+# so the upstream content matches the file.
+echo "→ filtering CHANGELOG to commits that touched @reprojs/core paths..."
+filter_changelog_by_paths \
+  packages/core/CHANGELOG.md \
+  "$LAST_SDK_TAG" \
+  packages/core packages/ui packages/sdk-utils packages/shared packages/recorder
+amend_release_commit_and_retag "$TAG"
+
 echo ""
-echo "✓ tagged $TAG locally with CHANGELOG entry."
+echo "✓ tagged $TAG locally with scoped CHANGELOG entry."
 echo ""
 echo "Next: push to trigger publish-npm.yml"
 echo "  git push --follow-tags"

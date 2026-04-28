@@ -13,6 +13,8 @@ set -euo pipefail
 
 # shellcheck source=lib/ci-gate.sh
 . "$(dirname "$0")/lib/ci-gate.sh"
+# shellcheck source=lib/scope-changelog.sh
+. "$(dirname "$0")/lib/scope-changelog.sh"
 
 BUMP="${1:-patch}"
 case "$BUMP" in
@@ -74,8 +76,18 @@ echo "→ bumping @reprojs/extension $CURRENT_VERSION → $NEW_VERSION via chang
     --no-github
 )
 
+# The extension bundles @reprojs/core at build time, so changes to core's
+# tree are functionally part of an extension release. Keep commits that
+# touched the extension itself OR any of the SDK paths the bundle pulls in.
+echo "→ filtering CHANGELOG to commits that touched extension or bundled SDK paths..."
+filter_changelog_by_paths \
+  apps/extension/CHANGELOG.md \
+  "$LAST_EXT_TAG" \
+  apps/extension packages/core packages/ui packages/sdk-utils packages/shared packages/recorder
+amend_release_commit_and_retag "$TAG"
+
 echo ""
-echo "✓ tagged $TAG locally with CHANGELOG entry."
+echo "✓ tagged $TAG locally with scoped CHANGELOG entry."
 echo ""
 echo "Next: push to trigger publish-extension.yml"
 echo "  git push --follow-tags"
