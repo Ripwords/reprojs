@@ -10,10 +10,10 @@ mock.module("expo-document-picker", () => ({
   }),
 }))
 
-describe("pickFiles", () => {
+describe("pickFromFiles", () => {
   test("returns Attachment[] from a successful pick", async () => {
-    const { pickFiles } = await import("./file-picker")
-    const out = await pickFiles({ multiple: true })
+    const { pickFromFiles } = await import("./file-picker")
+    const out = await pickFromFiles({ multiple: true })
     expect(out).toHaveLength(2)
     expect(out[0]?.filename).toBe("a.png")
     expect(out[0]?.mime).toBe("image/png")

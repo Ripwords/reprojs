@@ -4,10 +4,10 @@ mock.module("expo-document-picker", () => ({
   getDocumentAsync: async () => ({ canceled: true }),
 }))
 
-describe("pickFiles", () => {
+describe("pickFromFiles", () => {
   test("returns empty array when canceled", async () => {
-    const { pickFiles } = await import("./file-picker")
-    const out = await pickFiles({ multiple: true })
+    const { pickFromFiles } = await import("./file-picker")
+    const out = await pickFromFiles({ multiple: true })
     expect(out).toEqual([])
   })
 })

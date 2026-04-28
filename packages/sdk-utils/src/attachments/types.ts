@@ -27,6 +27,21 @@ export interface AttachmentLimits {
   maxTotalBytes: number
 }
 
+/**
+ * Minimal shape that `validateAttachments` reads from each candidate. The
+ * web SDK passes `File` instances (which already match this shape — File
+ * extends Blob and has `name`). The Expo SDK passes lighter `{name, size,
+ * type}` records because RN's Blob polyfill rejects ArrayBuffer/Uint8Array
+ * inputs, so synthetic `File` construction crashes at runtime. Either
+ * flavour satisfies this contract.
+ */
+export interface AttachmentCandidate {
+  name: string
+  size: number
+  type: string
+  blob?: Blob
+}
+
 export const DEFAULT_ATTACHMENT_LIMITS: AttachmentLimits = {
   maxCount: 5,
   maxFileBytes: 10 * 1024 * 1024,

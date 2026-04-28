@@ -2,6 +2,7 @@ import {
   DENIED_FILENAME_EXTENSIONS,
   DENIED_MIME_PREFIXES,
   type Attachment,
+  type AttachmentCandidate,
   type AttachmentLimits,
 } from "./types"
 
@@ -34,7 +35,7 @@ function newId(): string {
 }
 
 export function validateAttachments(
-  candidates: File[],
+  candidates: AttachmentCandidate[],
   existing: Attachment[],
   limits: AttachmentLimits,
 ): ValidationResult {
@@ -71,7 +72,11 @@ export function validateAttachments(
 
     accepted.push({
       id: newId(),
-      blob: file,
+      // Web's File satisfies AttachmentCandidate AND extends Blob, so the
+      // direct cast is correct on the web side. Expo passes a plain object
+      // and reattaches the real blob/previewUrl in the caller — for
+      // validation we only need the metadata fields.
+      blob: file.blob ?? (file as unknown as Blob),
       filename,
       mime,
       size: file.size,

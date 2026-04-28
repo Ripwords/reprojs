@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   KeyboardAvoidingView,
   Modal,
@@ -17,7 +17,8 @@ import { useAnnotationShapes } from "../annotation/use-shapes"
 import { CloseIcon } from "../annotation/icons"
 import { PrimaryButton, SecondaryButton, StepIndicator } from "./controls"
 import { theme } from "./theme"
-import { pickFiles } from "../capture/file-picker"
+import { pickFromClipboard, pickFromFiles, pickFromPhotos } from "../capture/file-picker"
+import { SourcePicker, type AttachmentSource } from "./source-picker"
 import { DEFAULT_ATTACHMENT_LIMITS, validateAttachments, type Attachment } from "@reprojs/sdk-utils"
 
 export interface WizardArgs {
@@ -53,6 +54,8 @@ export function WizardSheet({
   const [annotateSize, setAnnotateSize] = useState({ w: 0, h: 0 })
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [attachmentErrors, setAttachmentErrors] = useState<string[]>([])
+  const [sourcePickerVisible, setSourcePickerVisible] = useState(false)
+  const [hasClipboardImage, setHasClipboardImage] = useState(false)
   const store = useRef(createAnnotationStore()).current
   const flattenRef = useRef<FlattenHandle | null>(null)
 
@@ -64,28 +67,46 @@ export function WizardSheet({
   }, [screenshot])
 
   async function handleAttachmentsAdd() {
-    const picked = await pickFiles({ multiple: true })
+    // Probe the clipboard so we can disable that row in the picker when
+    // there's no image to paste — better than letting the user tap and
+    // get nothing.
+    let clipboardHasImage = false
+    try {
+      const mod = await import("expo-clipboard")
+      clipboardHasImage = await mod.hasImageAsync()
+    } catch {
+      clipboardHasImage = false
+    }
+    setHasClipboardImage(clipboardHasImage)
+    setSourcePickerVisible(true)
+  }
+
+  async function handleSourceSelected(source: AttachmentSource) {
+    setSourcePickerVisible(false)
+    let picked: Attachment[] = []
+    if (source === "files") picked = await pickFromFiles({ multiple: true })
+    else if (source === "photos") picked = await pickFromPhotos({ multiple: true })
+    else if (source === "clipboard") picked = await pickFromClipboard()
     if (picked.length === 0) return
-    // Convert picker output → File[] for validateAttachments. Each picked
-    // Attachment already has size/mime/filename; we mirror them onto a stub
-    // File so the validator's File contract type-checks. Override size since
-    // the picker already told us the real value.
-    const asFiles: File[] = picked.map((a) => {
-      const f = new File([new Uint8Array(0)], a.filename, { type: a.mime })
-      Object.defineProperty(f, "size", { value: a.size, configurable: true })
-      return f
-    })
-    const result = validateAttachments(asFiles, attachments, DEFAULT_ATTACHMENT_LIMITS)
-    // Reattach picker uri/blob to the validated Attachments (validateAttachments
-    // wraps the File reference in `blob`, which on RN is a stub — replace with
-    // the picker's previewUrl + blob).
-    const accepted = result.accepted.map((a) => {
-      const original = picked.find((p) => p.filename === a.filename)
+
+    // Validate using a duck-typed candidate shape — RN's Blob polyfill
+    // rejects ArrayBuffer parts, so we cannot synthesise File objects
+    // here. The validator only reads name/size/type from candidates.
+    const result = validateAttachments(
+      picked.map((a) => ({ name: a.filename, size: a.size, type: a.mime })),
+      attachments,
+      DEFAULT_ATTACHMENT_LIMITS,
+    )
+    // Reattach the real picker output onto the validated Attachments. We
+    // pair by index because filenames can collide (two screenshots from
+    // the camera roll often share a name).
+    const accepted = result.accepted.map((a, i) => {
+      const original = picked[i]
       if (!original) return a
       return { ...a, blob: original.blob, previewUrl: original.previewUrl }
     })
     setAttachments((prev) => [...prev, ...accepted])
-    setAttachmentErrors(result.rejected.map((r) => `${r.filename}: ${r.reason.replace("-", " ")}`))
+    setAttachmentErrors(result.rejected.map((r) => `${r.filename}: ${r.reason.replace(/-/g, " ")}`))
   }
 
   function handleAttachmentRemove(id: string) {
@@ -158,7 +179,10 @@ export function WizardSheet({
     lines.push({ label: "Console, network & breadcrumbs" })
     lines.push({ label: "Device & environment info" })
     if (attachments.length > 0) {
-      lines.push({ label: "Additional attachments", hint: String(attachments.length) })
+      lines.push({
+        label: "Additional attachments",
+        hint: String(attachments.length),
+      })
     }
     return lines
   }, [title, screenshot, shapes.length, attachments.length])
@@ -286,6 +310,12 @@ export function WizardSheet({
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      <SourcePicker
+        visible={sourcePickerVisible}
+        hasClipboardImage={hasClipboardImage}
+        onSelect={handleSourceSelected}
+        onCancel={() => setSourcePickerVisible(false)}
+      />
     </Modal>
   )
 }
