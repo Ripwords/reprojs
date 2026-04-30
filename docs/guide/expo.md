@@ -104,7 +104,9 @@ The report lands in your dashboard's inbox with a Mobile / iOS / Android platfor
 
 ## Draggable launcher
 
-The launcher is draggable to any of the four corners. Drag anywhere on screen, release, and it snaps (spring-animated) to the nearest corner. The choice persists across app restarts via AsyncStorage. Disable the behavior if you want a fixed position:
+The launcher drags AssistiveTouch-style: free movement during the drag, and on release it springs to the nearest screen edge (left, right, top, or bottom) with the position along that edge preserved. It can never end up parked in the middle of the screen. The chosen edge + along-axis position persists across app restarts via AsyncStorage.
+
+Pass `position` as the initial corner before the user has dragged it; after the first drag, the persisted position takes over. Disable dragging entirely with `draggable={false}` to pin the launcher to `position`:
 
 ```tsx
 <ReproLauncher draggable={false} position="top-right" />

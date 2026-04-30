@@ -1,41 +1,40 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Dimensions, Text, View } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useRepro } from "./use-repro"
+import {
+  type Anchor,
+  type Corner,
+  type OffsetInput,
+  type WindowSize,
+  LAUNCHER_SIZE,
+  anchorToCenter,
+  computeBounds,
+  cornerToAnchor,
+  isAnchor,
+  nearestEdgeAnchor,
+} from "./launcher-geometry"
 
-type Corner = "bottom-right" | "bottom-left" | "top-right" | "top-left"
-const CORNERS: Corner[] = ["bottom-right", "bottom-left", "top-right", "top-left"]
-const STORAGE_KEY = "@reprojs/expo/launcher-corner/v1"
-const SIZE = 52
-const DEFAULT_MARGIN = 24
+const STORAGE_KEY_V1 = "@reprojs/expo/launcher-corner/v1"
+const STORAGE_KEY_V2 = "@reprojs/expo/launcher-edge/v2"
+const SIZE = LAUNCHER_SIZE
 
 interface Props {
+  /** Initial corner before any drag. After the first drag, the persisted edge
+   *  position takes over (unless `draggable` is false). */
   position?: Corner
-  offset?: { top?: number; bottom?: number; left?: number; right?: number }
+  offset?: OffsetInput
   icon?: React.ReactNode
   hideWhen?: () => boolean
   /** When false the launcher stays pinned to `position`; when true (default)
-   *  the user can drag it to any corner and the choice persists. */
+   *  the user can drag it anywhere along a screen edge (AssistiveTouch
+   *  style) and the choice persists. */
   draggable?: boolean
 }
 
 function isCorner(v: unknown): v is Corner {
-  return typeof v === "string" && (CORNERS as readonly string[]).includes(v)
-}
-
-function cornerCenter(
-  corner: Corner,
-  offset: NonNullable<Props["offset"]>,
-  win: { width: number; height: number },
-) {
-  const top = offset.top ?? DEFAULT_MARGIN
-  const bottom = offset.bottom ?? DEFAULT_MARGIN
-  const left = offset.left ?? DEFAULT_MARGIN
-  const right = offset.right ?? DEFAULT_MARGIN
-  const x = corner.endsWith("right") ? win.width - right - SIZE / 2 : left + SIZE / 2
-  const y = corner.startsWith("bottom") ? win.height - bottom - SIZE / 2 : top + SIZE / 2
-  return { x, y }
+  return v === "bottom-right" || v === "bottom-left" || v === "top-right" || v === "top-left"
 }
 
 export function ReproLauncher({
@@ -46,58 +45,113 @@ export function ReproLauncher({
   draggable = true,
 }: Props) {
   const repro = useRepro()
-  const [corner, setCorner] = useState<Corner>(position)
-  const translate = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current
+  const [anchor, setAnchor] = useState<Anchor>(() => cornerToAnchor(position))
+  const [win, setWin] = useState<WindowSize>(() => {
+    const w = Dimensions.get("window")
+    return { width: w.width, height: w.height }
+  })
+  const bounds = useMemo(() => computeBounds(offset, win), [offset, win])
 
-  // Restore persisted corner on mount (only when draggable).
+  // Animated.ValueXY drives the launcher's absolute top-left position. We
+  // initialise it to the resolved center of the initial anchor so the button
+  // doesn't visibly snap from (0,0) on first paint.
+  const initialTopLeft = useMemo(() => {
+    const c = anchorToCenter(cornerToAnchor(position), bounds)
+    return { x: c.x - SIZE / 2, y: c.y - SIZE / 2 }
+    // Run once: if `position`/`offset` change later, the anchor-spring effect
+    // below catches up.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const topLeft = useRef(new Animated.ValueXY(initialTopLeft)).current
+
+  // JS-side mirror of the animated value so onStart can read it without
+  // touching Animated's private `_value`.
+  const topLeftRef = useRef(initialTopLeft)
+  useEffect(() => {
+    const id = topLeft.addListener((v) => {
+      topLeftRef.current = v
+    })
+    return () => topLeft.removeListener(id)
+  }, [topLeft])
+
+  const dragStartRef = useRef({ x: 0, y: 0 })
+
+  // Track window resize / rotation so the spring-on-anchor-change effect
+  // recomputes against current dimensions.
+  useEffect(() => {
+    const sub = Dimensions.addEventListener("change", ({ window }) => {
+      setWin({ width: window.width, height: window.height })
+    })
+    return () => sub.remove()
+  }, [])
+
+  // Restore persisted anchor on mount. v2 stores the new {edge, along}; v1
+  // stored a Corner string — we read v1 as a one-time fallback so users on the
+  // previous SDK don't see the launcher jump on upgrade.
   useEffect(() => {
     if (!draggable) return
     let cancelled = false
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((v) => {
-        if (!cancelled && isCorner(v)) setCorner(v)
-        return undefined
-      })
-      .catch(() => undefined)
+    ;(async () => {
+      try {
+        const v2 = await AsyncStorage.getItem(STORAGE_KEY_V2)
+        if (v2) {
+          const parsed: unknown = JSON.parse(v2)
+          if (!cancelled && isAnchor(parsed)) {
+            setAnchor(parsed)
+            return
+          }
+        }
+        const v1 = await AsyncStorage.getItem(STORAGE_KEY_V1)
+        if (!cancelled && isCorner(v1)) setAnchor(cornerToAnchor(v1))
+      } catch {
+        // Persistence is best-effort; a failure here just means the launcher
+        // starts at `position` instead of the user's last drop.
+      }
+    })()
     return () => {
       cancelled = true
     }
   }, [draggable])
 
-  // Persist corner changes.
+  // Persist anchor changes.
   useEffect(() => {
     if (!draggable) return
-    AsyncStorage.setItem(STORAGE_KEY, corner).catch(() => undefined)
-  }, [corner, draggable])
+    AsyncStorage.setItem(STORAGE_KEY_V2, JSON.stringify(anchor)).catch(() => undefined)
+  }, [anchor, draggable])
+
+  // Spring to the resolved center whenever the anchor or bounds (rotation,
+  // offset prop change) change. Also covers the initial render — for which
+  // the spring is a no-op since `topLeft` was already initialised there.
+  useEffect(() => {
+    const c = anchorToCenter(anchor, bounds)
+    Animated.spring(topLeft, {
+      toValue: { x: c.x - SIZE / 2, y: c.y - SIZE / 2 },
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 6,
+    }).start()
+  }, [anchor, bounds, topLeft])
 
   // `.runOnJS(true)` is required when the host app has react-native-reanimated;
   // without it setState inside a worklet crashes.
   const pan = Gesture.Pan()
     .runOnJS(true)
     .minDistance(6)
+    .onStart(() => {
+      dragStartRef.current = { ...topLeftRef.current }
+    })
     .onUpdate((e) => {
-      translate.setValue({ x: e.translationX, y: e.translationY })
+      // Free drag — finger drives the position directly. Edge-snap happens
+      // on release, not during drag (matches iOS AssistiveTouch).
+      topLeft.setValue({
+        x: dragStartRef.current.x + e.translationX,
+        y: dragStartRef.current.y + e.translationY,
+      })
     })
     .onEnd((e) => {
-      const win = Dimensions.get("window")
-      const fromAnchor = cornerCenter(corner, offset, win)
-      const dropX = fromAnchor.x + e.translationX
-      const dropY = fromAnchor.y + e.translationY
-      const nextCorner: Corner = `${dropY < win.height / 2 ? "top" : "bottom"}-${
-        dropX < win.width / 2 ? "left" : "right"
-      }` as Corner
-      const toAnchor = cornerCenter(nextCorner, offset, win)
-
-      // Shift the translate baseline so the button visually stays where the
-      // user released it, then spring to (0, 0) within the new corner.
-      translate.setValue({ x: dropX - toAnchor.x, y: dropY - toAnchor.y })
-      setCorner(nextCorner)
-      Animated.spring(translate, {
-        toValue: { x: 0, y: 0 },
-        useNativeDriver: true,
-        speed: 14,
-        bounciness: 6,
-      }).start()
+      const dropCenterX = dragStartRef.current.x + e.translationX + SIZE / 2
+      const dropCenterY = dragStartRef.current.y + e.translationY + SIZE / 2
+      setAnchor(nearestEdgeAnchor({ x: dropCenterX, y: dropCenterY }, bounds))
     })
 
   const tap = Gesture.Tap()
@@ -110,22 +164,18 @@ export function ReproLauncher({
   if (hideWhen?.()) return null
   if (repro.disabled) return null
 
-  const posStyles = {
-    position: "absolute" as const,
-    top: corner.startsWith("top") ? (offset.top ?? DEFAULT_MARGIN) : undefined,
-    bottom: corner.startsWith("bottom") ? (offset.bottom ?? DEFAULT_MARGIN) : undefined,
-    left: corner.endsWith("left") ? (offset.left ?? DEFAULT_MARGIN) : undefined,
-    right: corner.endsWith("right") ? (offset.right ?? DEFAULT_MARGIN) : undefined,
-  }
-
   return (
-    <View style={posStyles} pointerEvents="box-none">
+    <View
+      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      pointerEvents="box-none"
+    >
       <GestureDetector gesture={gesture}>
         <Animated.View
           accessibilityLabel="Report a bug"
           accessibilityRole="button"
           style={{
-            transform: translate.getTranslateTransform(),
+            position: "absolute",
+            transform: topLeft.getTranslateTransform(),
             width: SIZE,
             height: SIZE,
             borderRadius: SIZE / 2,
