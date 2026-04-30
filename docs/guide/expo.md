@@ -13,7 +13,8 @@
 npx expo install @reprojs/expo \
   react-native-view-shot react-native-svg react-native-gesture-handler \
   @react-native-async-storage/async-storage @react-native-community/netinfo \
-  expo-device expo-constants
+  expo-device expo-constants \
+  expo-document-picker expo-image-picker
 ```
 
 `expo install` picks versions matching your Expo SDK channel.
@@ -32,6 +33,8 @@ npx expo install @reprojs/expo \
 | `@react-native-community/netinfo` | 11.3 |
 | `expo-device` | 6 |
 | `expo-constants` | 16 |
+| `expo-document-picker` | any (matches your Expo SDK) |
+| `expo-image-picker` | any (matches your Expo SDK) |
 
 ## Add the config plugin
 
