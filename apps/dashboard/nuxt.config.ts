@@ -97,10 +97,14 @@ export default defineNuxtConfig({
     // img-src — not override — so we keep 'self' + data: and add the
     // GitHub CDN host. Allow https: broadly as well so user-supplied avatar
     // URLs from other identity providers (when we add Jira/Linear) don't
-    // each require a code change.
+    // each require a code change. `blob:` is required by the comment
+    // composer's pending-attachment thumbnails — `URL.createObjectURL(file)`
+    // produces blob: URLs, which the browser silently refuses to render
+    // without the scheme listed here (the `<img>` falls through to its alt
+    // text and shows a broken-image glyph).
     headers: {
       contentSecurityPolicy: {
-        "img-src": ["'self'", "data:", "https:"],
+        "img-src": ["'self'", "data:", "blob:", "https:"],
       },
     },
   },
