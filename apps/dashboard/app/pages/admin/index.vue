@@ -29,9 +29,16 @@ const EVENT_LABEL: Record<string, string> = {
   status_changed: "changed status",
   priority_changed: "changed priority",
   assignee_changed: "reassigned",
+  assignee_added: "added an assignee",
+  assignee_removed: "removed an assignee",
+  milestone_changed: "changed milestone",
   tag_added: "added a tag",
   tag_removed: "removed a tag",
+  comment_added: "commented",
+  comment_edited: "edited a comment",
+  comment_deleted: "deleted a comment",
   github_unlinked: "unlinked GitHub issue",
+  github_labels_updated: "updated GitHub labels",
 }
 
 function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
@@ -180,7 +187,8 @@ function describeEvent(e: AdminOverviewDTO["recentEvents"][number]): string {
               <span class="text-default font-medium">
                 {{ e.actor?.name ?? e.actor?.email ?? "System" }}
               </span>
-              <span class="text-muted"> {{ describeEvent(e) }}</span>
+              <span>&nbsp;</span>
+              <span class="text-muted">{{ describeEvent(e) }}</span>
               <div class="mt-0.5 text-sm text-muted tabular-nums">
                 {{ relativeTime(e.createdAt) }}
               </div>
