@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.5.1
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.5.0...v0.5.1)
+
+### 🚀 Enhancements
+
+- **expo:** AssistiveTouch-style edge-snap drag for the launcher ([96e23f0](https://github.com/Ripwords/ReproJs/commit/96e23f0))
+- **dashboard:** Proxy GitHub user-attachment images ([b7e4a34](https://github.com/Ripwords/ReproJs/commit/b7e4a34))
+- **dashboard:** Redesign report overview tab to Figma spec ([8695fd5](https://github.com/Ripwords/ReproJs/commit/8695fd5))
+- **dashboard:** Chat-style comments with paste-to-attach images ([d79f674](https://github.com/Ripwords/ReproJs/commit/d79f674))
+
+### 🩹 Fixes
+
+- **release:** Scope each package's CHANGELOG to its own paths ([b1bb22c](https://github.com/Ripwords/ReproJs/commit/b1bb22c))
+- **deploy:** Dashboard runs drizzle-kit migrate on every start ([11bc9b3](https://github.com/Ripwords/ReproJs/commit/11bc9b3))
+- **db:** Correct out-of-order when timestamp on migration 0012 ([e5a3764](https://github.com/Ripwords/ReproJs/commit/e5a3764))
+- **dashboard:** Show actor/event separator in activity feed ([b3d5fbd](https://github.com/Ripwords/ReproJs/commit/b3d5fbd))
+
+### 📖 Documentation
+
+- **expo:** Add expo-document-picker + expo-image-picker to install snippet ([d7aad2e](https://github.com/Ripwords/ReproJs/commit/d7aad2e))
+- **site:** Add expo-document-picker + expo-image-picker to Expo install guide ([02e6e0d](https://github.com/Ripwords/ReproJs/commit/02e6e0d))
+- Update compat docs ([e9c45ba](https://github.com/Ripwords/ReproJs/commit/e9c45ba))
+
+### 🏡 Chore
+
+- **release:** Expo-v0.3.0 ([0dc692a](https://github.com/Ripwords/ReproJs/commit/0dc692a))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.5.0
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.4.2...v0.5.0)
