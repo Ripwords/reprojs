@@ -1,6 +1,11 @@
 // packages/integrations/github/src/client.ts
 import { createAppAuth } from "@octokit/auth-app"
 import { Octokit } from "@octokit/rest"
+
+// Re-exported so server-side dashboard code can mint installation tokens for
+// raw HTTP calls (e.g. proxying user-attachment images) without taking a
+// direct dep on @octokit/auth-app.
+export { createAppAuth }
 import type {
   CloseIssueInput,
   CreateIssueInput,

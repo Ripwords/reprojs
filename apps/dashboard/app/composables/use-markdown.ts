@@ -35,10 +35,40 @@ marked.use({ renderer, async: false })
  * measure; our renderer also adds rel="noopener noreferrer" so the risk is
  * covered).
  */
+// Hosts whose image URLs need to be proxied through our origin. The
+// `github.com/user-attachments/assets/<uuid>` URL is auth-gated — it only
+// 302-resolves to a signed `private-user-images.githubusercontent.com/...`
+// asset when the request carries a `_gh_sess` cookie or `Authorization`
+// header. From a third-party browser tab the request 404s, so the dashboard
+// would otherwise render a broken-image glyph for every screenshot pasted
+// into a synced GitHub comment. We rewrite those URLs to flow through our
+// own origin, where the server fetches them with the GitHub App
+// installation token. Public `user-images.githubusercontent.com` (older
+// uploads) and avatar URLs are unaffected.
+const PROXY_HOST_RE =
+  /^https:\/\/(?:github\.com\/user-attachments\/assets\/|private-user-images\.githubusercontent\.com\/)/
+
+function rewriteGithubImages(html: string, projectId: string): string {
+  return html.replace(/<img\b([^>]*?)\bsrc="([^"]+)"/gi, (whole, attrs: string, url: string) => {
+    if (!PROXY_HOST_RE.test(url)) return whole
+    const proxied = `/api/projects/${encodeURIComponent(projectId)}/integrations/github/image-proxy?url=${encodeURIComponent(url)}`
+    return `<img${attrs} src="${proxied}"`
+  })
+}
+
+export interface RenderMarkdownOptions {
+  /** When set, GitHub user-attachment image URLs are rewritten through
+   *  the dashboard's image-proxy endpoint so they bypass GitHub's auth gate. */
+  rewriteImagesFor?: { projectId: string }
+}
+
 export function useMarkdown() {
-  function renderMarkdown(src: string): string {
+  function renderMarkdown(src: string, opts?: RenderMarkdownOptions): string {
     if (!src) return ""
-    const rawHtml = marked(src) as string
+    let rawHtml = marked(src) as string
+    if (opts?.rewriteImagesFor) {
+      rawHtml = rewriteGithubImages(rawHtml, opts.rewriteImagesFor.projectId)
+    }
     if (import.meta.server) {
       // DOMPurify needs a DOM. During SSR we return an unsanitised string —
       // BUT the Comments tab only renders on the client (it's a tab the user

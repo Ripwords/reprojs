@@ -2,7 +2,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { isAbsolute, resolve } from "node:path"
-import { createInstallationClient } from "@reprojs/integrations-github"
+import { createAppAuth, createInstallationClient } from "@reprojs/integrations-github"
 import type { GitHubInstallationClient } from "@reprojs/integrations-github"
 import { getGithubAppCredentials } from "./github-app-credentials"
 
@@ -10,6 +10,29 @@ function resolvePrivateKey(raw: string): string {
   if (raw.includes("-----BEGIN")) return raw.replace(/\\n/g, "\n")
   const path = isAbsolute(raw) ? raw : resolve(process.cwd(), raw)
   return readFileSync(path, "utf8")
+}
+
+/**
+ * Mint a short-lived installation access token for raw HTTP calls that
+ * Octokit can't easily express (binary streaming, manual redirect handling).
+ * The current consumer is the GitHub user-attachment image proxy — see
+ * `server/api/projects/[id]/integrations/github/image-proxy.get.ts`.
+ *
+ * Throws if the GitHub App is not configured. Returns the bare token; the
+ * caller wraps it as `Authorization: Bearer <token>`.
+ */
+export async function getInstallationToken(installationId: number): Promise<string> {
+  const creds = await getGithubAppCredentials()
+  if (!creds) {
+    throw new Error("GitHub App is not configured — cannot mint installation token")
+  }
+  const auth = createAppAuth({
+    appId: creds.appId,
+    privateKey: resolvePrivateKey(creds.privateKey),
+    installationId,
+  })
+  const result = (await auth({ type: "installation" })) as { token: string }
+  return result.token
 }
 
 // Test-only override hook: allows integration tests to inject a mock client
