@@ -1,9 +1,26 @@
-<!-- apps/dashboard/app/components/report-drawer/overview-tab.vue -->
+<!-- apps/dashboard/app/components/report-drawer/overview-tab.vue
+     Overview pane for a report. The signature element is the
+     orange-accented section header — a 1px-stroked card with a tinted
+     `bg-primary/8` header strip and `text-primary` label.
+
+     Layout:
+       Top row:    Screenshot (col-span-7) | Description + Report details (col-span-5)
+       Bottom row: Conversation (chat-style comments, full width)
+
+     Diagnostic content (Session env / System info / Raw context) lives
+     in the dedicated System and Raw tabs — the overview is for the
+     "what / who / when" + the conversation around the bug. -->
 <script setup lang="ts">
 import type { ReportDetailDTO } from "@reprojs/shared"
 import { safeHref } from "~/composables/use-safe-href"
-import { parseBrowser, parseOs } from "~/composables/use-user-agent"
 import { useMarkdown } from "~/composables/use-markdown"
+import {
+  priorityColor,
+  priorityLabel,
+  statusColor,
+  statusLabel,
+} from "~/composables/use-report-format"
+import CommentsTab from "./comments-tab.vue"
 
 const props = defineProps<{ projectId: string; report: ReportDetailDTO }>()
 const emit = defineEmits<{
@@ -15,243 +32,230 @@ const userFileCount = computed(
 )
 
 const ctx = computed(() => props.report.context)
-const sys = computed(() => ctx.value?.systemInfo)
-
-const os = computed(() => parseOs(sys.value?.userAgent, sys.value?.platform))
-const browser = computed(() => parseBrowser(sys.value?.userAgent))
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleString()
 
-// Reporter description is authored in the SDK widget and may use markdown
-// (code blocks, lists, links). `useMarkdown` is the same DOMPurify-wrapped
-// renderer the comments tab uses — safe to bind via v-html.
+// Lightbox state — opened by the fullscreen button overlaying the
+// screenshot card. Native Fullscreen API behaviour (Esc to close) is
+// emulated here with a simple modal so it works inside Nuxt UI's drawer
+// stacking context too.
+//
+// Esc handling: the parent report page registers a window-level keydown
+// that navigates back to the inbox on Escape. We need to intercept Esc
+// FIRST when the lightbox is open and stop it from reaching that handler.
+// Using `capture: true` on document fires this listener during the capture
+// phase — before the event reaches window's bubble-phase listener — so a
+// single `stopPropagation` here keeps the user on the report.
+const lightboxOpen = ref(false)
+function openLightbox() {
+  lightboxOpen.value = true
+}
+function closeLightbox() {
+  lightboxOpen.value = false
+}
+function onLightboxKey(e: KeyboardEvent) {
+  if (e.key !== "Escape") return
+  e.preventDefault()
+  e.stopPropagation()
+  e.stopImmediatePropagation()
+  closeLightbox()
+}
+watch(lightboxOpen, (open) => {
+  if (import.meta.server) return
+  if (open) {
+    document.addEventListener("keydown", onLightboxKey, { capture: true })
+    document.body.style.overflow = "hidden"
+  } else {
+    document.removeEventListener("keydown", onLightboxKey, { capture: true })
+    document.body.style.overflow = ""
+  }
+})
+onUnmounted(() => {
+  if (import.meta.server) return
+  document.removeEventListener("keydown", onLightboxKey, { capture: true })
+  document.body.style.overflow = ""
+})
+
 const { renderMarkdown } = useMarkdown()
 const descriptionHtml = computed(() =>
-  props.report.description ? renderMarkdown(props.report.description) : "",
+  props.report.description
+    ? renderMarkdown(props.report.description, { rewriteImagesFor: { projectId: props.projectId } })
+    : "",
 )
 </script>
 
 <template>
   <div class="p-5 space-y-4">
-    <UCard v-if="report.thumbnailUrl" :ui="{ body: 'p-0 overflow-hidden' }" class="overflow-hidden">
-      <!-- Cap the image at 60vh with a dark letterbox so tall portrait screenshots -->
-      <!-- don't dominate the drawer; landscape still fills width naturally. -->
-      <div class="flex items-center justify-center bg-neutral-900 dark:bg-neutral-950 max-h-[60vh]">
+    <!-- HERO: screenshot (left) + description / report-details rail (right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <!-- Screenshot — borderless dark canvas; the image floats in a
+           letterboxed frame so portrait + landscape both look intentional.
+           Fullscreen toggle in the corner opens a lightbox so reviewers can
+           inspect detail without leaving the page. -->
+      <div
+        v-if="report.thumbnailUrl"
+        class="lg:col-span-7 group relative overflow-hidden rounded-xl ring-1 ring-default bg-elevated"
+      >
+        <button
+          type="button"
+          aria-label="View screenshot full screen"
+          class="flex items-center justify-center bg-neutral-900 dark:bg-neutral-950 max-h-[60vh] p-6 w-full cursor-zoom-in"
+          @click="openLightbox"
+        >
+          <img
+            :src="report.thumbnailUrl"
+            alt="Report screenshot"
+            class="max-h-[52vh] max-w-full object-contain block rounded-lg"
+          />
+        </button>
+        <button
+          type="button"
+          aria-label="View screenshot full screen"
+          title="Fullscreen (click image)"
+          class="absolute top-3 right-3 inline-flex items-center justify-center size-9 rounded-lg bg-neutral-950/70 text-white ring-1 ring-white/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-neutral-950/90 transition-opacity"
+          @click="openLightbox"
+        >
+          <UIcon name="i-heroicons-arrows-pointing-out" class="size-4" />
+        </button>
+      </div>
+      <div v-else class="lg:col-span-7"></div>
+
+      <!-- Right rail: stacked description + report details -->
+      <div class="lg:col-span-5 flex flex-col gap-4">
+        <!-- Description always renders so the right rail keeps its visual
+             rhythm even when the SDK caller submitted no body — the
+             empty-state copy makes the absence intentional rather than
+             reading as a layout bug. -->
+        <section class="overflow-hidden rounded-xl ring-1 ring-default bg-default">
+          <header class="px-5 py-3 bg-primary/[0.08] border-b border-default">
+            <h3 class="text-sm font-medium text-primary tracking-tight">Description</h3>
+          </header>
+          <div
+            v-if="report.description"
+            class="prose prose-sm dark:prose-invert max-w-none text-default text-sm leading-relaxed px-5 py-4"
+            v-html="descriptionHtml"
+          />
+          <p v-else class="px-5 py-4 text-sm text-muted italic">
+            No description provided by the reporter.
+          </p>
+        </section>
+
+        <section class="overflow-hidden rounded-xl ring-1 ring-default bg-default">
+          <header class="px-5 py-3 bg-primary/[0.08] border-b border-default">
+            <h3 class="text-sm font-medium text-primary tracking-tight">Report details</h3>
+          </header>
+          <dl class="px-5 py-4 text-sm space-y-3">
+            <div class="flex items-start gap-3">
+              <dt class="text-muted w-24 shrink-0">Reporter</dt>
+              <dd class="text-default min-w-0 flex-1 truncate">
+                {{ report.reporterEmail ?? "anonymous" }}
+              </dd>
+            </div>
+            <div class="flex items-start gap-3">
+              <dt class="text-muted w-24 shrink-0">
+                {{ ctx?.source === "expo" ? "Route" : "Page" }}
+              </dt>
+              <dd class="min-w-0 flex-1">
+                <template v-if="ctx?.source === 'expo'">
+                  <span class="text-default truncate block">{{ report.pageUrl }}</span>
+                </template>
+                <template v-else>
+                  <a
+                    :href="safeHref(report.pageUrl)"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-primary hover:underline truncate block"
+                  >
+                    {{ report.pageUrl }}
+                  </a>
+                </template>
+              </dd>
+            </div>
+            <div class="flex items-start gap-3">
+              <dt class="text-muted w-24 shrink-0">Received</dt>
+              <dd class="text-default tabular-nums">{{ fmtTime(report.receivedAt) }}</dd>
+            </div>
+            <div class="flex items-center gap-3">
+              <dt class="text-muted w-24 shrink-0">Status</dt>
+              <dd>
+                <UBadge
+                  :color="statusColor(report.status)"
+                  variant="soft"
+                  size="md"
+                  class="rounded-full px-3 font-semibold"
+                  :label="statusLabel(report.status)"
+                />
+              </dd>
+            </div>
+            <div class="flex items-center gap-3">
+              <dt class="text-muted w-24 shrink-0">Urgency</dt>
+              <dd>
+                <UBadge
+                  :color="priorityColor(report.priority)"
+                  variant="soft"
+                  size="md"
+                  class="rounded-full px-3 font-semibold"
+                  :label="priorityLabel(report.priority)"
+                />
+              </dd>
+            </div>
+            <div v-if="userFileCount > 0" class="flex items-start gap-3 pt-1">
+              <dt class="text-muted w-24 shrink-0">Files</dt>
+              <dd>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+                  @click="emit('select-tab', 'attachments')"
+                >
+                  <UIcon name="i-heroicons-paper-clip" class="size-3.5" />
+                  {{ userFileCount }} additional {{ userFileCount === 1 ? "file" : "files" }}
+                </button>
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+    </div>
+
+    <!-- CONVERSATION — chat-style thread, GitHub-synced. The Comments tab
+         renders the same component standalone; embedded here so the
+         overview reads as "context above, discussion below" without a
+         tab switch. -->
+    <section class="overflow-hidden rounded-xl ring-1 ring-default bg-default">
+      <header class="px-5 py-3 bg-primary/[0.08] border-b border-default flex items-center gap-2">
+        <UIcon name="i-heroicons-chat-bubble-left-right" class="size-4 text-primary" />
+        <h3 class="text-sm font-medium text-primary tracking-tight">Comments</h3>
+      </header>
+      <CommentsTab :project-id="projectId" :report-id="report.id" />
+    </section>
+
+    <!-- Lightbox — full-resolution screenshot. Click the backdrop or press
+         Escape to close. Renders into a fixed overlay above the page so
+         the screenshot can use the entire viewport. -->
+    <Teleport v-if="lightboxOpen" to="body">
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Screenshot fullscreen"
+        @click.self="closeLightbox"
+      >
+        <button
+          type="button"
+          aria-label="Close fullscreen"
+          class="absolute top-4 right-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-white ring-1 ring-white/15 hover:bg-white/20 transition-colors"
+          @click="closeLightbox"
+        >
+          <UIcon name="i-heroicons-x-mark" class="size-4" />
+          Close
+          <kbd class="ml-1 text-sm text-white/60 tabular-nums">Esc</kbd>
+        </button>
         <img
-          :src="report.thumbnailUrl"
-          alt="Report screenshot"
-          class="max-h-[60vh] max-w-full object-contain block"
+          :src="report.thumbnailUrl ?? ''"
+          alt="Report screenshot — full size"
+          class="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
         />
       </div>
-    </UCard>
-
-    <!-- User-uploaded file chip. Only visible when the reporter attached extra
-         files. Clicking navigates to the Attachments tab. -->
-    <button
-      v-if="userFileCount > 0"
-      type="button"
-      class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
-      @click="emit('select-tab', 'attachments')"
-    >
-      <UIcon name="i-heroicons-paper-clip" class="size-3.5" />
-      {{ userFileCount }} additional {{ userFileCount === 1 ? "file" : "files" }}
-    </button>
-
-    <!-- Reporter-authored description. Sits above the metadata so the user
-         sees the "what" before the "where/when". Hidden entirely when the
-         SDK caller submitted an empty description (common for widget-only
-         reports where title + screenshot are enough). -->
-    <UCard v-if="report.description">
-      <template #header>
-        <div class="text-sm font-medium text-default">Description</div>
-      </template>
-      <div
-        class="prose prose-sm dark:prose-invert max-w-none text-default text-sm leading-relaxed"
-        v-html="descriptionHtml"
-      />
-    </UCard>
-
-    <UCard>
-      <div class="text-sm space-y-2">
-        <div class="flex gap-2">
-          <span class="text-muted w-24 flex-shrink-0">Reporter</span>
-          <span class="text-default truncate">{{ report.reporterEmail ?? "anonymous" }}</span>
-        </div>
-        <div class="flex gap-2">
-          <span class="text-muted w-24 flex-shrink-0">{{
-            ctx?.source === "expo" ? "Route" : "Page"
-          }}</span>
-          <template v-if="ctx?.source === 'expo'">
-            <span class="text-default truncate">{{ report.pageUrl }}</span>
-          </template>
-          <template v-else>
-            <a
-              :href="safeHref(report.pageUrl)"
-              target="_blank"
-              rel="noopener"
-              class="text-primary-600 dark:text-primary-400 hover:underline truncate"
-            >
-              {{ report.pageUrl }}
-            </a>
-          </template>
-        </div>
-        <div class="flex gap-2">
-          <span class="text-muted w-24 flex-shrink-0">Received</span>
-          <span class="text-default">{{ fmtTime(report.receivedAt) }}</span>
-        </div>
-      </div>
-    </UCard>
-
-    <UCard v-if="sys">
-      <template #header>
-        <div class="text-sm font-medium text-default">Session environment</div>
-      </template>
-      <dl class="text-sm space-y-3">
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">
-            {{ ctx?.source === "expo" ? "Route" : "Website" }}
-          </dt>
-          <dd class="min-w-0 flex-1">
-            <template v-if="ctx?.source === 'expo'">
-              <span class="text-default truncate inline-block max-w-full align-bottom">
-                {{ report.pageUrl }}
-              </span>
-            </template>
-            <template v-else>
-              <a
-                :href="safeHref(report.pageUrl)"
-                target="_blank"
-                rel="noopener"
-                class="text-primary-600 dark:text-primary-400 hover:underline truncate inline-block max-w-full align-bottom"
-              >
-                {{ report.pageUrl }}
-              </a>
-            </template>
-          </dd>
-        </div>
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">OS</dt>
-          <dd class="flex items-center gap-2 min-w-0">
-            <UIcon :name="os.icon" class="size-4 flex-shrink-0 text-default" />
-            <span class="text-default truncate">{{ os.label }}</span>
-          </dd>
-        </div>
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">Browser</dt>
-          <dd class="flex items-center gap-2 min-w-0">
-            <UIcon :name="browser.icon" class="size-4 flex-shrink-0 text-default" />
-            <span class="text-default truncate">{{ browser.label }}</span>
-          </dd>
-        </div>
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">Viewport</dt>
-          <dd class="flex items-center gap-2">
-            <UIcon name="i-lucide-monitor" class="size-4 flex-shrink-0 text-muted" />
-            <span class="text-default tabular-nums">
-              {{ sys.viewport.w }} × {{ sys.viewport.h }}
-            </span>
-          </dd>
-        </div>
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">Network</dt>
-          <dd>
-            <button
-              type="button"
-              class="text-primary-600 dark:text-primary-400 hover:underline font-medium"
-              @click="emit('select-tab', 'network')"
-            >
-              View network logs
-            </button>
-          </dd>
-        </div>
-      </dl>
-    </UCard>
-
-    <UCard v-if="ctx?.source === 'expo' && sys">
-      <template #header>
-        <div class="text-sm font-medium text-default">Device</div>
-      </template>
-      <dl class="text-sm space-y-3">
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">Platform</dt>
-          <dd class="min-w-0 flex-1 text-default">{{ sys.devicePlatform ?? "—" }}</dd>
-        </div>
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">OS version</dt>
-          <dd class="min-w-0 flex-1 text-default">{{ sys.osVersion ?? "—" }}</dd>
-        </div>
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">Device</dt>
-          <dd class="min-w-0 flex-1 text-default">{{ sys.deviceModel ?? "—" }}</dd>
-        </div>
-        <div class="flex items-center gap-3">
-          <dt class="text-muted w-24 flex-shrink-0">App</dt>
-          <dd class="min-w-0 flex-1 text-default">
-            {{ sys.appVersion ?? "—" }}<span v-if="sys.appBuild"> ({{ sys.appBuild }})</span>
-          </dd>
-        </div>
-      </dl>
-    </UCard>
-
-    <UCard v-if="sys">
-      <template #header>
-        <div class="text-sm font-medium text-default">System info</div>
-      </template>
-      <dl class="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
-        <div>
-          <dt class="text-muted">Platform</dt>
-          <dd class="text-default">{{ sys.platform }}</dd>
-        </div>
-        <div>
-          <dt class="text-muted">Language</dt>
-          <dd class="text-default">{{ sys.language }}</dd>
-        </div>
-        <div>
-          <dt class="text-muted">Timezone</dt>
-          <dd class="text-default">{{ sys.timezone }} ({{ sys.timezoneOffset }})</dd>
-        </div>
-        <div>
-          <dt class="text-muted">DPR</dt>
-          <dd class="text-default">{{ sys.dpr }}</dd>
-        </div>
-        <div>
-          <dt class="text-muted">Viewport</dt>
-          <dd class="text-default">{{ sys.viewport.w }}×{{ sys.viewport.h }}</dd>
-        </div>
-        <div>
-          <dt class="text-muted">Screen</dt>
-          <dd class="text-default">{{ sys.screen.w }}×{{ sys.screen.h }}</dd>
-        </div>
-        <div>
-          <dt class="text-muted">Online</dt>
-          <dd class="text-default">{{ sys.online ? "yes" : "no" }}</dd>
-        </div>
-        <div v-if="sys.connection">
-          <dt class="text-muted">Connection</dt>
-          <dd class="text-default">{{ sys.connection.effectiveType ?? "unknown" }}</dd>
-        </div>
-        <div v-if="sys.referrer" class="col-span-2">
-          <dt class="text-muted">Referrer</dt>
-          <dd class="truncate">
-            <a
-              :href="safeHref(sys.referrer)"
-              target="_blank"
-              rel="noopener"
-              class="text-primary-600 dark:text-primary-400 hover:underline"
-              >{{ sys.referrer }}</a
-            >
-          </dd>
-        </div>
-      </dl>
-    </UCard>
-
-    <UCard>
-      <template #header>
-        <div class="text-sm font-medium text-default">Raw context</div>
-      </template>
-      <pre class="text-sm font-mono whitespace-pre-wrap break-all text-default">{{
-        JSON.stringify(ctx, null, 2)
-      }}</pre>
-    </UCard>
+    </Teleport>
   </div>
 </template>
