@@ -4,6 +4,10 @@
 
 It does not replace the `<script>` embed. Real users on customer sites always get the SDK through the embed; the extension is for internal testers only.
 
+::: tip Looking for the end-user guide?
+This page is the technical reference. If you're a **tester** who just needs to install the extension and file bug reports, see [**Filing a bug report**](/guide/filing-reports) instead — same content, written for non-technical readers.
+:::
+
 ## When to use it
 
 Reach for the extension when:

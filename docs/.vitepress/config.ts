@@ -37,6 +37,10 @@ export default defineConfig({
           ],
         },
         {
+          text: "For testers",
+          items: [{ text: "Filing a bug report", link: "/guide/filing-reports" }],
+        },
+        {
           text: "Web SDK",
           items: [{ text: "Embed + API", link: "/guide/sdk" }],
         },
