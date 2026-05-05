@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-label="Diagram of the Repro Tester Chrome extension popup with the New Origin form">
+  <style>
+    .popup { fill: #fff; stroke: #cbd5e1; stroke-width: 1.5; }
+    .header { fill: #f8fafc; }
+    .title { font: 600 13px ui-sans-serif, system-ui; fill: #0f172a; }
+    .field-label { font: 500 10px ui-sans-serif, system-ui; fill: #64748b; }
+    .field-value { font: 400 11px ui-monospace, monospace; fill: #0f172a; }
+    .field { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; }
+    .button { fill: #10b981; }
+    .button-label { font: 600 12px ui-sans-serif, system-ui; fill: #fff; text-anchor: middle; }
+    .logo { fill: #10b981; }
+  </style>
+  <rect class="popup" x="120" y="20" width="240" height="280" rx="10"/>
+  <rect class="header" x="120" y="20" width="240" height="40" rx="10"/>
+  <rect class="header" x="120" y="40" width="240" height="20"/>
+  <circle class="logo" cx="142" cy="40" r="10"/>
+  <path d="M 138 40 L 141 43 L 147 37" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text class="title" x="160" y="44">New origin</text>
+  <text class="field-label" x="140" y="80">Label</text>
+  <rect class="field" x="140" y="86" width="200" height="22" rx="4"/>
+  <text class="field-value" x="148" y="101">staging</text>
+  <text class="field-label" x="140" y="124">Origin</text>
+  <rect class="field" x="140" y="130" width="200" height="22" rx="4"/>
+  <text class="field-value" x="148" y="145">https://staging.acme.com</text>
+  <text class="field-label" x="140" y="168">Project key</text>
+  <rect class="field" x="140" y="174" width="200" height="22" rx="4"/>
+  <text class="field-value" x="148" y="189">rp_pk_••••••••••••••••</text>
+  <text class="field-label" x="140" y="212">Intake endpoint</text>
+  <rect class="field" x="140" y="218" width="200" height="22" rx="4"/>
+  <text class="field-value" x="148" y="233">https://feedback.example.com</text>
+  <rect class="button" x="140" y="258" width="200" height="28" rx="6"/>
+  <text class="button-label" x="240" y="276">Add origin</text>
+</svg>
