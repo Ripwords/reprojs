@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
     }
     return sendRedirect(
       event,
-      `${env.BETTER_AUTH_URL}/projects/${existing.projectId}/settings?tab=github&updated=1`,
+      `${env.BETTER_AUTH_URL}/projects/${existing.projectId}/integrations?updated=1`,
       302,
     )
   }
@@ -111,7 +111,7 @@ export default defineEventHandler(async (event) => {
 
   return sendRedirect(
     event,
-    `${env.BETTER_AUTH_URL}/projects/${claims.projectId}/settings?tab=github&installed=1`,
+    `${env.BETTER_AUTH_URL}/projects/${claims.projectId}/integrations?installed=1`,
     302,
   )
 })
