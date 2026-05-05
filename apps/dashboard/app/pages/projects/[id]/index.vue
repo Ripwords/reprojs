@@ -217,6 +217,7 @@ function describeEvent(e: ProjectOverviewDTO["recentEvents"][number]): string {
               <span class="text-default font-medium">
                 {{ e.actor?.name ?? e.actor?.email ?? "System" }}
               </span>
+              <span>&nbsp;</span>
               <span class="text-muted"> {{ describeEvent(e) }}</span>
               <div class="mt-0.5 text-sm text-muted tabular-nums">
                 {{ relativeTime(e.createdAt) }}
