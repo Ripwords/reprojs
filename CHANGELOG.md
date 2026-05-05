@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.5.2
+
+[compare changes](https://github.com/Ripwords/ReproJs/compare/v0.5.1...v0.5.2)
+
+### 🚀 Enhancements
+
+- **dashboard:** Redirect GitHub install to integrations page with toast ([b965ccb](https://github.com/Ripwords/ReproJs/commit/b965ccb))
+
+### 🩹 Fixes
+
+- **dashboard:** Add space between actor name and event description in activity feed ([0e54097](https://github.com/Ripwords/ReproJs/commit/0e54097))
+
+### 📖 Documentation
+
+- Add non-technical "Filing a bug report" guide ([a5370e3](https://github.com/Ripwords/ReproJs/commit/a5370e3))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.5.1
 
 [compare changes](https://github.com/Ripwords/ReproJs/compare/v0.5.0...v0.5.1)
